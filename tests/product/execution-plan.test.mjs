@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -17,6 +18,7 @@ import {
   checkGithubState,
   checkPlan,
   loadPlan,
+  loadPlanContractLedger,
   loadSchema,
   nextWork,
   MAX_REPORTED_CYCLES,
@@ -31,11 +33,27 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 const entry = (doc, issue) => doc.issues.find((one) => one.issue === issue);
 const failures = (report) => report.failures.map((one) => one.check);
 
+// `blocked_by` is gone from the plan document -- an issue's dependencies are now split across
+// `implementation_blocked_by` and `acceptance_blocked_by`. Tests that only need "does this issue
+// wait on anything, of either kind" read the union; tests that exercise the split itself name the
+// field they mean.
+const dependencyBlockedBy = (issue) => [...(issue.implementation_blocked_by ?? []), ...(issue.acceptance_blocked_by ?? [])];
+
 // A snapshot the live path will accept. `{live: true}` alone is a caller's claim; the file has to
 // agree, which is the point of the check being tested here.
 const asLive = (snapshot) => ({ ...snapshot, source: "live" });
 
 const verified = () => ({ ...Object.fromEntries(REQUIRED_CONFIRMATIONS.map((key) => [key, true])), verified: true });
+
+const passingCloseEvidence = (issue) => ({
+  schema: "aos-issue-completion.v1",
+  issue,
+  final_sha: "a".repeat(40),
+  pr: 1,
+  ci_run_ids: [1],
+  verdict: "PASS",
+  evidence: Object.fromEntries(EVIDENCE_CONTRACT[issue].fields.map((field) => [field, `candidate-proof-for-${field}`]))
+});
 
 const state = () =>
   JSON.parse(readFileSync(new URL("../../fixtures/execution-plan/github-state.json", import.meta.url), "utf8"));
@@ -73,23 +91,28 @@ test("the shipped manifest passes every static check", () => {
 test("a dependency cycle fails", () => {
   const doc = plan();
   // #562 waits on #564; making #564 wait on #562 closes the loop the epic calls out by name.
-  entry(doc, 564).blocked_by.push(562);
+  entry(doc, 564).implementation_blocked_by.push(562);
   entry(doc, 562).blocks.push(564);
   assert.ok(failures(checkPlan(doc)).includes("dependency-cycle"));
 });
 
 test("a self dependency fails", () => {
   const doc = plan();
-  entry(doc, 559).blocked_by.push(559);
+  entry(doc, 559).implementation_blocked_by.push(559);
   assert.ok(failures(checkPlan(doc)).includes("self-dependency"));
 });
 
 // Several tests need an issue that is still blocked behind unfinished work. #559 was that example
 // until #582 and #588 were done and it became ready; the plan moves, so the example is taken from
 // whatever it says today rather than from a number that was true when the test was written.
+// Specifically an unfinished IMPLEMENTATION predecessor: `ready-with-unfinished-predecessor` is now
+// gated on implementation_blocked_by alone, so an example whose only pending predecessor is an
+// acceptance block would not reproduce the failure these tests exist to pin.
 const blockedBehindUnfinished = (doc) => {
   const done = new Set(doc.issues.filter((one) => one.status === "done").map((one) => one.issue));
-  const one = doc.issues.find((each) => each.status === "blocked" && each.blocked_by.some((number) => !done.has(number)));
+  const one = doc.issues.find(
+    (each) => each.status === "blocked" && each.implementation_blocked_by.some((number) => !done.has(number))
+  );
   assert.ok(one, "the plan has no blocked issue left to serve as the example");
   return one;
 };
@@ -102,7 +125,9 @@ test("a ready issue with an unfinished predecessor fails", () => {
 
 test("a blocked issue whose predecessors all passed is stale and fails", () => {
   const doc = plan();
-  for (const number of blockedBehindUnfinished(doc).blocked_by) entry(doc, number).status = "done";
+  // Every predecessor of either kind, not just the implementation ones used to find the example:
+  // `stale-blocked-status` only fires once both implementation and acceptance are clear.
+  for (const number of dependencyBlockedBy(blockedBehindUnfinished(doc))) entry(doc, number).status = "done";
   assert.ok(failures(checkPlan(doc)).includes("stale-blocked-status"));
 });
 
@@ -114,7 +139,7 @@ test("two issues owning the same hot file fails", () => {
 
 test("blocked_by and blocks must agree in both directions", () => {
   const doc = plan();
-  entry(doc, 559).blocked_by = entry(doc, 559).blocked_by.filter((n) => n !== 582);
+  entry(doc, 559).implementation_blocked_by = entry(doc, 559).implementation_blocked_by.filter((n) => n !== 582);
   assert.ok(failures(checkPlan(doc)).includes("reverse-edge-inconsistent"));
 });
 
@@ -140,6 +165,108 @@ test("a release-critical issue without a close-evidence contract fails", () => {
   assert.ok(failures(checkPlan(doc)).includes("release-critical-needs-close-evidence"));
 });
 
+test("an unsatisfied acceptance block cannot issue close evidence", () => {
+  const doc = plan();
+  const issue = entry(doc, 571);
+  issue.implementation_blocked_by = [570];
+  issue.acceptance_blocked_by = [569, 588];
+
+  const snapshot = asLive(state());
+  const live = snapshot.issues.find((one) => one.number === 571);
+  live.state = "closed";
+  live.close_evidence = { ...passingCloseEvidence(571), author_trusted: true };
+  live.close_evidence_checked = verified();
+
+  const report = auditCloseEvidence(doc, snapshot, { live: true });
+  assert.ok(report.failures.some((one) => one.check === "close-evidence-acceptance-blocked" && one.issue === 571));
+});
+
+test("an issue whose implementation blocks are satisfied can open a PR despite acceptance blocks", () => {
+  const doc = plan();
+  const issue = entry(doc, 571);
+  issue.implementation_blocked_by = [570];
+  issue.acceptance_blocked_by = [569, 588];
+
+  assert.ok(nextWork(doc).implementation_ready.includes(571));
+});
+
+test("collapsing the split dependency fields back into blocked_by fails", () => {
+  // Pinned to the specific refusals, not only to `ok === false`. Any edited plan trips
+  // `plan-contract-version-stale`, so `ok === false` alone was satisfiable with the split
+  // enforcement gone -- the same shape "the evidence contract lives outside the document it
+  // checks" was rewritten to avoid.
+  const doc = plan();
+  const issue = entry(doc, 571);
+  delete issue.implementation_blocked_by;
+  delete issue.acceptance_blocked_by;
+  issue.blocked_by = [569, 570, 588];
+
+  const report = checkPlan(doc);
+  assert.equal(report.ok, false);
+  const details = report.failures.filter((one) => one.check === "schema-invalid").map((one) => one.detail);
+  assert.ok(details.some((one) => one.includes('missing required property "implementation_blocked_by"')));
+  assert.ok(details.some((one) => one.includes('missing required property "acceptance_blocked_by"')));
+  assert.ok(details.some((one) => one.includes('unexpected property "blocked_by"')), "the v1 field came back and the schema accepted it");
+});
+
+test("a moved plan byte without a moved contract version fails", () => {
+  const doc = plan();
+  entry(doc, 571).priority = "P2";
+
+  assert.ok(failures(checkPlan(doc)).includes("plan-contract-version-stale"));
+});
+
+test("a moved schema byte without a moved contract version fails", () => {
+  // The plan here is pristine, so `plan-contract-version-stale` stays quiet: what has drifted is
+  // the ledger's byte identity for the schema file itself. A schema edit under a retained version
+  // identifier redefines what every recorded digest attests to, and this is the only check that
+  // notices -- which is why the assertion is equality on the one failure, not `ok === false`.
+  const ledger = clone(loadPlanContractLedger());
+  ledger.versions.find((one) => one.schema === "aos-execution-plan.v2").schema_digest = `sha256:${"a".repeat(64)}`;
+  assert.deepEqual(failures(checkPlan(plan(), { contractLedger: ledger })), ["plan-schema-version-stale"]);
+});
+
+test("every legacy dependency edge is classified by one split field", () => {
+  const doc = plan();
+  const issue = entry(doc, 571);
+  issue.implementation_blocked_by = [570];
+  issue.acceptance_blocked_by = [588];
+
+  assert.ok(failures(checkPlan(doc)).includes("dependency-edge-unclassified"));
+});
+
+test("a dependency edge classified as both implementation and acceptance fails", () => {
+  const doc = plan();
+  // #556's legacy edge to #554 is classified as implementation. Claiming it for acceptance too
+  // gives one edge two gates, and the union alone cannot see that -- the union is unchanged,
+  // which is why the check reads the two fields rather than their sum.
+  entry(doc, 556).acceptance_blocked_by.push(554);
+  assert.ok(failures(checkPlan(doc)).includes("dependency-edge-double-classified"));
+});
+
+test("an invented dependency edge outside the legacy contract fails", () => {
+  const doc = plan();
+  // #553 waits on nothing in the v1 contract. A new edge written into the split fields -- with
+  // the reverse edge kept consistent, so the reverse-index check stays quiet -- adds a dependency
+  // the migration inventory never approved, and this check is the one that refuses it by name.
+  entry(doc, 553).implementation_blocked_by.push(554);
+  entry(doc, 554).blocks.push(553);
+  assert.ok(failures(checkPlan(doc)).includes("dependency-edge-invented"));
+});
+
+test("a done issue with an unfinished acceptance predecessor fails", () => {
+  const doc = plan();
+  // `done` is what unblocks everything downstream, so it is the status that answers to the
+  // acceptance gate: re-opening a predecessor has to revoke the successor's `done`, or a
+  // completion stands while the gate it answered to is open again. The example is taken from
+  // whatever the plan says today rather than from a number that was true when this was written.
+  const one = doc.issues.find((each) => each.status === "done" && (each.acceptance_blocked_by ?? []).length > 0);
+  assert.ok(one, "the plan has no done issue with an acceptance predecessor left to serve as the example");
+  entry(doc, one.acceptance_blocked_by[0]).status = "in-progress";
+  const report = checkPlan(doc);
+  assert.ok(report.failures.some((each) => each.check === "done-with-unfinished-acceptance-predecessor" && each.issue === one.issue));
+});
+
 // --- phase-ready is not READY --------------------------------------------------------------
 
 // #556 was the shipped example of a blocked issue with one ready phase until its predecessors
@@ -162,7 +289,7 @@ test("phase-ready is separate from issue ready", () => {
   const phased = doc.issues.filter((one) => (one.phases ?? []).length > 0);
   assert.ok(phased.length > 0, "the plan has no phased issue left to check");
   for (const one of phased) {
-    const unblocked = one.blocked_by.every((number) => done.has(number));
+    const unblocked = dependencyBlockedBy(one).every((number) => done.has(number));
     if (one.status === "done") {
       // Terminal: a finished issue's phases are finished too, including the integrating one.
       for (const phase of one.phases) assert.equal(phase.status, "done", `#${one.issue} phase ${phase.id}`);
@@ -343,13 +470,13 @@ test("the next batch is decidable from the manifest alone", () => {
   const done = new Set(doc.issues.filter((one) => one.status === "done").map((one) => one.issue));
   const ready = doc.issues.filter((one) => one.status === "ready").map((one) => one.issue).sort((a, b) => a - b);
   const expected = doc.issues
-    .filter((one) => one.kind !== "epic" && one.status !== "done" && one.blocked_by.every((number) => done.has(number)))
+    .filter((one) => one.kind !== "epic" && one.status !== "done" && dependencyBlockedBy(one).every((number) => done.has(number)))
     .map((one) => one.issue)
     .sort((a, b) => a - b);
   assert.deepEqual(ready, expected);
   assert.ok(ready.length > 0, "the plan has run out of startable work");
   // And batch 0 is the set that started with nothing to wait for: every one of them is done or ready.
-  for (const one of doc.issues.filter((one) => one.batch === 0 && one.blocked_by.length === 0)) {
+  for (const one of doc.issues.filter((one) => one.batch === 0 && dependencyBlockedBy(one).length === 0)) {
     assert.ok(one.status === "done" || one.status === "ready", `#${one.issue} is batch 0 and ${one.status}`);
   }
 
@@ -363,7 +490,7 @@ test("the next batch is decidable from the manifest alone", () => {
   for (const number of phaseOnly) {
     const one = entry(doc, number);
     assert.notEqual(one.status, "done", `#${number} is done yet carries a ready phase`);
-    assert.ok(!one.blocked_by.every((each) => done.has(each)), `#${number} is startable as itself, so it is not phase-only`);
+    assert.ok(!dependencyBlockedBy(one).every((each) => done.has(each)), `#${number} is startable as itself, so it is not phase-only`);
   }
 });
 
@@ -411,7 +538,7 @@ test("the audit summary carries no issue title, and no absolute path or token in
   const broken = snapshot.issues.find((one) => one.number === 567);
   broken.labels = ["release:v0.2.0", "priority:P0", "area:measurement", "status:done"];
   broken.milestone = 13;
-  entry(doc, 559).blocked_by.push(559);
+  entry(doc, 559).implementation_blocked_by.push(559);
 
   const summary = auditSummary(doc, snapshot, {
     plan: checkPlan(doc),
@@ -702,9 +829,9 @@ test("the two-cycles a shared visited set used to drop are each reported once", 
   const doc = plan();
   // Three issues that all wait on each other. A depth-first search with one shared visited set
   // finds only some of these, and the one it drops is the edge the reader has to remove.
-  entry(doc, 553).blocked_by = [554, 555];
-  entry(doc, 554).blocked_by = [553, 555];
-  entry(doc, 555).blocked_by = [553, 554];
+  entry(doc, 553).implementation_blocked_by = [554, 555];
+  entry(doc, 554).implementation_blocked_by = [553, 555];
+  entry(doc, 555).implementation_blocked_by = [553, 554];
   for (const number of [553, 554, 555]) entry(doc, number).status = "blocked";
 
   const reported = checkPlan(doc)
@@ -778,11 +905,199 @@ test("three separately true facts are not a confirmation", async () => {
 
   // And evidence that quotes a digest of something else is not evidence about this revision.
   const withBinding = { ...owner, evidence_bindings: { d: "governance/thing.json" } };
-  const wrongDigest = async (path) =>
-    path.includes("/contents/") ? { body: { content: Buffer.from("different bytes").toString("base64"), encoding: "base64" } } : bound(path);
+  const wrongDigest = async (path) => {
+    // The binding is resolved through the plan at the recorded revision first; an empty plan
+    // resolves nothing, so the binding stays at its current path and the real check below still runs.
+    if (path.includes("v0.2.0-execution-plan.json")) {
+      return { body: { content: Buffer.from(JSON.stringify({ issues: [] })).toString("base64"), encoding: "base64" } };
+    }
+    return path.includes("/contents/") ? { body: { content: Buffer.from("different bytes").toString("base64"), encoding: "base64" } } : bound(path);
+  };
   const stale = await verifyCompletionRecord("o/r", record, { get: wrongDigest, issue: withBinding });
   assert.equal(stale.evidence_digests_match, false);
   assert.equal(stale.verified, false);
+});
+
+// --- #645: evidence is bound to what the plan said at the recorded revision, not to today's plan --
+//
+// #642 forced this: moving the plan's schema from v1 to v2 (required whenever the plan's bytes
+// move, #631) retroactively made an already-closed, already-PASSed #588 unverifiable, because the
+// live check followed today's evidence_bindings path to a name that did not exist at the commit the
+// record was about. The record was never wrong; the verifier's ability to find the file was.
+
+test("a schema rename still resolves when the historical plan predates evidence_bindings entirely", async () => {
+  // #588's real completion record: final_sha is the commit that first introduced the plan/schema
+  // system, before evidence_bindings existed as a field at all. The historical plan there has only
+  // its own top-level "schema" identifier to go by, and that is what the schema_digest fallback
+  // has to resolve through -- an empty evidence_bindings object is not the same as "no historical
+  // plan could be read", and must not fall all the way back to today's (renamed) path.
+  const { verifyCompletionRecord } = await import("../../lib/github-state.mjs");
+  const sha256 = (bytes) => "sha256:" + createHash("sha256").update(bytes).digest("hex");
+  const schemaBytes = Buffer.from("the v1 schema bytes, from before evidence_bindings existed");
+
+  const record = {
+    issue: 588,
+    final_sha: "a".repeat(40),
+    pr: 589,
+    ci_run_ids: [1],
+    evidence: { schema_digest: sha256(schemaBytes) }
+  };
+  const currentIssue = { issue: 588, owned_paths: ["lib/"], evidence_bindings: { schema_digest: "schemas/aos-execution-plan.v2.schema.json" } };
+  // No evidence_bindings field anywhere in this historical plan -- only "schema".
+  const historicalPlan = { schema: "aos-execution-plan.v1", issues: [{ issue: 588 }] };
+
+  const get = async (path) => {
+    if (path.includes("/files")) return { body: [{ filename: "lib/execution-plan.mjs" }], link: null };
+    if (path.includes("/commits/")) return { body: { sha: record.final_sha } };
+    if (path.includes("/compare/")) return { body: { status: "ahead" } };
+    if (path.includes("/pulls/")) {
+      return { body: { merged_at: "2026-09-01T00:00:00Z", base: { ref: "dev" }, head: { sha: "b".repeat(40) }, merge_commit_sha: record.final_sha, body: "Closes #588" } };
+    }
+    if (path.includes("v0.2.0-execution-plan.json")) {
+      return { body: { content: Buffer.from(JSON.stringify(historicalPlan)).toString("base64"), encoding: "base64" } };
+    }
+    if (path.includes("aos-execution-plan.v1.schema.json")) return { body: { content: schemaBytes.toString("base64"), encoding: "base64" } };
+    if (path.includes("aos-execution-plan.v2.schema.json")) {
+      const error = new Error("404");
+      error.status = 404;
+      throw error;
+    }
+    return { body: { conclusion: "success", head_sha: record.final_sha } };
+  };
+
+  const checked = await verifyCompletionRecord("o/r", record, { get, issue: currentIssue });
+  assert.equal(checked.evidence_digests_match, true, "the schema-identity fallback should have resolved the pre-rename path");
+  assert.equal(checked.verified, true);
+});
+
+test("a schema rename does not retroactively break an already-closed issue's evidence", async () => {
+  const { verifyCompletionRecord } = await import("../../lib/github-state.mjs");
+  const sha256 = (bytes) => "sha256:" + createHash("sha256").update(bytes).digest("hex");
+  const schemaBytes = Buffer.from("the actual schema bytes, unchanged by the rename");
+
+  const record = {
+    issue: 588,
+    final_sha: "a".repeat(40),
+    pr: 589,
+    ci_run_ids: [1],
+    evidence: { schema_digest: sha256(schemaBytes) }
+  };
+  // Today's plan -- what a fresh read of governance/v0.2.0-execution-plan.json says right now.
+  const currentIssue = { issue: 588, owned_paths: ["lib/"], evidence_bindings: { schema_digest: "schemas/thing.v2.schema.json" } };
+  // The plan as it stood at record.final_sha, before the rename.
+  const historicalPlan = { issues: [{ issue: 588, evidence_bindings: { schema_digest: "schemas/thing.v1.schema.json" } }] };
+
+  const get = async (path) => {
+    if (path.includes("/files")) return { body: [{ filename: "lib/execution-plan.mjs" }], link: null };
+    if (path.includes("/commits/")) return { body: { sha: record.final_sha } };
+    if (path.includes("/compare/")) return { body: { status: "ahead" } };
+    if (path.includes("/pulls/")) {
+      return { body: { merged_at: "2026-09-01T00:00:00Z", base: { ref: "dev" }, head: { sha: "b".repeat(40) }, merge_commit_sha: record.final_sha, body: "Closes #588" } };
+    }
+    if (path.includes("v0.2.0-execution-plan.json")) {
+      return { body: { content: Buffer.from(JSON.stringify(historicalPlan)).toString("base64"), encoding: "base64" } };
+    }
+    if (path.includes("thing.v1.schema.json")) return { body: { content: schemaBytes.toString("base64"), encoding: "base64" } };
+    if (path.includes("thing.v2.schema.json")) {
+      const error = new Error("404");
+      error.status = 404;
+      throw error;
+    }
+    return { body: { conclusion: "success", head_sha: record.final_sha } };
+  };
+
+  const checked = await verifyCompletionRecord("o/r", record, { get, issue: currentIssue });
+  assert.equal(checked.evidence_digests_match, true, "the rename should not have made real, unchanged content unverifiable");
+  assert.equal(checked.verified, true);
+});
+
+test("evidence that never existed under any name still fails", async () => {
+  const { verifyCompletionRecord } = await import("../../lib/github-state.mjs");
+  const sha256 = (bytes) => "sha256:" + createHash("sha256").update(bytes).digest("hex");
+  const record = { issue: 588, final_sha: "a".repeat(40), pr: 589, ci_run_ids: [1], evidence: { schema_digest: sha256(Buffer.from("anything")) } };
+  const currentIssue = { issue: 588, owned_paths: ["lib/"], evidence_bindings: { schema_digest: "schemas/thing.v2.schema.json" } };
+  const historicalPlan = { issues: [{ issue: 588, evidence_bindings: { schema_digest: "schemas/thing.v1.schema.json" } }] };
+
+  const get = async (path) => {
+    if (path.includes("/files")) return { body: [{ filename: "lib/execution-plan.mjs" }], link: null };
+    if (path.includes("/commits/")) return { body: { sha: record.final_sha } };
+    if (path.includes("/compare/")) return { body: { status: "ahead" } };
+    if (path.includes("/pulls/")) {
+      return { body: { merged_at: "2026-09-01T00:00:00Z", base: { ref: "dev" }, head: { sha: "b".repeat(40) }, merge_commit_sha: record.final_sha, body: "Closes #588" } };
+    }
+    if (path.includes("v0.2.0-execution-plan.json")) {
+      return { body: { content: Buffer.from(JSON.stringify(historicalPlan)).toString("base64"), encoding: "base64" } };
+    }
+    // Neither name has ever existed -- tolerance for a rename must not become tolerance for
+    // evidence that was never real under any path.
+    if (path.includes("thing.v1.schema.json") || path.includes("thing.v2.schema.json")) {
+      const error = new Error("404");
+      error.status = 404;
+      throw error;
+    }
+    return { body: { conclusion: "success", head_sha: record.final_sha } };
+  };
+
+  const checked = await verifyCompletionRecord("o/r", record, { get, issue: currentIssue });
+  assert.equal(checked.evidence_digests_match, false, "content missing under every name it was ever bound to must not verify");
+  assert.equal(checked.verified, false);
+});
+
+test("a forged digest under a renamed path is still rejected", async () => {
+  const { verifyCompletionRecord } = await import("../../lib/github-state.mjs");
+  const sha256 = (bytes) => "sha256:" + createHash("sha256").update(bytes).digest("hex");
+  const record = { issue: 588, final_sha: "a".repeat(40), pr: 589, ci_run_ids: [1], evidence: { schema_digest: sha256(Buffer.from("the real bytes")) } };
+  const currentIssue = { issue: 588, owned_paths: ["lib/"], evidence_bindings: { schema_digest: "schemas/thing.v2.schema.json" } };
+  const historicalPlan = { issues: [{ issue: 588, evidence_bindings: { schema_digest: "schemas/thing.v1.schema.json" } }] };
+
+  const get = async (path) => {
+    if (path.includes("/files")) return { body: [{ filename: "lib/execution-plan.mjs" }], link: null };
+    if (path.includes("/commits/")) return { body: { sha: record.final_sha } };
+    if (path.includes("/compare/")) return { body: { status: "ahead" } };
+    if (path.includes("/pulls/")) {
+      return { body: { merged_at: "2026-09-01T00:00:00Z", base: { ref: "dev" }, head: { sha: "b".repeat(40) }, merge_commit_sha: record.final_sha, body: "Closes #588" } };
+    }
+    if (path.includes("v0.2.0-execution-plan.json")) {
+      return { body: { content: Buffer.from(JSON.stringify(historicalPlan)).toString("base64"), encoding: "base64" } };
+    }
+    // Resolves correctly through the rename, but the bytes there are not the bytes the record
+    // claims -- finding the right file must not excuse a wrong digest.
+    if (path.includes("thing.v1.schema.json")) return { body: { content: Buffer.from("forged bytes").toString("base64"), encoding: "base64" } };
+    return { body: { conclusion: "success", head_sha: record.final_sha } };
+  };
+
+  const checked = await verifyCompletionRecord("o/r", record, { get, issue: currentIssue });
+  assert.equal(checked.evidence_digests_match, false, "a resolved path with the wrong bytes must not verify");
+  assert.equal(checked.verified, false);
+});
+
+test("an unreadable historical plan is not a false fact", async () => {
+  const { verifyCompletionRecord } = await import("../../lib/github-state.mjs");
+  const sha256 = (bytes) => "sha256:" + createHash("sha256").update(bytes).digest("hex");
+  const record = { issue: 588, final_sha: "a".repeat(40), pr: 589, ci_run_ids: [1], evidence: { schema_digest: sha256(Buffer.from("x")) } };
+  const currentIssue = { issue: 588, owned_paths: ["lib/"], evidence_bindings: { schema_digest: "schemas/thing.v2.schema.json" } };
+
+  const get = async (path) => {
+    if (path.includes("/files")) return { body: [{ filename: "lib/execution-plan.mjs" }], link: null };
+    if (path.includes("/commits/")) return { body: { sha: record.final_sha } };
+    if (path.includes("/compare/")) return { body: { status: "ahead" } };
+    if (path.includes("/pulls/")) {
+      return { body: { merged_at: "2026-09-01T00:00:00Z", base: { ref: "dev" }, head: { sha: "b".repeat(40) }, merge_commit_sha: record.final_sha, body: "Closes #588" } };
+    }
+    if (path.includes("v0.2.0-execution-plan.json")) {
+      // Not a 404 -- an outage while reading the historical plan, not the repository saying it
+      // does not have one.
+      const error = new Error("502");
+      error.status = 502;
+      throw error;
+    }
+    return { body: { conclusion: "success", head_sha: record.final_sha } };
+  };
+
+  const checked = await verifyCompletionRecord("o/r", record, { get, issue: currentIssue });
+  assert.equal(checked.evidence_digests_match, null, "an outage reading the historical plan was recorded as the evidence being false");
+  assert.notEqual(checked.evidence_digests_match, false);
+  assert.equal(checked.verified, false);
 });
 
 test("a one-key forgery of the whole audit does not pass", () => {
@@ -1305,7 +1620,8 @@ test("the cycle report is bounded, so a dense graph fails rather than hangs", ()
   // outnumber anything worth enumerating; the answer needed is "this is cyclic, and here is where".
   const numbers = doc.issues.map((one) => one.issue);
   for (const one of doc.issues) {
-    one.blocked_by = numbers.filter((number) => number !== one.issue);
+    one.implementation_blocked_by = numbers.filter((number) => number !== one.issue);
+    one.acceptance_blocked_by = [];
     one.blocks = numbers.filter((number) => number !== one.issue);
   }
   const started = Date.now();
@@ -1409,7 +1725,8 @@ test("a dense acyclic graph finishes quickly instead of exploring every path", (
   // triggered here and the check hung on a graph whose answer is "nothing wrong".
   const numbers = doc.issues.map((one) => one.issue);
   for (const one of doc.issues) {
-    one.blocked_by = numbers.filter((number) => number > one.issue);
+    one.implementation_blocked_by = numbers.filter((number) => number > one.issue);
+    one.acceptance_blocked_by = [];
     one.blocks = numbers.filter((number) => number < one.issue);
   }
   const started = Date.now();
@@ -1423,7 +1740,8 @@ test("a truncated cycle search says so", () => {
   const doc = plan();
   const numbers = doc.issues.map((one) => one.issue);
   for (const one of doc.issues) {
-    one.blocked_by = numbers.filter((number) => number !== one.issue);
+    one.implementation_blocked_by = numbers.filter((number) => number !== one.issue);
+    one.acceptance_blocked_by = [];
     one.blocks = numbers.filter((number) => number !== one.issue);
   }
   const names = failures(checkPlan(doc));
@@ -1531,7 +1849,7 @@ test("a canonical-sized plan cannot carry unbounded edges, at the issue or the p
   // stayed canonical-sized while forcing unbounded work below it -- and it made the reachability
   // search exhaust its budget before reaching the real edge.
   const doc = plan();
-  entry(doc, 553).blocked_by = [...Array.from({ length: 100_001 }, (_, index) => 900_000 + index), 554];
+  entry(doc, 553).implementation_blocked_by = [...Array.from({ length: 100_001 }, (_, index) => 900_000 + index), 554];
   const started = Date.now();
   assert.ok(failures(checkPlan(doc)).includes("schema-invalid"));
   assert.ok(Date.now() - started < 10_000);
@@ -1550,7 +1868,7 @@ test("a reachability answer that ran out of budget is reported, not returned as 
   // two do not depend on each other" about a pair that does.
   const doc = plan();
   const one = entry(doc, 559);
-  one.blocked_by = [...Array.from({ length: 120_000 }, (_, index) => 800_000 + index), 582, 588];
+  one.implementation_blocked_by = [...Array.from({ length: 120_000 }, (_, index) => 800_000 + index), 582, 588];
   one.allowed_parallel_with = [...one.allowed_parallel_with, 582];
   entry(doc, 582).allowed_parallel_with = [...entry(doc, 582).allowed_parallel_with, 559];
 
@@ -1587,7 +1905,8 @@ test("a ring the size of the real plan is reported as exactly one cycle", () => 
   const doc = plan();
   const numbers = doc.issues.map((one) => one.issue);
   doc.issues.forEach((one, index) => {
-    one.blocked_by = [numbers[(index + 1) % numbers.length]];
+    one.implementation_blocked_by = [numbers[(index + 1) % numbers.length]];
+    one.acceptance_blocked_by = [];
     one.blocks = [numbers[(index - 1 + numbers.length) % numbers.length]];
   });
   const report = checkPlan(doc);
@@ -1625,17 +1944,26 @@ test("the phase contract pins what a phase may do, not only what it is called", 
 });
 
 test("the evidence contract lives outside the document it checks", () => {
-  for (const edit of [
-    (d) => { entry(d, 588).evidence_bindings = {}; },
-    (d) => { entry(d, 588).evidence_bindings = { manifest_digest: "README.md", schema_digest: "README.md" }; },
-    (d) => { entry(d, 553).required_evidence_fields = ["x"]; },
-    (d) => { const e = entry(d, 567); e.required_evidence_fields = e.required_evidence_fields.filter((f) => f !== "raw_byte_digest_api"); },
-    (d) => { entry(d, 553).owned_paths = ["README.md"]; },
-    (d) => { entry(d, 553).owned_paths = ["docs/whatever.md"]; }
+  // Pinned to the specific check each edit is supposed to trip, not only to `ok === false`.
+  // Every one of these docs also fails `plan-contract-version-stale` -- any edited plan does,
+  // since the ledger only matches the pristine file -- and that failure alone made `ok === false`
+  // true regardless of whether the contract-specific check still fired. `owned-paths-documentation-only`
+  // survived a mutation run entirely unnoticed this way: disabling it changed nothing this test
+  // could see.
+  for (const [edit, expected] of [
+    [(d) => { entry(d, 588).evidence_bindings = {}; }, "evidence-binding-dropped"],
+    [(d) => { entry(d, 588).evidence_bindings = { manifest_digest: "README.md", schema_digest: "README.md" }; }, "evidence-binding-dropped"],
+    [(d) => { entry(d, 553).required_evidence_fields = ["x"]; }, "evidence-fields-do-not-match-contract"],
+    [(d) => { const e = entry(d, 567); e.required_evidence_fields = e.required_evidence_fields.filter((f) => f !== "raw_byte_digest_api"); }, "evidence-fields-do-not-match-contract"],
+    [(d) => { entry(d, 553).owned_paths = ["README.md"]; }, "owned-paths-documentation-only"],
+    [(d) => { entry(d, 553).owned_paths = ["docs/whatever.md"]; }, "owned-paths-documentation-only"]
   ]) {
     const doc = plan();
     edit(doc);
-    assert.equal(checkPlan(doc).ok, false, "a one-line edit weakened the contract and passed");
+    assert.ok(
+      failures(checkPlan(doc)).includes(expected),
+      `a one-line edit weakened the contract and "${expected}" did not fire`
+    );
   }
 });
 
