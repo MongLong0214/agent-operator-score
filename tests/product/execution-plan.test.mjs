@@ -874,6 +874,51 @@ test("three separately true facts are not a confirmation", async () => {
 // live check followed today's evidence_bindings path to a name that did not exist at the commit the
 // record was about. The record was never wrong; the verifier's ability to find the file was.
 
+test("a schema rename still resolves when the historical plan predates evidence_bindings entirely", async () => {
+  // #588's real completion record: final_sha is the commit that first introduced the plan/schema
+  // system, before evidence_bindings existed as a field at all. The historical plan there has only
+  // its own top-level "schema" identifier to go by, and that is what the schema_digest fallback
+  // has to resolve through -- an empty evidence_bindings object is not the same as "no historical
+  // plan could be read", and must not fall all the way back to today's (renamed) path.
+  const { verifyCompletionRecord } = await import("../../lib/github-state.mjs");
+  const sha256 = (bytes) => "sha256:" + createHash("sha256").update(bytes).digest("hex");
+  const schemaBytes = Buffer.from("the v1 schema bytes, from before evidence_bindings existed");
+
+  const record = {
+    issue: 588,
+    final_sha: "a".repeat(40),
+    pr: 589,
+    ci_run_ids: [1],
+    evidence: { schema_digest: sha256(schemaBytes) }
+  };
+  const currentIssue = { issue: 588, owned_paths: ["lib/"], evidence_bindings: { schema_digest: "schemas/aos-execution-plan.v2.schema.json" } };
+  // No evidence_bindings field anywhere in this historical plan -- only "schema".
+  const historicalPlan = { schema: "aos-execution-plan.v1", issues: [{ issue: 588 }] };
+
+  const get = async (path) => {
+    if (path.includes("/files")) return { body: [{ filename: "lib/execution-plan.mjs" }], link: null };
+    if (path.includes("/commits/")) return { body: { sha: record.final_sha } };
+    if (path.includes("/compare/")) return { body: { status: "ahead" } };
+    if (path.includes("/pulls/")) {
+      return { body: { merged_at: "2026-09-01T00:00:00Z", base: { ref: "dev" }, head: { sha: "b".repeat(40) }, merge_commit_sha: record.final_sha, body: "Closes #588" } };
+    }
+    if (path.includes("v0.2.0-execution-plan.json")) {
+      return { body: { content: Buffer.from(JSON.stringify(historicalPlan)).toString("base64"), encoding: "base64" } };
+    }
+    if (path.includes("aos-execution-plan.v1.schema.json")) return { body: { content: schemaBytes.toString("base64"), encoding: "base64" } };
+    if (path.includes("aos-execution-plan.v2.schema.json")) {
+      const error = new Error("404");
+      error.status = 404;
+      throw error;
+    }
+    return { body: { conclusion: "success", head_sha: record.final_sha } };
+  };
+
+  const checked = await verifyCompletionRecord("o/r", record, { get, issue: currentIssue });
+  assert.equal(checked.evidence_digests_match, true, "the schema-identity fallback should have resolved the pre-rename path");
+  assert.equal(checked.verified, true);
+});
+
 test("a schema rename does not retroactively break an already-closed issue's evidence", async () => {
   const { verifyCompletionRecord } = await import("../../lib/github-state.mjs");
   const sha256 = (bytes) => "sha256:" + createHash("sha256").update(bytes).digest("hex");

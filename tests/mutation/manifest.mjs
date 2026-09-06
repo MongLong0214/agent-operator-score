@@ -7836,13 +7836,13 @@ export const GUARDS = [
     name: "a moved plan byte without a moved contract version fails"
   },
   {
-    guard: "evidence bindings resolve through the plan at the recorded revision",
-    reason: "#645: a schema rename retroactively broke an already-closed, already-PASSed #588 because the live check followed today's evidence_bindings path instead of the path the plan named at record.final_sha; without this substitution, tolerance for the rename disappears and the same regression recurs the next time a governed file's name moves",
+    guard: "the schema-digest fallback resolves a rename older than evidence_bindings itself",
+    reason: "#645: #588's own completion record predates evidence_bindings as a plan field entirely, so the historical plan at its final_sha has nothing for bindingsAtRevision to read there -- the only thing that resolved the real, live regression was deriving the schema's path from the plan's own historical schema identifier. Without this, the fix looks complete against mocked tests but does not fix the issue it was written for",
     file: "lib/github-state.mjs",
-    from: "return currentBindings.map(([field, path]) => [field, historicalBindings[field] ?? path]);",
-    to: "return currentBindings;",
+    from: "    if (field === \"schema_digest\" && typeof historicalPlan?.schema === \"string\") {",
+    to: "    if (false) {",
     test: "tests/product/execution-plan.test.mjs",
-    name: "a schema rename does not retroactively break an already-closed issue's evidence"
+    name: "a schema rename still resolves when the historical plan predates evidence_bindings entirely"
   }
 ];
 
@@ -8339,7 +8339,7 @@ export const ACCOUNTED_GUARDS = [
   "every segment of a snapshot name has to be readable",
   "every transport spelling needs the transport approval",
   "everything published passes the one gate",
-  "evidence bindings resolve through the plan at the recorded revision",
+
   "evidence bound to the audited revision",
   "evidence contract cannot be switched off",
   "evidence failures decide the route's adequacy",
@@ -8674,6 +8674,7 @@ export const ACCOUNTED_GUARDS = [
   "the runtime's own event outranks the declaration",
   "the same evidence cannot be counted twice",
   "the scanner reads the bytes the grader caps on",
+  "the schema-digest fallback resolves a rename older than evidence_bindings itself",
   "the scored result carries the boundary it was produced under",
   "the search bound refusal is named as one",
   "the settlement digest is over the tree the comparison recomputes",
