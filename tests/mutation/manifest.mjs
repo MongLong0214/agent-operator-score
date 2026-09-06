@@ -7704,6 +7704,15 @@ export const GUARDS = [
     name: "every phase the protocol digest promises is issued by the protocol itself"
   },
   {
+    guard: "a declared relay checkpoint state names a producible challenge",
+    reason: "challenge_states sits inside the same protocol digest as the phase list and is equally a promise about producible transitions; before this PR SUPERSEDED and CANCELLED were declared here with no producer at all, and only a check that watches all of the digest's lists -- not only phases -- would notice a future name regressing the same way",
+    file: "lib/checkpoint.mjs",
+    from: 'export const RELAY_CHECKPOINT_STATES = Object.freeze([\n  "PREPARED", "DELIVERED", "RESPONDED", "COMMITTED", "EXPIRED", "SUPERSEDED", "CANCELLED"\n]);',
+    to: 'export const RELAY_CHECKPOINT_STATES = Object.freeze([\n  "PREPARED", "DELIVERED", "RESPONDED", "COMMITTED", "EXPIRED", "SUPERSEDED", "CANCELLED", "GHOST_STATE"\n]);',
+    test: "tests/product/agent-relay-protocol.test.mjs",
+    name: "every list inside the protocol digest names only values the protocol produces"
+  },
+  {
     guard: "reliance provenance has a new schema identity",
     reason: "the v4 source alone did not show a reader whether a turn was direct HIGH evidence or relay-attested MEDIUM evidence; the complete authority projection must remain a distinct v5 generation",
     file: "reliance-events/aos-reliance-event.v5.schema.json",
@@ -8107,6 +8116,7 @@ export const ACCOUNTED_GUARDS = [
   "a decision binds to the construct it is evidence about",
   "a decision names the dimension it belongs to",
   "a declared capability source is not scorable",
+  "a declared relay checkpoint state names a producible challenge",
   "a declared relay phase names a producible challenge",
   "a declared route is published as digests",
   "a declared schedule never certifies collision safety",

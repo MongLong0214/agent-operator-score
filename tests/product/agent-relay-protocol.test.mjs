@@ -8,7 +8,7 @@ import test from "node:test";
 import { createFileRelayCheckpoint, createRelayCheckpoint, readRestrictedRelayResponseFile } from "../../lib/checkpoint.mjs";
 import { sha256Bytes } from "../../lib/digest.mjs";
 import { mintOperatorEvent } from "../../lib/operator-events.mjs";
-import { RELAY_PHASES, createAgentRelayProtocol } from "../../lib/relay.mjs";
+import { PROTOCOL_BINDING, RELAY_PHASES, createAgentRelayProtocol } from "../../lib/relay.mjs";
 import { createRelianceTrace } from "../../lib/reliance.mjs";
 import { routeOracleDigest } from "../../lib/routing-oracle.mjs";
 import { createRun } from "../../lib/store.mjs";
@@ -575,4 +575,83 @@ test("every phase the protocol digest promises is issued by the protocol itself"
   forgery.prepare(opportunity());
   raw.checkpoint.write({ ...raw.checkpoint.read(), phase: "OTHER_OPERATOR_DECISION" });
   assert.throws(() => forgery.next(), /AOS_RELAY_CHECKPOINT_SHAPE/, "a stored phase the protocol cannot issue does not authorize itself");
+});
+
+test("every list inside the protocol digest names only values the protocol produces", () => {
+  // `PROTOCOL_BINDING` carries three declared lists, not one: `phases`, `challenge_states`, and
+  // `status_values`. The producer-completeness property the previous test restores for phases must
+  // hold for all three, or the other two can silently regain the exact defect this PR removed --
+  // a name inside the protocol digest that nothing can issue. The lists are read out of the real
+  // binding object rather than re-imported by name, so a fourth list added later is checked too.
+  const produced = { phases: new Set(), challenge_states: new Set(), status_values: new Set() };
+  const noteStatus = (result) => { if (result && typeof result.status === "string") produced.status_values.add(result.status); };
+  const observing = (sessionId) => {
+    const memory = memoryCheckpoint(sessionId);
+    return {
+      ...memory,
+      checkpoint: {
+        ...memory.checkpoint,
+        write: (next) => {
+          produced.phases.add(next.phase);
+          produced.challenge_states.add(next.status);
+          return memory.checkpoint.write(next);
+        }
+      }
+    };
+  };
+
+  // Happy path: PREPARED -> DELIVERED -> RESPONDED -> DELIVERED -> RESPONDED -> COMMITTED, both
+  // phases, and ACTION_REQUIRED / RUNNING / COMPLETE.
+  const life = observing("relay-binding-coverage");
+  const lifeTrace = memoryTrace("relay-binding-coverage");
+  const lifeProtocol = createAgentRelayProtocol({ session_id: "relay-binding-coverage", checkpoint: life.checkpoint, trace: lifeTrace, operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET });
+  noteStatus(lifeProtocol.prepare(opportunity()));
+  const initial = lifeProtocol.next();
+  noteStatus(initial);
+  const postAdvice = lifeProtocol.respond(response(initial));
+  noteStatus(postAdvice);
+  const running = lifeProtocol.respond(response(postAdvice, { inspected: true, final_action: "adopt" }));
+  noteStatus(running);
+  const [initialEntry, , , , finalEntry] = lifeTrace.entries();
+  noteStatus(lifeProtocol.recordOutcome({
+    initial_correct: false,
+    initial_value_digest: initialEntry.payload.operator_event.value_digest,
+    final_correct: true,
+    final_value_digest: finalEntry.payload.operator_event.value_digest,
+    verified_outcome_evidence_ids: ["binding-coverage-outcome"]
+  }));
+
+  // BLOCKED: no challenge exists yet for this session.
+  const blocked = observing("relay-binding-blocked");
+  const blockedProtocol = createAgentRelayProtocol({ session_id: "relay-binding-blocked", checkpoint: blocked.checkpoint, trace: memoryTrace("relay-binding-blocked"), operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET });
+  noteStatus(blockedProtocol.next());
+
+  // EXPIRED.
+  let instant = new Date("2026-09-05T12:00:00Z");
+  const expiring = observing("relay-binding-expired");
+  const expiringProtocol = createAgentRelayProtocol({ session_id: "relay-binding-expired", checkpoint: expiring.checkpoint, trace: memoryTrace("relay-binding-expired"), operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET, now: () => instant });
+  expiringProtocol.prepare(opportunity());
+  instant = new Date("2031-01-01T00:00:00Z");
+  assert.throws(() => expiringProtocol.next(), /AOS_RELAY_CHALLENGE_EXPIRED/);
+
+  // SUPERSEDED.
+  const superseding = observing("relay-binding-superseded");
+  const supersedeProtocol = createAgentRelayProtocol({ session_id: "relay-binding-superseded", checkpoint: superseding.checkpoint, trace: memoryTrace("relay-binding-superseded"), operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET });
+  supersedeProtocol.prepare(opportunity());
+  noteStatus(supersedeProtocol.supersede());
+
+  // CANCELLED.
+  const cancelling = observing("relay-binding-cancelled");
+  const cancelProtocol = createAgentRelayProtocol({ session_id: "relay-binding-cancelled", checkpoint: cancelling.checkpoint, trace: memoryTrace("relay-binding-cancelled"), operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET });
+  cancelProtocol.prepare(opportunity());
+  noteStatus(cancelProtocol.cancel());
+
+  const declaredLists = Object.entries(PROTOCOL_BINDING).filter(([, value]) => Array.isArray(value));
+  assert.ok(declaredLists.length >= 3, "the protocol digest should still carry at least its three list-valued bindings");
+  for (const [key, declared] of declaredLists) {
+    const observed = produced[key];
+    assert.ok(observed instanceof Set, `"${key}" is a list inside the protocol digest with no producer observation wired into this test`);
+    assert.deepEqual([...observed].sort(), [...declared].sort(),
+      `every name in "${key}" must have a producer, and the protocol must not produce a name outside it`);
+  }
 });
