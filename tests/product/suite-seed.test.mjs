@@ -9,7 +9,7 @@ import { sha256Value } from "../../lib/core.mjs";
 import { sha256Bytes } from "../../lib/digest.mjs";
 import { observeRun } from "../../lib/observe.mjs";
 import { FAMILY_CONTRACT_AXIS_ACCOUNTING, FROZEN_FAMILY_CONTRACT_AXIS_IDS, normalizeSeed, scenarioParams, streamFor } from "../../lib/suite-seed.mjs";
-import { FAMILIES, FORM_MANIFEST_SCHEMA, SUITE_ID, formManifest, formVariationReport, formVariationReportForManifests, gradeScenario, prepareScenario, suiteDigest, suiteManifest, verifyFormBinding } from "../../lib/suite.mjs";
+import { FAMILIES, FORM_MANIFEST_SCHEMA, FORM_VARIATION_CONTRACT, FORM_VARIATION_REPORT_SCHEMA, SUITE_ID, formManifest, formVariationReport, formVariationReportForManifests, gradeScenario, prepareScenario, suiteDigest, suiteManifest, verifyFormBinding } from "../../lib/suite.mjs";
 import { observedCleanEffects } from "./helpers.mjs";
 
 const seeds = (count) => Array.from({ length: count }, (_, index) => (index + 1).toString(16));
@@ -347,6 +347,7 @@ test("the operational form manifest binds raw task inputs to each family oracle 
     assert.ok(form.construct_opportunity.required_cell_ids.length > 0, `${family} declares no required construct opportunity`);
     assert.equal(form.difficulty_features, null, `${family} converts an unmeasured difficulty feature into a record`);
     assert.equal(form.equivalence_status, "UNCALIBRATED", `${family} claims a form relation this suite has not calibrated`);
+    assert.equal(form.assessment_identity, family === "FAM-5" ? "aos-fam-5-fixed-v0.2.0" : `aos-${family.toLowerCase()}-seed-${manifest.seed}`, `${family} assessment identity is not replayable`);
   }
 });
 
@@ -411,17 +412,26 @@ test("the variation report rejects a manifest that omits or combines frozen axes
 test("the 20-seed report counts implemented decision axes separately from declared axes", () => {
   const report = formVariationReport();
   assert.equal(report.sample_size, 20);
-  assert.equal(report.status, "PASS", "the declared decision report must be internally consistent");
+  assert.equal(report.schema_id, FORM_VARIATION_REPORT_SCHEMA);
+  assert.deepEqual(report.contract, FORM_VARIATION_CONTRACT);
+  assert.equal(report.status, "PASS_FIVE_FAMILY_VARIATION", "the five-family variation report must retain all six bindings");
   const expectedImplementedAxisCounts = { "FAM-1": 1, "FAM-2": 4, "FAM-3": 1, "FAM-4": 5, "FAM-5": 0, "FAM-6": 2 };
   for (const [family, row] of Object.entries(report.family_reports)) {
-    assert.equal(row.status, "PASS", family);
-    assert.ok(row.unique_task_form_count > 1, `${family} only changes a manifest field`);
+    assert.equal(row.task_oracle_evidence_binding_status, "BOUND", `${family} lost task/oracle/evidence binding`);
     assert.equal(row.implemented_decision_axis_count, expectedImplementedAxisCounts[family], `${family} implemented-axis count is not an actual small count`);
     assert.equal(row.decision_status, family === "FAM-5" ? "DESCRIPTIVE_ONLY" : "DECISION_BOUND");
     if (family === "FAM-5") {
+      assert.equal(row.status, "FIXED_FORM");
+      assert.equal(row.assessment_identity_status, "FIXED");
+      assert.equal(row.unique_assessment_form_count, 1);
+      assert.ok(row.seeded_task_input_variant_count > 1, "FAM-5 no longer carries its seed-specific setup");
       assert.equal(row.unique_oracle_branch_label_count, 1);
       assert.equal(row.cosmetic_only_difference_count, null);
     } else {
+      assert.equal(row.status, "PASS", family);
+      assert.equal(row.assessment_identity_status, "SEEDED");
+      assert.ok(row.unique_assessment_form_count > 1, `${family} does not identify distinct assessment forms`);
+      assert.ok(row.seeded_task_input_variant_count > 1, `${family} only changes a manifest field`);
       assert.ok(row.unique_oracle_branch_label_count > 1, `${family} has one declared oracle label`);
       assert.equal(row.cosmetic_only_difference_count, 0, `${family} reports cosmetic variation as a form`);
     }
@@ -429,6 +439,38 @@ test("the 20-seed report counts implemented decision axes separately from declar
   }
   assert.equal(report.implemented_decision_axis_count, 13);
   assert.equal(report.declared_decision_axis_count, 37);
+  assert.equal(report.historical_axis_accounting_status, "PRESERVED");
+  assert.equal(report.meaningful_variation_required_family_count, 5);
+  assert.equal(report.meaningful_variation_satisfied_family_count, 5);
+  assert.equal(report.task_oracle_evidence_binding_required_family_count, 6);
+  assert.equal(report.task_oracle_evidence_binding_satisfied_family_count, 6);
+});
+
+test("FAM-5 replays as one fixed assessment identity across seeds", () => {
+  const first = formManifest("1");
+  const second = formManifest("b");
+  const report = formVariationReportForManifests([first, second]);
+  const fam5 = report.family_reports["FAM-5"];
+  assert.equal(fam5.status, "FIXED_FORM");
+  assert.equal(fam5.assessment_identity, "aos-fam-5-fixed-v0.2.0");
+  assert.equal(fam5.unique_assessment_form_count, 1, "a second seed counted as another FAM-5 assessment form");
+  assert.equal(fam5.seeded_task_input_variant_count, 2, "the fixed identity discarded the seed-bound task inputs");
+
+  const forged = structuredClone(second);
+  forged.family_manifests["FAM-5"].assessment_identity = "aos-fam-5-forged-second-form";
+  const rejected = formVariationReportForManifests([first, forged]);
+  assert.equal(rejected.family_reports["FAM-5"].status, "FAIL", "a seed-created FAM-5 identity was counted as another form");
+  assert.equal(rejected.status, "FAIL");
+});
+
+test("FAM-5's fixed-form exemption does not relax its task/oracle/evidence binding", () => {
+  const first = formManifest("1");
+  const second = structuredClone(formManifest("b"));
+  delete second.family_manifests["FAM-5"].form_contract_digest;
+  const report = formVariationReportForManifests([first, second]);
+  assert.equal(report.family_reports["FAM-5"].task_oracle_evidence_binding_status, "INCOMPLETE");
+  assert.equal(report.family_reports["FAM-5"].status, "FAIL");
+  assert.equal(report.status, "FAIL", "the five-family variation pass admitted an unbound FAM-5 form");
 });
 
 test("the variation report detects cosmetic task changes when declared branches stay the same", () => {

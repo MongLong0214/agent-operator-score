@@ -1,6 +1,6 @@
 {
   "schema": "aos-task-model.v1",
-  "contract_version": "1.4.0",
+  "contract_version": "1.5.0",
   "form_classes": [
     {
       "class_id": "WARMUP",
@@ -26,6 +26,40 @@
   "exposure_ledger": {
     "required": true,
     "statement": "An operational form is scored once. A repeat of a form the operator has already seen is practice, and repeated improvement on it may be memorisation rather than learning; the sequence and the interval are recorded so that it can be told."
+  },
+  "form_variation": {
+    "schema_id": "aos-form-variation-contract.v2",
+    "contract_version": "0.2.0",
+    "sample_size": 20,
+    "minimum_unique_task_forms": 2,
+    "maximum_cosmetic_only_differences": 0,
+    "meaningful_variation_required_family_ids": [
+      "FAM-1",
+      "FAM-2",
+      "FAM-3",
+      "FAM-4",
+      "FAM-6"
+    ],
+    "task_oracle_evidence_binding_required_family_ids": [
+      "FAM-1",
+      "FAM-2",
+      "FAM-3",
+      "FAM-4",
+      "FAM-5",
+      "FAM-6"
+    ],
+    "fixed_assessment_identities": [
+      {
+        "family_id": "FAM-5",
+        "assessment_identity": "aos-fam-5-fixed-v0.2.0"
+      }
+    ],
+    "historical_axis_accounting": {
+      "basis": "Original six-family variation contract before the v0.2.0 fixed-form amendment",
+      "implemented_decision_axis_count": 13,
+      "declared_decision_axis_count": 37,
+      "fam5_unimplemented_decision_axis_count": 7
+    }
   },
   "forms": [
     {
