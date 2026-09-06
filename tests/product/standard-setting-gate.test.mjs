@@ -106,3 +106,16 @@ test("an explicit null record is the ordinary result, not an attempted emission"
   assert.equal(result.category, null);
   assert.equal(result.standard_setting, null);
 });
+
+test("a record whose ten required fields are all present and null is refused, not read as complete", () => {
+  // This exact path is unreachable from a real assessment today: `checkEcdContract` refuses a
+  // contract whose interpretation_use.standard_setting is anything but null, and the v4 result
+  // schema types category, cut_score, percentile, rank and band null-only, so nothing this
+  // codebase builds can hand assertStandardSettingGate a contract that would let a record like
+  // this one clear registryPermitsCategory. This is not a live witness -- it is here so that
+  // `Object.hasOwn`-only completeness (present-but-null counted as filled) cannot come back
+  // unnoticed once some future contract opens the path this gate exists to guard.
+  const record = { schema_id: STANDARD_SETTING_SCHEMA_ID };
+  for (const field of STANDARD_SETTING_FIELDS) record[field] = null;
+  assert.throws(() => build({ standard_setting: record }), /AOS_STANDARD_SETTING_INCOMPLETE/u);
+});

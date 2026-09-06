@@ -8046,7 +8046,7 @@ export const GUARDS = [
     guard: 'legacy dashboard rows carry their scorer provenance',
     reason: 'the dashboard index is the screen where legacy and profile rows sit closest together, so a legacy row without LEGACY / NOT COMPARABLE and its stored scorer invites exactly the cross-instrument reading the schema refuses',
     file: 'lib/dashboard.mjs',
-    from: '<td>${htmlEscape(`LEGACY / NOT COMPARABLE · ${scorer}`)}</td></tr>`);',
+    from: '<td>${htmlEscape(`LEGACY / NOT COMPARABLE · ${legacyScorerName(result)}`)}</td></tr>`);',
     to: '<td></td></tr>`);',
     test: 'tests/product/legacy-band-provenance.test.mjs',
     name: 'the dashboard names every legacy row LEGACY / NOT COMPARABLE with the scorer that produced it'
@@ -8055,10 +8055,28 @@ export const GUARDS = [
     guard: 'legacy cycle aggregates carry the NOT COMPARABLE marker',
     reason: "the legacy median is the one aggregate screen left that prints a single Operator Score; without the marker it renders as the current instrument's number above the current instrument's runs",
     file: 'lib/dashboard.mjs',
-    from: '<p class="legacy-note">LEGACY / NOT COMPARABLE · a legacy scorer aggregate, rendered as stored; not comparable with a v0.2.0 profile result</p>',
+    from: '<p class="legacy-note">LEGACY / NOT COMPARABLE · ${htmlEscape(scorer)} · a legacy scorer aggregate, rendered as stored; not comparable with a v0.2.0 profile result</p>',
     to: '<p class="legacy-note"></p>',
     test: 'tests/product/legacy-band-provenance.test.mjs',
     name: 'a legacy cycle aggregate is marked LEGACY / NOT COMPARABLE on the dashboard'
+  },
+  {
+    guard: 'legacy cycle aggregates carry the stored scorer identity, not the current one',
+    reason: "the aggregate's own decision object never carries a scorer id or version -- only the runs it was computed from do -- so without reading those runs the note could only ever print this build's own scorer, which is exactly the invented provenance this repository's legacy policy forbids",
+    file: 'lib/dashboard.mjs',
+    from: '  const scorer = legacyCycleScorerName(home, stored.runs ?? []);',
+    to: '  const scorer = legacyScorerName(null);',
+    test: 'tests/product/legacy-band-provenance.test.mjs',
+    name: 'a legacy cycle aggregate names the stored scorer that produced its runs, not the current build'
+  },
+  {
+    guard: 'an id-only scorer record says its version is unrecorded',
+    reason: "a record with an id and no version rendered as a bare id, which is exactly what a complete `id version` record looks like -- a reader could not tell a captured id from a captured id-and-version, and this is the one place that distinction is made for every surface that quotes it",
+    file: 'lib/result-schema.mjs',
+    from: '  return typeof version === "string" && version.length > 0 ? `${id} ${version}` : `${id} (version unrecorded)`;',
+    to: '  return `${id}${typeof version === "string" && version.length > 0 ? ` ${version}` : ""}`;',
+    test: 'tests/product/legacy-band-provenance.test.mjs',
+    name: 'a scorer id recorded without a version says so, rather than reading as a complete record'
   },
   {
     guard: 'standard-setting completeness is checked field by field',
@@ -8068,6 +8086,15 @@ export const GUARDS = [
     to: '    if (false) {',
     test: 'tests/product/standard-setting-gate.test.mjs',
     name: 'a standard-setting record missing its consequence review is an emission refusal, not a stored null'
+  },
+  {
+    guard: 'a present-but-null required field is not read as filled',
+    reason: '`Object.hasOwn` alone answers key presence, not whether the study said anything -- with the null check gone, a record whose ten required fields are all present and all null reports zero missing fields and reaches the registry check as though a study had actually produced it',
+    file: 'lib/standard-setting.mjs',
+    from: '    return record[field] === null || record[field] === undefined;',
+    to: '    return false;',
+    test: 'tests/product/standard-setting-gate.test.mjs',
+    name: 'a record whose ten required fields are all present and null is refused, not read as complete'
   },
   {
     guard: 'standardSettingDecision refuses a mismatched schema id on its own',
@@ -8130,7 +8157,7 @@ export const GUARDS = [
     from: "  const intervalPhrase = `interval ${view.claim.uncertainty_interval}`;\n  const universeBudget = Math.max(4, wide - intervalPhrase.length - 3);\n  const universeLine = `${clip(`universe ${view.claim.universe}`, universeBudget)} · ${htmlEscape(intervalPhrase)}`;",
     to: "  const universeLine = clip(`universe ${view.claim.universe} · interval ${view.claim.uncertainty_interval}`, wide);",
     test: "tests/product/uncertainty-coverage-visible.test.mjs",
-    name: "a long universe declaration does not clip the interval off the profile card"
+    name: "a long universe declaration does not clip the uncertainty interval off the profile card"
   },
   {
     guard: 'a band value cannot enter the published result',
@@ -8377,6 +8404,7 @@ export const ACCOUNTED_GUARDS = [
   "a policy that narrows the run-metadata door is applied, not merely recorded",
   "a post-advice initial cannot be replayed as independent",
   "a pre-advice payload cannot smuggle a post-advice response",
+  "a present-but-null required field is not read as filled",
   "a probe that observed nothing is not a runtime that can do nothing",
   "a probed run is scored from what was probed, never from the adapter table",
   "a process with no key for a run says so",
@@ -8508,6 +8536,7 @@ export const ACCOUNTED_GUARDS = [
   "an excused head is classified as the in-flight work it claims to be",
   "an excused head records no SHA it cannot have",
   "an excused head's own claims are checked against the observation",
+  "an id-only scorer record says its version is unrecorded",
   "an import reads every event before it creates a Run",
   "an imported run is written down",
   "an imported run names the producer of its evidence",
@@ -8685,6 +8714,7 @@ export const ACCOUNTED_GUARDS = [
   "issued CLI facet records bind the profile digest",
   "legacy card carries the NOT COMPARABLE marker",
   "legacy cycle aggregates carry the NOT COMPARABLE marker",
+  "legacy cycle aggregates carry the stored scorer identity, not the current one",
   "legacy dashboard rows carry their scorer provenance",
   "legacy digest separation",
   "legacy html reports carry the NOT COMPARABLE marker",

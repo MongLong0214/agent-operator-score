@@ -169,7 +169,7 @@ const LONG_UNIVERSE_DECLARATION =
   "in a labeled training or validation split, restricted to conversations opened in the twelve " +
   "months before this run and never reused across cycles";
 
-test("a long universe declaration does not clip the interval off the profile card", () => {
+test("a long universe declaration does not clip the uncertainty interval off the profile card", () => {
   const calibrated = build(bound(), {
     require_facet_records: true,
     calibration_evidence: {

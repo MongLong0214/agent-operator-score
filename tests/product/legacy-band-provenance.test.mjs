@@ -8,7 +8,7 @@ import { LOOPBACK, startDashboard } from "../../lib/dashboard.mjs";
 import { evaluate, loadEcdContract } from "../../lib/ecd-contract.mjs";
 import { renderCard } from "../../lib/report-card.mjs";
 import { renderHtml, renderMarkdown } from "../../lib/report.mjs";
-import { buildResult } from "../../lib/result-schema.mjs";
+import { buildResult, legacyScorerName } from "../../lib/result-schema.mjs";
 import { SCORER_ID, SCORER_VERSION, scoreRun } from "../../lib/scorer-v1.mjs";
 import { createRun, initHome, writeResult } from "../../lib/store.mjs";
 import { writeJson } from "../../lib/core.mjs";
@@ -162,6 +162,98 @@ test("a legacy cycle aggregate is marked LEGACY / NOT COMPARABLE on the dashboar
     const card = /<section class="card">[\s\S]*?<\/section>/u.exec(index)[0];
     assert.ok(card.includes("91"), "the stored legacy score is not shown");
     assert.ok(card.includes(LEGACY_MARKER), "a legacy aggregate renders unmarked next to profile results");
+  } finally {
+    await dashboard.close();
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("a scorer id recorded without a version says so, rather than reading as a complete record", () => {
+  // A nit from round 1's review: an id-only record used to render as a bare id, which is exactly
+  // what a complete `id version` record looks like -- a reader could not tell "this run's version
+  // was never captured" from "this run's version is genuinely just its id". It now says so.
+  assert.equal(legacyScorerName({ scorer: { id: "aos-scorer.v1" } }), "aos-scorer.v1 (version unrecorded)");
+  assert.equal(legacyScorerName({ scorer: { id: "aos-scorer.v1", version: "" } }), "aos-scorer.v1 (version unrecorded)");
+  assert.equal(legacyScorerName({ scorer: { id: "aos-scorer.v1", version: "1.0.0" } }), "aos-scorer.v1 1.0.0");
+  assert.equal(legacyScorerName({ scorer: {} }), "unrecorded legacy scorer");
+  assert.equal(legacyScorerName(null), "unrecorded legacy scorer");
+});
+
+test("a legacy cycle aggregate names the stored scorer that produced its runs, not the current build", async () => {
+  // #568 round 2. The run row already names its stored scorer by reading its own result.json;
+  // the aggregate's stored `decision` never carries one -- `recordRun` only ever kept
+  // `scorer_major`, an integer bucket -- so this checks that the aggregate reaches past its own
+  // decision object to the same result files the run row reads, rather than staying silent about
+  // whose verdict the median actually is.
+  const home = mkdtempSync(join(tmpdir(), "aos-legacy-cycle-scorer-"));
+  initHome(home);
+  const legacy = legacyResult();
+  const seeds = [101, 202, 303];
+  for (const seed of seeds) {
+    const { runId } = createRun(home, { mode: "TEST", run_id: `run-${seed}` });
+    writeResult(home, runId, { ...legacy, run_id: runId }, renderMarkdown(legacy), renderHtml(legacy));
+  }
+  writeJson(join(home, "cycle.json"), {
+    cycle_id: "cycle-legacy-scorer",
+    seeds,
+    runs: seeds.map((seed) => ({ seed, run_id: `run-${seed}`, result_schema: "aos-mvp-result.v1", status: "SCORED", score: 90, issued: true })),
+    decision: {
+      cycle_id: "cycle-legacy-scorer",
+      issued: true,
+      operator_score: 90,
+      valid_runs: 3,
+      seeds,
+      spread: 0,
+      mad: 0,
+      stability: "STABLE",
+      local_repeat_evidence: "LOCAL_REPEAT_ONLY",
+      excluded: [],
+      profile_bound_aggregation: { status: "issued", reason: "" }
+    }
+  });
+  const dashboard = await startDashboard({ home });
+  try {
+    const index = await (await fetch(`http://${LOOPBACK}:${dashboard.port}/?t=${dashboard.token}`)).text();
+    const card = /<section class="card">[\s\S]*?<\/section>/u.exec(index)[0];
+    assert.ok(card.includes(SCORER_ID), "the aggregate does not name the stored scorer id");
+    assert.ok(card.includes(SCORER_VERSION), "the aggregate does not name the stored scorer version");
+  } finally {
+    await dashboard.close();
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("a legacy cycle aggregate says unrecorded legacy scorer rather than inventing the current build's", async () => {
+  // A cycle whose run files are gone or were never written -- recorded before this fix existed,
+  // or pruned off disk -- still renders a page. It must not attribute the median to whatever
+  // scorer happens to be running this build, which is exactly the fabrication #568 forbids.
+  const home = mkdtempSync(join(tmpdir(), "aos-legacy-cycle-unrecorded-"));
+  initHome(home);
+  const seeds = [101, 202, 303];
+  writeJson(join(home, "cycle.json"), {
+    cycle_id: "cycle-legacy-unrecorded",
+    seeds,
+    runs: seeds.map((seed) => ({ seed, run_id: `run-${seed}`, result_schema: "aos-mvp-result.v1", status: "SCORED", score: 90, issued: true })),
+    decision: {
+      cycle_id: "cycle-legacy-unrecorded",
+      issued: true,
+      operator_score: 90,
+      valid_runs: 3,
+      seeds,
+      spread: 0,
+      mad: 0,
+      stability: "STABLE",
+      local_repeat_evidence: "LOCAL_REPEAT_ONLY",
+      excluded: [],
+      profile_bound_aggregation: { status: "issued", reason: "" }
+    }
+  });
+  const dashboard = await startDashboard({ home });
+  try {
+    const index = await (await fetch(`http://${LOOPBACK}:${dashboard.port}/?t=${dashboard.token}`)).text();
+    const card = /<section class="card">[\s\S]*?<\/section>/u.exec(index)[0];
+    assert.ok(card.includes("unrecorded legacy scorer"), "the aggregate does not say unrecorded legacy scorer");
+    assert.equal(card.includes(SCORER_ID), false, "a scorer no run recorded was invented");
   } finally {
     await dashboard.close();
     rmSync(home, { recursive: true, force: true });
