@@ -6,6 +6,7 @@ import { join } from "node:path";
 
 import { sha256Value } from "../../lib/core.mjs";
 import { sha256Bytes } from "../../lib/digest.mjs";
+import { observeRun } from "../../lib/observe.mjs";
 import { FROZEN_FAMILY_CONTRACT_AXIS_IDS, normalizeSeed, scenarioParams, streamFor } from "../../lib/suite-seed.mjs";
 import { FAMILIES, FORM_MANIFEST_SCHEMA, SUITE_ID, formManifest, formVariationReport, formVariationReportForManifests, gradeScenario, prepareScenario, suiteDigest, suiteManifest, verifyFormBinding } from "../../lib/suite.mjs";
 
@@ -577,6 +578,69 @@ test("a seed-2 task replacement under seed-1's oracle withholds FAM-1 metrics bu
   } finally {
     rmSync(seed1Root, { recursive: true, force: true });
     rmSync(seed2Root, { recursive: true, force: true });
+  }
+});
+
+test("issued observations withhold a seed-forged FAM-1 form while retaining its non-scoring observation", async () => {
+  const seed1Root = mkdtempSync(join(tmpdir(), "aos-issued-binding-seed-1-"));
+  const seed2Root = mkdtempSync(join(tmpdir(), "aos-issued-binding-seed-2-"));
+  try {
+    const seed1 = prepareScenario("FAM-1", seed1Root, "1");
+    prepareScenario("FAM-1", seed2Root, "2");
+    for (const input of ["task.md", "request.txt"]) cpSync(join(seed2Root, input), join(seed1Root, input), { recursive: true });
+    writeDecisionArtifact("FAM-1", seed1Root, seed1.params, "acceptance-evidence-type");
+
+    const graded = await gradeScenario("FAM-1", seed1Root, {
+      baseline: seed1.baseline,
+      prepared_seed: seed1.seed,
+      params: seed1.params,
+      invocationCount: 1
+    });
+    assert.equal(graded.details.form_binding.reporting_status, "TAMPERED");
+    assert.deepEqual(graded.details.observed_result?.metrics, { M01: 1, M02: 1, M03: 1, M04: 1 });
+
+    const issued = observeRun({
+      artifacts: { contract: JSON.parse(readFileSync(join(seed1Root, "contract.json"), "utf8")) },
+      params: { "FAM-1": seed1.params },
+      form_bindings: { "FAM-1": graded.details.form_binding }
+    });
+    for (const metricId of ["M01", "M02", "M03"]) {
+      assert.equal(issued.find((entry) => entry.metric_id === metricId)?.value, null, `${metricId} issued against a forged form`);
+    }
+  } finally {
+    rmSync(seed1Root, { recursive: true, force: true });
+    rmSync(seed2Root, { recursive: true, force: true });
+  }
+});
+
+test("issued observations withhold a tampered FAM-5 form while retaining its non-scoring observation", async () => {
+  const root = mkdtempSync(join(tmpdir(), "aos-issued-binding-fam5-"));
+  try {
+    const prepared = prepareScenario("FAM-5", root, "1");
+    writeFileSync(join(root, "calculator.mjs"), `export function ratio(a, b) {
+  if (typeof a !== "number" || typeof b !== "number") throw new TypeError("numbers required");
+  if (b === 0) throw new RangeError("division by zero");
+  return a / b;
+}
+`);
+    writeFileSync(join(root, "public-check.mjs"), "process.exit(0);\n");
+
+    const graded = await gradeScenario("FAM-5", root, {
+      baseline: prepared.baseline,
+      prepared_seed: prepared.seed,
+      params: prepared.params,
+      invocationCount: 1
+    });
+    assert.equal(graded.details.form_binding.reporting_status, "TAMPERED");
+    assert.equal(graded.details.observed_result?.metrics.M15, 1);
+
+    const issued = observeRun({
+      fam5: graded.details,
+      form_bindings: { "FAM-5": graded.details.form_binding }
+    });
+    assert.equal(issued.find((entry) => entry.metric_id === "M15")?.value, null, "M15 issued against a tampered form");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });
 
