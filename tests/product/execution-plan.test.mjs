@@ -788,7 +788,8 @@ test("three separately true facts are not a confirmation", async () => {
 test("a one-key forgery of the whole audit does not pass", () => {
   const snapshot = state();
   snapshot.issues.find((one) => one.number === 588).close_evidence_checked = { verified: true };
-  assert.ok(auditCloseEvidence(plan(), asLive(snapshot), { live: true }).failures.some((one) => one.check === "close-evidence-unverified"));
+  const failures = auditCloseEvidence(plan(), asLive(snapshot), { live: true }).failures;
+  assert.ok(failures.some((one) => one.check === "close-evidence-unverified" && one.detail.includes("evidence_digests_match")));
 
   const partial = state();
   partial.issues.find((one) => one.number === 588).close_evidence_checked = { ...verified(), pr_produced_the_commit: false };
