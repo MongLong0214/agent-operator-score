@@ -101,3 +101,170 @@ test("the shipped operational form manifest speaks the form class contract's own
     assert.equal(row.equivalence_status, "UNESTABLISHED", `${family} claims a form relation this suite has no linking evidence for`);
   }
 });
+
+// ---------------------------------------------------------------------------------------------
+// Exposure ledger and the scored-once policy (#585)
+
+test("the exposure ledger records sequence position, administration interval and prior exposure", async () => {
+  const { createExposureLedger, recordExposure } = await import("../../lib/form-class.mjs");
+  const digestA = `sha256:${"1".repeat(64)}`;
+  const digestB = `sha256:${"2".repeat(64)}`;
+  const base = createExposureLedger();
+  assert.equal(base.schema_id, "aos-exposure-ledger.v1");
+  assert.deepEqual(base.entries, []);
+  const first = recordExposure(base, { form_id: "aos-operational-002a", form_contract_digest: digestA, declared_class: "OPERATIONAL", occurred_at: "2026-09-06T10:00:00.000Z", scored: true });
+  const second = recordExposure(first.ledger, { form_id: "aos-operational-002b", form_contract_digest: digestB, declared_class: "OPERATIONAL", occurred_at: "2026-09-06T11:00:00.000Z", scored: true });
+  const third = recordExposure(second.ledger, { form_id: "aos-operational-002a", form_contract_digest: digestA, declared_class: "OPERATIONAL", administered_class: "PRACTICE", occurred_at: "2026-09-06T12:30:00.000Z", scored: false });
+  assert.deepEqual(third.ledger.entries.map((entry) => entry.sequence_position), [1, 2, 3]);
+  assert.equal(first.entry.interval_ms, null, "the first administration has no interval to report, and null says so");
+  assert.equal(second.entry.interval_ms, 3600000);
+  assert.equal(third.entry.interval_ms, 5400000);
+  assert.deepEqual(third.ledger.entries.map((entry) => entry.prior_exposure_count), [0, 0, 1]);
+  assert.equal(third.entry.administered_class, "PRACTICE");
+  assert.equal(Object.isFrozen(third.ledger), true);
+  // The ledger it grew from is untouched: exposure history cannot be edited in place.
+  assert.equal(second.ledger.entries.length, 2);
+});
+
+test("an operational form is scored once; its replay is classified practice and refused official scoring", async () => {
+  const { classifyAdministration, createExposureLedger, recordExposure } = await import("../../lib/form-class.mjs");
+  const digest = `sha256:${"3".repeat(64)}`;
+  const ledger = createExposureLedger();
+  const fresh = classifyAdministration(ledger, { form_id: "aos-operational-0031", form_contract_digest: digest, declared_class: "OPERATIONAL" });
+  assert.equal(fresh.administered_class, "OPERATIONAL");
+  assert.equal(fresh.official_scoring_permitted, true);
+  assert.equal(fresh.refusal_code, null);
+  const { ledger: exposed } = recordExposure(ledger, { form_id: "aos-operational-0031", form_contract_digest: digest, declared_class: "OPERATIONAL", occurred_at: "2026-09-06T10:00:00.000Z", scored: true });
+  const replay = classifyAdministration(exposed, { form_id: "aos-operational-0031", form_contract_digest: digest, declared_class: "OPERATIONAL" });
+  assert.equal(replay.administered_class, "PRACTICE", "a different seed makes a different form; the same digest makes the same form, and its second run is practice");
+  assert.equal(replay.official_scoring_permitted, false);
+  assert.equal(replay.refusal_code, "AOS_FORM_ALREADY_EXPOSED");
+  assert.equal(replay.prior_exposure_count, 1);
+  assert.equal(replay.prior_scored_count, 1);
+  assert.ok(replay.reasons.length > 0 && replay.reasons[0].includes("scored-once"), "the refusal names the policy it enforces");
+  // Warmup and practice administrations never reach official scoring, first run or not, and an
+  // unscored prior exposure still makes an operational run a replay.
+  const warmup = classifyAdministration(exposed, { form_id: "warmup-1", form_contract_digest: `sha256:${"4".repeat(64)}`, declared_class: "WARMUP" });
+  assert.equal(warmup.official_scoring_permitted, false);
+  assert.equal(warmup.refusal_code, "AOS_FORM_CLASS_UNSCORED");
+  assert.equal(warmup.administered_class, "WARMUP");
+  const transfer = classifyAdministration(exposed, { form_id: "t-1", form_contract_digest: `sha256:${"5".repeat(64)}`, declared_class: "TRANSFER" });
+  assert.equal(transfer.official_scoring_permitted, false);
+  assert.equal(transfer.refusal_code, "AOS_FORM_CLASS_LONGITUDINAL");
+});
+
+test("a corrupt exposure ledger refuses rather than reading as empty", async () => {
+  const { openExposureLedger, createExposureLedger } = await import("../../lib/form-class.mjs");
+  assert.deepEqual(openExposureLedger(null), createExposureLedger());
+  assert.deepEqual(openExposureLedger(undefined), createExposureLedger());
+  // A ledger that cannot be read is not an empty one: reading it as empty would grant an exposed
+  // form a second official scoring, which is exactly the gate this file exists to hold.
+  assert.throws(() => openExposureLedger({ schema_id: "something-else", entries: [] }), /AOS_EXPOSURE_LEDGER_CORRUPT/);
+  assert.throws(() => openExposureLedger({ schema_id: "aos-exposure-ledger.v1", entries: "not-a-list" }), /AOS_EXPOSURE_LEDGER_CORRUPT/);
+});
+
+test("a cycle excludes a practice-classified administration from the official aggregate", async () => {
+  const { createCycle, recordRun, aggregateCycle } = await import("../../lib/cycle.mjs");
+  const { classifyAdministration, createExposureLedger, recordExposure } = await import("../../lib/form-class.mjs");
+  const seeds = ["0000000000000001", "0000000000000002", "0000000000000003"];
+  const digest = `sha256:${"6".repeat(64)}`;
+  const runOn = (seed, classification) => ({
+    seed, run_id: `r-${seed}`, profile_digest: "p", suite_major: 1, scorer_major: 1,
+    failure: null, terminal_committed: true, issued: true, final_score: 70, dimensions: {},
+    form_classification: classification
+  });
+  const { ledger } = recordExposure(createExposureLedger(), { form_id: "aos-operational-0000000000000001", form_contract_digest: digest, declared_class: "OPERATIONAL", occurred_at: "2026-09-06T10:00:00.000Z", scored: true });
+  const replay = classifyAdministration(ledger, { form_id: "aos-operational-0000000000000001", form_contract_digest: digest, declared_class: "OPERATIONAL" });
+  const cycle = recordRun(createCycle({ profileDigest: "p", suiteMajor: 1, scorerMajor: 1, seeds, cycleId: "cycle-B" }), runOn(seeds[0], replay));
+  assert.equal(cycle.runs[0].valid, false, "a replayed operational form was counted as official aggregate evidence");
+  assert.equal(cycle.runs[0].invalid_reason, "AOS_FORM_ALREADY_EXPOSED");
+  const aggregate = aggregateCycle(cycle);
+  assert.deepEqual(aggregate.excluded, [{ seed: seeds[0], reason: "AOS_FORM_ALREADY_EXPOSED" }]);
+  assert.equal(aggregate.valid_runs, 0);
+  // Counterfactual one way: a first-exposure operational administration still counts.
+  const official = classifyAdministration(createExposureLedger(), { form_id: "aos-operational-0000000000000001", form_contract_digest: digest, declared_class: "OPERATIONAL" });
+  const counted = recordRun(createCycle({ profileDigest: "p", suiteMajor: 1, scorerMajor: 1, seeds, cycleId: "cycle-C" }), runOn(seeds[0], official));
+  assert.equal(counted.runs[0].valid, true);
+  // Counterfactual the other way: a run recorded before the ledger existed carries no
+  // classification, and stays what it always was -- the ledger cannot testify about
+  // administrations it never saw, and refusing history it has no evidence about would be an
+  // absence scored as a value.
+  const historical = recordRun(createCycle({ profileDigest: "p", suiteMajor: 1, scorerMajor: 1, seeds, cycleId: "cycle-D" }), runOn(seeds[0], undefined));
+  assert.equal(historical.runs[0].valid, true);
+});
+
+// ---------------------------------------------------------------------------------------------
+// The CLI entry point, end to end: the ledger lives in the home, `aos assess` records every graded
+// administration into it, and `aos cycle run` refuses official aggregation for a replayed form.
+
+test("a replayed operational form crosses runs as practice, never as official aggregate evidence", async () => {
+  const { mkdtempSync, readFileSync, rmSync } = await import("node:fs");
+  const { spawnSync } = await import("node:child_process");
+  const { tmpdir } = await import("node:os");
+  const { join, dirname } = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const { addAgent, makePlan, run, verifiedRunner } = await import("./helpers.mjs");
+  const { runPaths } = await import("../../lib/store.mjs");
+
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+  const cli = join(root, "bin", "aos.mjs");
+  const SEEDS = ["0000000000000031", "0000000000000032", "0000000000000033"];
+  const FIXTURE_MODEL = "openai/gpt-4o-2024-08-06";
+  const UNBLOCK = Array.from({ length: 12 }, () => "\n\n\ny\nAOS-TEST-UNBLOCK proceed\n").join("");
+  const cwd = mkdtempSync(join(tmpdir(), "aos-form-exposure-"));
+  const home = join(cwd, ".aos");
+  const spawn = (args) => spawnSync(process.execPath, [cli, ...args], {
+    cwd, encoding: "utf8", input: UNBLOCK, timeout: 300000,
+    env: { ...process.env, AOS_HOME: home, FAKE_AGENT_PROFILE: "needs-instruction", FAKE_AGENT_MODEL: FIXTURE_MODEL }
+  });
+  const ledgerOf = () => JSON.parse(readFileSync(join(home, "exposure-ledger.json"), "utf8"));
+  const cycleOf = () => JSON.parse(readFileSync(join(home, "cycle.json"), "utf8"));
+  try {
+    run(cwd, ["init"]);
+    addAgent(cwd, "solo", undefined, ["--model-id", FIXTURE_MODEL, "--adapter", "codex-cli.v1"], verifiedRunner(cwd));
+    const plan = makePlan(cwd, { default: "solo" });
+
+    // A bare preview of the first seed. It is an administration -- the operator has now met the
+    // form -- so it lands in the ledger as practice, outside any cycle.
+    spawn(["assess", "--plan", plan, "--checkpoints", "--seed", SEEDS[0]]);
+    const afterPreview = ledgerOf();
+    assert.equal(afterPreview.entries.length, 1);
+    assert.equal(afterPreview.entries[0].administered_class, "PRACTICE", "a bare assess of an operational form is a practice administration");
+    assert.equal(afterPreview.entries[0].scored, false);
+    assert.equal(afterPreview.entries[0].sequence_position, 1);
+    assert.equal(afterPreview.entries[0].cycle_id, null);
+
+    // The previewed seed inside a cycle: the ledger has seen the exact form, so the run is
+    // classified practice and excluded from the official aggregate, by name.
+    run(cwd, ["cycle", "start", ...SEEDS.flatMap((seed) => ["--seed", seed])]);
+    const replayed = spawn(["cycle", "run", "--plan", plan, "--checkpoints"]);
+    assert.match(replayed.stdout, /practice lane: AOS_FORM_ALREADY_EXPOSED/u, "the refusal is printed where the operator can read it");
+    const cycleAfterReplay = cycleOf();
+    assert.equal(cycleAfterReplay.runs[0].seed, SEEDS[0]);
+    assert.equal(cycleAfterReplay.runs[0].valid, false, "a previewed form was counted as official aggregate evidence");
+    assert.equal(cycleAfterReplay.runs[0].invalid_reason, "AOS_FORM_ALREADY_EXPOSED");
+    assert.equal(cycleAfterReplay.runs[0].form_classification.administered_class, "PRACTICE");
+    assert.equal(ledgerOf().entries.length, 2);
+    assert.equal(ledgerOf().entries[1].prior_exposure_count, 1);
+
+    // The next locked seed is a first exposure: an operational administration, scored once, and
+    // its facet records carry the occasion and sequence position the ledger assigned.
+    const official = spawn(["cycle", "run", "--plan", plan, "--checkpoints"]);
+    assert.match(official.stdout, new RegExp(`seed ${SEEDS[1]}`, "u"));
+    const cycleAfterOfficial = cycleOf();
+    const officialRun = cycleAfterOfficial.runs[1];
+    assert.equal(officialRun.form_classification.official_scoring_permitted, true);
+    assert.equal(officialRun.form_classification.administered_class, "OPERATIONAL");
+    assert.notEqual(officialRun.invalid_reason, "AOS_FORM_ALREADY_EXPOSED");
+    const finalLedger = ledgerOf();
+    assert.equal(finalLedger.entries.length, 3);
+    assert.equal(finalLedger.entries[2].administered_class, "OPERATIONAL");
+    assert.equal(finalLedger.entries[2].scored, true);
+    assert.equal(finalLedger.entries[2].cycle_id, cycleAfterOfficial.cycle_id);
+    assert.equal(finalLedger.entries[2].sequence_position, 3);
+    const result = JSON.parse(readFileSync(runPaths(home, officialRun.run_id).result, "utf8"));
+    assert.deepEqual(result.facet_coverage.occasions.observed_levels, [finalLedger.entries[2].occasion_id], "the run's facet records do not carry the administration occasion the ledger assigned");
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
