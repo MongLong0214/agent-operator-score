@@ -914,12 +914,18 @@ test("a run that did not probe withholds routing fitness from the adapter table"
   assert.equal(withheld.aos_composite.issued, false);
 });
 
-test("withholding O4 for unobserved capability leaves the Process Profile byte-identical", () => {
+test("withholding O4 for unobserved capability leaves every operator Process credit field identical", () => {
   const issued = routingResultFor(true, true);
   const withheld = routingResultFor(null, null);
   assert.equal(issued.system_outcome_profile.domains.O4.status, "ISSUED");
   assert.equal(withheld.system_outcome_profile.domains.O4.status, "WITHHELD");
-  assert.equal(canonicalJson(withheld.operator_process_profile), canonicalJson(issued.operator_process_profile));
+  // #584 makes the measurement-wide uncertainty report visible in every projection. Its
+  // descriptive opportunity/spread fields may change with O4, but no operator Process credit may.
+  const withoutMeasurementReport = ({ uncertainty, ...profile }) => profile;
+  assert.equal(
+    canonicalJson(withoutMeasurementReport(withheld.operator_process_profile)),
+    canonicalJson(withoutMeasurementReport(issued.operator_process_profile))
+  );
 });
 
 test("the routing notice names both causal subchecks and their reasons for every non-scorable source", () => {

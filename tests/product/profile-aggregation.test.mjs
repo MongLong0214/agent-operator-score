@@ -60,8 +60,13 @@ test("buildResult emits the four surfaces under the bumped schema id and version
   assert.equal(result.claim_stage, "PROFILE_BOUND");
   assert.equal(buildResult({ contract: populated, evaluation: evaluate(observationsWith(), complete, populated) }).claim_stage, "RUN_DIAGNOSTIC");
   assert.equal(result.generalizability_status, "UNESTABLISHED");
-  // The uncertainty statement is the contract's own until #584 supplies a computed one.
-  assert.deepEqual(result.uncertainty, { status: "INSUFFICIENT_DATA", method: null });
+  // #584 supplies the scaffold even without population data: it names the missing prerequisites
+  // and leaves the interval null rather than inventing a reliability number.
+  assert.equal(result.uncertainty.status, "INSUFFICIENT_DATA");
+  assert.equal(result.uncertainty.method, null);
+  assert.equal(result.uncertainty.interval, null);
+  assert.equal(result.generalizability_status, "UNESTABLISHED");
+  assert.equal(result.calibration.g_study.variance_components, null);
   assert.ok(Object.isFrozen(result));
   assert.ok(Object.isFrozen(result.aos_composite));
 });
@@ -775,11 +780,11 @@ test("no credential shape and no absolute path reaches the canonical result thro
 test("a generalizability status above UNESTABLISHED is refused unless the evaluation supports it", () => {
   const evaluation = fullRun();
   assert.equal(evaluation.claim_stage, "PROFILE_BOUND");
-  assert.throws(() => buildResult({ contract: populated, evaluation, generalizability_status: "ESTABLISHED" }), /AOS_GENERALIZABILITY_UNSUPPORTED/);
+  assert.throws(() => buildResult({ contract: populated, evaluation, generalizability_status: "ESTABLISHED" }), /AOS_GENERALIZABILITY_(UNSUPPORTED|EVIDENCE)/);
   assert.throws(() => buildResult({ contract: populated, evaluation, generalizability_status: "WHATEVER" }), /AOS_GENERALIZABILITY_STATUS/);
-  assert.throws(() => buildResult({ contract: populated, evaluation, uncertainty: { status: "COMPUTED", method: null } }), /AOS_UNCERTAINTY_METHOD/);
-  assert.throws(() => buildResult({ contract: populated, evaluation, uncertainty: { status: "PRECISE" } }), /AOS_UNCERTAINTY_STATUS/);
-  assert.deepEqual(buildResult({ contract: populated, evaluation, uncertainty: { status: "NOT_COMPUTED", method: null } }).uncertainty, { status: "NOT_COMPUTED", method: null });
+  assert.throws(() => buildResult({ contract: populated, evaluation, uncertainty: { status: "COMPUTED", method: null } }), /AOS_UNCERTAINTY_(METHOD|EVIDENCE)/);
+  assert.throws(() => buildResult({ contract: populated, evaluation, uncertainty: { status: "PRECISE" } }), /AOS_UNCERTAINTY_(STATUS|EVIDENCE)/);
+  assert.throws(() => buildResult({ contract: populated, evaluation, uncertainty: { status: "NOT_COMPUTED", method: null } }), /AOS_UNCERTAINTY_EVIDENCE/);
 });
 
 test("buildResult takes only a result evaluate emitted under the contract it is given", () => {
@@ -791,7 +796,7 @@ test("buildResult takes only a result evaluate emitted under the contract it is 
   assert.throws(() => buildResult({}), /AOS_UNEMITTED_EVALUATION/);
 });
 
-test("the canonical result validates against schemas/aos-result.v2.schema.json and the schema bounds every array", () => {
+test("the canonical result validates against schemas/aos-result.v4.schema.json and the schema bounds every array", () => {
   const schema = loadSchema(RESULT_SCHEMA_URL);
   const result = buildResult({ contract: populated, evaluation: fullRun(), run: { run_id: "run-1", seed: "seed-1", suite_digest: "sha256:abc" } });
   assert.deepEqual(validateAgainstSchema(JSON.parse(canonicalJson(result)), schema).errors, []);

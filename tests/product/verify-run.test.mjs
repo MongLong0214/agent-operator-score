@@ -90,9 +90,7 @@ const rebuildStoredResult = (result, boundary) => {
     observations: result.observations,
     run: result.run,
     caps: result.system_outcome_profile.caps,
-    model_identity: result.model_identity,
-    uncertainty: result.uncertainty,
-    generalizability_status: result.generalizability_status
+    model_identity: result.model_identity
   });
 };
 
@@ -432,8 +430,6 @@ test("a result carrying reliance evidence is recomputed from its own record too"
       observations: stored.observations,
       run: stored.run,
       caps: stored.system_outcome_profile.caps,
-      uncertainty: stored.uncertainty,
-      generalizability_status: stored.generalizability_status,
       // The state #583 produces once it has four opportunities to compute a rate over.
       reliance: { status: "PARTIAL", metrics: { cair: { status: "ISSUED", value: 0.75, numerator: 3, denominator: 4 } } }
     });

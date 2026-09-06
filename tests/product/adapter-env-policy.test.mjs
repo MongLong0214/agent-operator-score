@@ -766,8 +766,38 @@ test("a scored result carries the boundary it was produced under, by name and ne
         assert.equal(invocation.env_policy_digest, record.env_policy_digest, "an invocation ran under a policy the record does not describe");
       }
     }
+    // The issued result carries the contract-bound facet records created at the production
+    // observation boundary, including a self-describing profile digest rather than a bare hash.
+    const issued = newestResult(cwd);
+    const facetMismatches = issued.observations.filter((observation) =>
+      observation.facet_record?.model_profile_digest !== issued.profile_digest ||
+      observation.facet_record?.facet_contract_digest !== issued.contract.digests.combined
+    );
+    assert.equal(facetMismatches.length, 0, JSON.stringify({
+      expected_profile: issued.profile_digest,
+      expected_contract: issued.contract.digests.combined,
+      observation: facetMismatches[0] ?? null
+    }));
+    // Form identity is issued from the verified seeded manifest, not the family shorthand used
+    // to route grading.  The form contract is likewise the actual administered form's version;
+    // a later seed must not collapse into the same task facet.
+    const scored = issued.observations.filter((observation) => observation.value !== null && observation.value !== undefined);
+    const formMismatches = scored.filter((observation) =>
+      observation.facet_record?.task_form_id !== stored.suite_manifest.form_manifest.form_id ||
+      observation.facet_record?.difficulty_version !== stored.suite_manifest.form_manifest.form_contract_digest
+    );
+    assert.equal(formMismatches.length, 0, JSON.stringify({
+      expected_form_id: stored.suite_manifest.form_manifest.form_id,
+      expected_difficulty_version: stored.suite_manifest.form_manifest.form_contract_digest,
+      observation: formMismatches[0] ?? null
+    }));
+    const sequenceMismatches = scored.filter((observation) => observation.facet_record?.sequence_position !== null);
+    assert.equal(sequenceMismatches.length, 0, JSON.stringify({
+      expected_sequence_position: null,
+      observation: sequenceMismatches[0] ?? null
+    }));
     // And no value of any kind reached either file -- the published result least of all.
-    const serialized = JSON.stringify(stored) + JSON.stringify(newestResult(cwd));
+    const serialized = JSON.stringify(stored) + JSON.stringify(issued);
     assert.equal(serialized.includes("ghp_notarealtokenusedonlyforthistest4"), false, "a credential value reached the result");
     assert.equal(serialized.includes("/tmp/aos-test-python"), false, "an environment value reached the result");
   } finally {

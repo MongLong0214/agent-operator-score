@@ -14,6 +14,39 @@ unsupported claims) and not its pair (accept supported ones). This table is the 
 
 "Not successful" and "not supported" are different facts. The verifier's job is the second.
 
+## #584 evidence-to-issuance path
+
+The authoritative consumer is `aos assess`: it creates the scored observations before it calls
+`evaluate`, persists the canonical result, and is the only path whose result the report and
+`aos verify --run` read. The implementation therefore carries evidence in this direction:
+
+    run manifest + locked form binding + resolved model/profile + runtime/verifier facts
+      -> one contract-digest-bound facet record on every scored observation
+      -> re-derived profile, uncertainty, and generalizability decisions
+      -> persisted result -> shared projection -> verifier and exit outcome
+
+At the issuance entry point, the contract digest is derived from the sealed ECD contract, the
+profile digest from the resolved run profile, and each observation receives its form/family, cell,
+model, runtime, verifier, language, interface and non-private identity facts. Raw operator identity
+is never emitted; an unavailable operator or occasion remains `null`. A facet record also carries
+the contract digest under which it was made. Its presence alone is not authority: the issuer and
+verifier re-check that digest against the contract being used.
+
+`evaluate` derives three decisions from those records and calibration evidence, rather than taking
+a stored verdict: exact-profile eligibility; whether registered uncertainty prerequisites support
+an interval; and whether a declared universe has prospective empirical calibration. `buildResult`
+persists the evidence and only the derived public consequences. The shared report projection prints
+those consequences. `aos verify --run` derives them again from the stored observations, their facet
+records, calibration evidence, and the shipped contract; it does not endorse the stored stage,
+interval, or generalizability word merely because it is present. Its `ok` and exit outcome are
+derived from the re-derived three-state decision.
+
+The entry-point counterfactual is explicit: an absent or contract-mismatched required facet record
+withholds `PROFILE_BOUND`; a missing statistical prerequisite yields `interval: null` and
+`INSUFFICIENT_DATA`; absent universe or prospective calibration evidence refuses the elevated
+generalizability claim. Those outcomes are evidence-preserving results, not errors to be filled
+with a plausible number.
+
 ## Cases that MUST be accepted
 
 | # | artifact | why it is honest | verifier must |
@@ -24,6 +57,9 @@ unsupported claims) and not its pair (accept supported ones). This table is the 
 | A4 | current, runtime refused before spawn | AOS observed its own refusal to spawn | PASS as a record; WITHHELD; **not** retryable by probing |
 | A5 | previous probe generation (v2), internally consistent | written by a build that no longer exists | ACCEPT as a record, **named as superseded**, and report its claims **UNVERIFIABLE-by-this-build** — never "forged", and never "verified" |
 | A6 | no probe at all, `aos-known` source | the default posture | PASS; capability question WITHHELD |
+| A7 | all scored observations carry exact, contract-digest-bound facet records; locked forms and exact profile are complete, but population calibration is absent | this build observed a profile, not a population | accept `PROFILE_BOUND`; report `UNESTABLISHED`, `INSUFFICIENT_DATA`, and `interval: null` (implements #584) |
+| A8 | a registered calibration scaffold has no population data | the scaffold is present without pretending to be an empirical result | accept the artifact; variance components and interval are `null`, and generalizability remains `UNESTABLISHED` (implements #584) |
+| A9 | no D-study recommendation is available | the configured operational count is an operational default | accept it when labelled `operational default`, never a psychometric minimum (implements #584) |
 
 A2, A3 and A4 are three different facts and must stay distinguishable in the record. A4 is the one
 that must not be called retryable: probing again cannot fix a runtime that will not start.
@@ -41,6 +77,14 @@ that must not be called retryable: probing again cannot fix a runtime that will 
 | R7 | an estimate inserted into a withheld `C2.RF.01` | claims a number the cell withheld |
 | R8 | O4 / Outcome Index / Composite flipped to issued alone | claims issuance without its predicate |
 | R9 | `NO_SCORABLE_OWNER` reason deleted | removes the record of why, leaving a bare withhold |
+| R10 | remove a required facet record or replace its contract digest | a persisted record cannot authorize itself or a different instrument | withhold `PROFILE_BOUND`; verification re-derives the refusal (implements #584) |
+| R11 | same operator paired with an easier task, or with a stronger model | task and model variation is not a person effect | retain distinct task/model facets; reject an elevated person/general claim (implements #584) |
+| R12 | second occasion/practice, stricter verifier for the same response, or the same translated form | occasion, verifier drift, and language invariance are distinct prerequisites | retain the facet difference and withhold the direct comparison or elevated claim (implements #584) |
+| R13 | three perfect uncalibrated forms, or a declared universe with no population data | perfection in local forms is not prospective empirical calibration | refuse `GENERALIZABILITY_SUPPORTED`; retain `UNESTABLISHED` (implements #584) |
+| R14 | insert an interval, reliability coefficient, or variance component without a registered method and its prerequisites | a made-up precision claim is not a conservative default | reject the artifact; the honest value is `null` with `INSUFFICIENT_DATA` (implements #584) |
+| R15 | an LLM rater self-report is the only claimed calibration authority | a rater cannot certify itself | withhold the rater-derived claim (implements #584) |
+| R16 | prompt/token length, turn count, wall-clock/model latency, tool count, or agent autonomy reaches operator Process credit | these are O4 descriptive outcomes, not operator Process evidence | reject the credit path while retaining descriptive reporting (implements #584) |
+| R17 | label `operational_default_form_count` as a psychometric minimum | an operational fallback is not a calibration result | reject the emitted label (implements #584) |
 
 ## A5 x R5 — the row this table was missing
 
