@@ -73,6 +73,8 @@ const withAssessed = async (source, { reads = [] } = {}) => {
     // `observation_trust` is what an operator would see. The undeclared case has its own test.
     const graded = await gradeScenario("FAM-5", root, {
       baseline: prepared.baseline,
+      prepared_seed: prepared.seed,
+      params: prepared.params,
       invocationCount: 1,
       isolation: "BEST_EFFORT_CLI"
     });

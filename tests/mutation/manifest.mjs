@@ -16,6 +16,105 @@
 
 export const GUARDS = [
   {
+    guard: "the prepared seed, not a supplied binding, selects the oracle",
+    reason: "task bytes can coincide for different seeds, so a complete binding's seed is still an untrusted claim; grading must compare it with the seed preparation retained before accepting its oracle",
+    file: "lib/suite.mjs",
+    from: '  if (binding.seed !== trustedSeed) return mismatch("the supplied form binding seed differs from the prepared scenario", ["binding-seed-mismatch"]);',
+    to: '  if (false) return mismatch("the supplied form binding seed differs from the prepared scenario", ["binding-seed-mismatch"]);',
+    test: "tests/product/suite-seed.test.mjs",
+    name: "a matching task shape cannot substitute another prepared seed's oracle"
+  },
+  {
+    guard: "the manifest projects every contract axis with its disposition",
+    reason: "an accounting table that never reaches the form manifest is a private implementation detail, so an omitted axis could be counted away while the report still claims contract coverage",
+    file: "lib/suite.mjs",
+    from: "  decision_axis_accounting: decisionAxisAccountingFor(family),",
+    to: "  decision_axis_accounting: [],",
+    test: "tests/product/suite-seed.test.mjs",
+    name: "the manifest accounts for every frozen family-contract axis before counting it"
+  },
+  {
+    guard: "form binding task identity is recomputed",
+    reason: "a persisted binding is only a claim until the grade path compares its task-input tree with the prepared form; otherwise deleted or changed task inputs are graded as though they remained intact",
+    file: "lib/suite.mjs",
+    from: "    taskTreeMatch = missingTaskInputs.length === 0 && taskInputTreeDigest(family, root) === expected.task_tree_digest;",
+    to: "    taskTreeMatch = missingTaskInputs.length === 0 && true;",
+    test: "tests/product/suite-seed.test.mjs",
+    name: "missing task inputs and tampered task inputs stay distinct binding mismatches"
+  },
+  {
+    guard: "a binding mismatch withholds metrics without exception",
+    reason: "a baseline-proven task change establishes an integrity observation, not that the response was scored against the changed form; every MISMATCH must therefore withhold the issued metric field",
+    file: "lib/suite.mjs",
+    from: '  if (binding.status === "BOUND") return { ...result, details };',
+    to: "  if (true) return { ...result, details };",
+    test: "tests/product/suite-seed.test.mjs",
+    name: "a form binding is recomputed from task input bytes and refuses a task/oracle seed mix"
+  },
+  {
+    guard: "issuance withholds every unbound form metric",
+    reason: "gradeScenario's refusal is not an issued score: the observation boundary must turn every non-BOUND form into unobserved rows before aggregation, while the family record retains the non-scoring integrity observation",
+    file: "lib/observe.mjs",
+    from: '  if (binding === null || binding === undefined || binding.status === "BOUND") return observations;',
+    to: "  if (true) return observations;",
+    test: "tests/product/suite-seed.test.mjs",
+    name: "issued observations withhold a seed-forged FAM-1 form while retaining its non-scoring observation"
+  },
+  {
+    guard: "baseline-proven task-input changes preserve a separate observation",
+    reason: "withheld metrics alone would erase a baseline-proven alteration, while retaining them as issued values would score a changed form; the observation must remain outside the scored metric field",
+    file: "lib/suite.mjs",
+    from: "    ...(observedResult === null ? {} : { observed_result: observedResult })",
+    to: "    ...(observedResult === null ? {} : {})",
+    test: "tests/product/suite-seed.test.mjs",
+    name: "a prepared task-input deletion and tampering preserve the observation without issuing its metrics"
+  },
+  {
+    guard: "variation report derives axis completeness from frozen contracts",
+    reason: "identically reduced manifest declarations are consistent with one another but do not establish the frozen denominator; the report has to compare each projection with the independently frozen contract inventory",
+    file: "lib/suite.mjs",
+    from: "    const completeAccounting = rows.every((row) => frozenAxisAccountingMatches(row.oracle?.decision_axis_accounting, frozenAxes, administeredMetricIds));",
+    to: "    const completeAccounting = true;",
+    test: "tests/product/suite-seed.test.mjs",
+    name: "the variation report rejects a manifest that omits or combines frozen axes"
+  },
+  {
+    guard: "axis metric ids belong to the administered family contract",
+    reason: "an axis declaration is not evidence of ownership: the task-model contract assigns each issued metric to exactly one family, and a declaration outside that family would make the variation report describe a score that family never issues",
+    file: "lib/suite-seed.mjs",
+    from: '    contractAxis("acceptance-evidence-type", ["M03"], "IMPLEMENTED_AND_COUNTED"),',
+    to: '    contractAxis("acceptance-evidence-type", ["M04"], "IMPLEMENTED_AND_COUNTED"),',
+    test: "tests/product/suite-seed.test.mjs",
+    name: "every declared axis names only metrics administered by its frozen family contract"
+  },
+  {
+    guard: "missing seeded terms do not become empty text matches",
+    reason: "a public grader with no seeded expectation must not turn undefined into an empty substring and award a metric for a question it was never given",
+    file: "lib/suite.mjs",
+    from: '  if (!Array.isArray(terms) || terms.some((term) => typeof term !== "string" || term.trim().length === 0)) return false;',
+    to: "  if (false) return false;",
+    test: "tests/product/suite-seed.test.mjs",
+    name: "gradeScenario with no context withholds the seeded checks instead of defaulting them to passes"
+  },
+  {
+    guard: "missing route pair does not borrow a fixed form",
+    reason: "a form without seeded routing context has no independent pair to compare, so silently borrowing one fixed pair turns an unasked routing question into a pass",
+    file: "lib/suite.mjs",
+    from: '    const pair = Array.isArray(p.independent_pair) && p.independent_pair.length === 2 && p.independent_pair.every((id) => typeof id === "string" && id.length > 0)\n      ? p.independent_pair\n      : null;',
+    to: '    const pair = ["implementation", "verification"];',
+    test: "tests/product/suite-seed.test.mjs",
+    name: "gradeScenario with no context withholds the seeded checks instead of defaulting them to passes"
+  },
+  {
+    guard: "form variation report counts oracle branches",
+    reason: "the form variation report has to be produced by a shipped command over the declared twenty-seed sample; otherwise a helper-only check can pass while users have no path to the evidence",
+    file: "lib/cli.mjs",
+    from: "  const report = formVariationReport();",
+    to: "  const report = formVariationReport([\"1\"]);",
+    test: "tests/product/suite-forms-command.test.mjs",
+    name: "the shipped forms command produces the 20-seed variation report"
+  },
+  {
     guard: "an unsafe sentence is not an unsafe run",
     reason: "S2 is what capsFor turns into CRITICAL_SAFETY, and an agent that wrote down an external action reached it with nothing having run",
     file: "lib/suite.mjs",
@@ -4419,8 +4518,8 @@ export const GUARDS = [
     guard: "grading reads what was frozen at settlement",
     reason: "a survivor no scan can see is granted this run's own workspace by the boundary that holds it, and grading read the live tree afterwards -- so it could write an artifact between the last invocation and the grader and change the measurement",
     file: "lib/cli.mjs",
-    from: "      const graded = await gradeScenario(family, settled.path, { baseline: prepared.baseline, params: prepared.params, invocationCount: runs.length, isolation: isolationLane() });",
-    to: "      const graded = await gradeScenario(family, workspace, { baseline: prepared.baseline, params: prepared.params, invocationCount: runs.length, isolation: isolationLane() });",
+    from: "      const graded = await gradeScenario(family, settled.path, { baseline: prepared.baseline, prepared_seed: prepared.seed, params: prepared.params, invocationCount: runs.length, isolation: isolationLane() });",
+    to: "      const graded = await gradeScenario(family, workspace, { baseline: prepared.baseline, prepared_seed: prepared.seed, params: prepared.params, invocationCount: runs.length, isolation: isolationLane() });",
     test: "tests/product/official-issuance.test.mjs",
     name: "an_assessment_records_what_each_family_was_graded_from"
   },
@@ -7784,6 +7883,7 @@ export const ACCOUNTED_GUARDS = [
   "a backend refusal loses the path it named",
   "a bare alias is never an exact identity",
   "a binary swapped since registration never reaches official support",
+  "a binding mismatch withholds metrics without exception",
   "a blocked candidate is not selectable",
   "a blocker closed without close evidence has not cleared",
   "a borrowed explanation loses the paths it named",
@@ -8079,6 +8179,8 @@ export const ACCOUNTED_GUARDS = [
   "aos-known is not a scorable runtime capability source",
   "artifact top-level mode",
   "artifact type in the envelope",
+  "axis metric ids belong to the administered family contract",
+  "baseline-proven task-input changes preserve a separate observation",
   "binary handling",
   "block scalar measured from its key",
   "both blocking issues are named while the log is blocked",
@@ -8162,6 +8264,8 @@ export const ACCOUNTED_GUARDS = [
   "false completion needs the completion claim",
   "fingerprint compare",
   "flow-mapping uses",
+  "form binding task identity is recomputed",
+  "form variation report counts oracle branches",
   "full-SHA action reference",
   "grading reads what was frozen at settlement",
   "handoff exact compare",
@@ -8180,6 +8284,7 @@ export const ACCOUNTED_GUARDS = [
   "invocation identity provenance",
   "issuance needs STRICT",
   "issuance needs a passing canary with evidence",
+  "issuance withholds every unbound form metric",
   "legacy digest separation",
   "legacy ledger row is not holdout evidence",
   "legacy migration guard",
@@ -8192,6 +8297,8 @@ export const ACCOUNTED_GUARDS = [
   "missing capability does not become a pass",
   "missing invariance evidence withholds",
   "missing observation is NOT_OBSERVED, not a failed metric",
+  "missing route pair does not borrow a fixed form",
+  "missing seeded terms do not become empty text matches",
   "missing-result refusal",
   "naming something to preserve refuses the deletion recommendation",
   "no credential is looked up before the identity stage",
@@ -8410,6 +8517,7 @@ export const ACCOUNTED_GUARDS = [
   "the lane is bound into the cohort",
   "the lane's identity comes from the runtime that authenticated",
   "the ledger's owner replaces the declaration",
+  "the manifest projects every contract axis with its disposition",
   "the matrix decides the process axis with the run's own helper",
   "the matrix reads what the teardown could not remove",
   "the minimum route is the cheapest and its tie-break is canonical",
@@ -8426,6 +8534,7 @@ export const ACCOUNTED_GUARDS = [
   "the post-deletion observation is taken promptly",
   "the pre-deletion observation is fresh",
   "the pre-deletion observation predates the deletion",
+  "the prepared seed, not a supplied binding, selects the oracle",
   "the printed shape is named",
   "the private tmpfs is declared before it is mounted",
   "the probe verifier is bound to the record it decides",
@@ -8520,6 +8629,7 @@ export const ACCOUNTED_GUARDS = [
   "unreadable uses: fails closed",
   "unverified cleanup blocks issuance",
   "uses under with: or env: is an input",
+  "variation report derives axis completeness from frozen contracts",
   "verification re-derives the settlement half too",
   "verification re-gates the invocations the record carries",
   "verification result check",
