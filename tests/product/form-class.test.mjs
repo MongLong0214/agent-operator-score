@@ -293,6 +293,40 @@ test("a replayed operational form crosses runs as practice, never as official ag
   }
 });
 
+test("a corrupt exposure ledger refuses the whole assessment rather than committing a run with no ledger row", async () => {
+  const { mkdtempSync, readFileSync, readdirSync, writeFileSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { addAgent, makePlan, run } = await import("./helpers.mjs");
+
+  const cwd = mkdtempSync(join(tmpdir(), "aos-exposure-ledger-corrupt-"));
+  const home = join(cwd, ".aos");
+  try {
+    run(cwd, ["init"]);
+    addAgent(cwd, "solo");
+    const plan = makePlan(cwd, { default: "solo" });
+
+    // Valid JSON, an absurd ledger: `openExposureLedger` must refuse this the same as any other
+    // shape it does not recognise, not read it as a home that never administered anything.
+    const ledgerFile = join(home, "exposure-ledger.json");
+    writeFileSync(ledgerFile, "null\n");
+    assert.equal(readdirSync(join(home, "runs")).length, 0, "the fixture starts with no runs");
+
+    // The corrupt ledger is caught before the run is created -- not after it is scored and
+    // committed. A refusal here is the only shape that does not leave a committed run behind with
+    // no ledger row to show it happened.
+    const attempt = run(cwd, ["assess", "--plan", plan, "--seed", "0000000000000099"], 2);
+    assert.match(attempt.stderr, /AOS_EXPOSURE_LEDGER_CORRUPT/);
+    assert.equal(readdirSync(join(home, "runs")).length, 0, "a refused assessment must create no run directory at all");
+
+    // And the ledger itself was not quietly rewritten as fresh; the corruption is still there for
+    // the operator to see and fix.
+    assert.equal(readFileSync(ledgerFile, "utf8").trim(), "null");
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
 // ---------------------------------------------------------------------------------------------
 // Alternate-form linking: equivalence, drift, retirement (#585)
 
