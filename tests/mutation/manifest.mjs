@@ -2320,6 +2320,42 @@ export const GUARDS = [
     name: "a phase that has begun on a blocked issue cannot integrate code either"
   },
   {
+    guard: "a dependency edge has exactly one classification",
+    reason: "an edge sitting in both split fields gives one dependency two gates, and the union check cannot see it because the union is unchanged; round one disabled this branch and 112 tests stayed green",
+    file: "lib/execution-plan.mjs",
+    from: "    if (doubled.length > 0) fail(\"dependency-edge-double-classified\", `#${one.issue} classifies ${asList(doubled)} as both implementation and acceptance`, one.issue);",
+    to: "    if (false) fail();",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a dependency edge classified as both implementation and acceptance fails"
+  },
+  {
+    guard: "a dependency edge cannot be invented",
+    reason: "a new edge written into the split fields adds a dependency the migration inventory never approved -- someone quietly closing a loop is the drift the manifest exists to refuse, and only this branch names it",
+    file: "lib/execution-plan.mjs",
+    from: "    if (inventedClassification.length > 0) fail(\"dependency-edge-invented\", `#${one.issue} classifies non-legacy edge(s) ${asList(inventedClassification)}`, one.issue);",
+    to: "    if (false) fail();",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "an invented dependency edge outside the legacy contract fails"
+  },
+  {
+    guard: "a done issue answers to its acceptance predecessors",
+    reason: "done is the status that unblocks everything downstream, so a done that stands while its acceptance gate reopens propagates; the close-evidence path has its own guard, but the plan-side status check had none",
+    file: "lib/execution-plan.mjs",
+    from: '    if (one.status === "done" && unfinishedAcceptance.length > 0) {',
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a done issue with an unfinished acceptance predecessor fails"
+  },
+  {
+    guard: "the schema byte identity is pinned in the contract ledger",
+    reason: "a schema edit under a retained version identifier redefines what every recorded digest attests to, and the plan-digest guard cannot notice it -- the plan bytes have not moved",
+    file: "lib/execution-plan.mjs",
+    from: "      if (recorded.schema_digest !== schemaDigest) {",
+    to: "      if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a moved schema byte without a moved contract version fails"
+  },
+  {
     guard: "an issue owns a surface",
     reason: "owning nothing means no surface is protected from a second writer",
     file: "lib/execution-plan.mjs",
@@ -2708,10 +2744,10 @@ export const GUARDS = [
   },
   {
     guard: "started statuses need finished predecessors",
-    reason: "constraining only `ready` let an issue be moved to in-progress and then done past its blockers",
+    reason: "constraining only `ready` let an issue be moved to in-progress and then done past its blockers; the split kept the rule but moved it onto implementation_blocked_by alone, since acceptance blocking must not gate opening or merging a PR",
     file: "lib/execution-plan.mjs",
-    from: "    if (STARTED.has(one.status) && unfinished.length > 0) {",
-    to: "    if (one.status === \"ready\" && false) {",
+    from: "    if (STARTED.has(one.status) && unfinishedImplementation.length > 0) {",
+    to: "    if (false) {",
     test: "tests/product/execution-plan.test.mjs",
     name: "in-progress and done are constrained by predecessors, not just ready"
   },
@@ -3828,9 +3864,9 @@ export const GUARDS = [
   },
   {
     guard: "stale blocked status",
-    reason: "a successor still labelled blocked after its predecessors landed hides available work",
+    reason: "a successor still labelled blocked after its predecessors landed hides available work; the split requires both implementation and acceptance predecessors to have landed, since an issue can still legitimately be blocked on acceptance alone",
     file: "lib/execution-plan.mjs",
-    from: 'if (one.status === "blocked" && one.blocked_by.length > 0 && unfinished.length === 0) {',
+    from: 'if (one.status === "blocked" && dependencyBlockedBy(one).length > 0 && unfinishedImplementation.length === 0 && unfinishedAcceptance.length === 0) {',
     to: "if (false) {",
     test: "tests/product/execution-plan.test.mjs",
     name: "a blocked issue whose predecessors all passed is stale and fails"
@@ -7809,6 +7845,42 @@ export const GUARDS = [
     name: "the release-canary script exits zero only for an accepted OBSERVED record"
   },
   {
+    guard: "acceptance blocking withholds close evidence",
+    reason: "the split lets implementation blocking gate only opening and merging a PR; acceptance blocking must still gate issuing a completion record, or a candidate artifact built early could be certified as release evidence before the release predecessors it depends on actually land",
+    file: "lib/execution-plan.mjs",
+    from: "    if (unfinishedAcceptance.length > 0) {",
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "an unsatisfied acceptance block cannot issue close evidence"
+  },
+  {
+    guard: "every legacy dependency edge lands in exactly one split field",
+    reason: "the split must classify edges, not delete them -- an edge present in the old blocked_by set and absent from both implementation_blocked_by and acceptance_blocked_by would quietly create parallelism the old contract never allowed",
+    file: "lib/execution-plan.mjs",
+    from: "    if (missingClassification.length > 0) fail(\"dependency-edge-unclassified\", `#${one.issue} does not classify legacy edge(s) ${asList(missingClassification)}`, one.issue);",
+    to: "    if (false) fail(\"dependency-edge-unclassified\", `#${one.issue} does not classify legacy edge(s) ${asList(missingClassification)}`, one.issue);",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "every legacy dependency edge is classified by one split field"
+  },
+  {
+    guard: "the plan's contract version tracks its bytes",
+    reason: "issue #631 named exactly this gap -- nothing forced a schema version to move when the plan's bytes did. The split adds fields, which moves the bytes, and the contract ledger is what makes a stale version identifier a failure instead of a silent drift",
+    file: "lib/execution-plan.mjs",
+    from: "      if (recorded.plan_digest !== planDigest(plan)) {",
+    to: "      if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a moved plan byte without a moved contract version fails"
+  },
+  {
+    guard: "the schema-digest fallback resolves a rename older than evidence_bindings itself",
+    reason: "#645: #588's own completion record predates evidence_bindings as a plan field entirely, so the historical plan at its final_sha has nothing for bindingsAtRevision to read there -- the only thing that resolved the real, live regression was deriving the schema's path from the plan's own historical schema identifier. Without this, the fix looks complete against mocked tests but does not fix the issue it was written for",
+    file: "lib/github-state.mjs",
+    from: "    if (field === \"schema_digest\" && typeof historicalPlan?.schema === \"string\") {",
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a schema rename still resolves when the historical plan predates evidence_bindings entirely"
+  },
+  {
     guard: "facet evidence enters through the observation issuance boundary",
     reason: "a facet module no production observation consumes cannot bind any issued claim; the actual observeRun boundary must attach the evidence records before evaluation sees them",
     file: "lib/observe.mjs",
@@ -8180,11 +8252,14 @@ export const ACCOUNTED_GUARDS = [
   "a deletion-blocking unknown blocks the deletion",
   "a denied confirmation outranks an unread one",
   "a deny the kernel refused, not a file that was not there",
+  "a dependency edge cannot be invented",
+  "a dependency edge has exactly one classification",
   "a derivation cites a receipt the observation carries",
   "a detected capability source remains scorable",
   "a detected model that contradicts the declared one is a mismatch",
   "a diagnostic never issues a profile-bound aggregate",
   "a discovery stage cannot skip the one before it",
+  "a done issue answers to its acceptance predecessors",
   "a facet is not normalised into a digest",
   "a failed check is named rather than blamed on the contract",
   "a failed observation's error is redacted",
@@ -8336,6 +8411,7 @@ export const ACCOUNTED_GUARDS = [
   "absent coverage is not a measured zero",
   "absent protection on both sides is not unchanged protection",
   "abstention cannot outweigh decision",
+  "acceptance blocking withholds close evidence",
   "actual-effect lookup",
   "adapter membership is a published name, not a path shape",
   "advice is answered once",
@@ -8492,6 +8568,7 @@ export const ACCOUNTED_GUARDS = [
   "every directory entry is charged to the scan budget",
   "every invariant family is recorded on both sides",
   "every kind of evidence is required by name",
+  "every legacy dependency edge lands in exactly one split field",
   "every observation a row cites must record a run that succeeded",
   "every projection is compared with the result",
   "every published string is constrained at the mint",
@@ -8787,6 +8864,7 @@ export const ACCOUNTED_GUARDS = [
   "the operator-typed event set is what the gate covers",
   "the per-task invocation bound is compared",
   "the phrase list names the artifact rows it is supposed to check",
+  "the plan's contract version tracks its bytes",
   "the policy digest covers the forbidden rules themselves",
   "the post-deletion observation follows the deletion",
   "the post-deletion observation is taken promptly",
@@ -8842,6 +8920,8 @@ export const ACCOUNTED_GUARDS = [
   "the runtime's own event outranks the declaration",
   "the same evidence cannot be counted twice",
   "the scanner reads the bytes the grader caps on",
+  "the schema byte identity is pinned in the contract ledger",
+  "the schema-digest fallback resolves a rename older than evidence_bindings itself",
   "the scored result carries the boundary it was produced under",
   "the search bound refusal is named as one",
   "the settlement digest is over the tree the comparison recomputes",

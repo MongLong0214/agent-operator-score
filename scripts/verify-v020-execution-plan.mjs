@@ -28,7 +28,7 @@ const valueOf = (flag, fallback) => {
 };
 
 const PLAN_PATH = new URL("../governance/v0.2.0-execution-plan.json", import.meta.url);
-const SCHEMA_PATH = new URL("../schemas/aos-execution-plan.v1.schema.json", import.meta.url);
+const SCHEMA_PATH = new URL("../schemas/aos-execution-plan.v2.schema.json", import.meta.url);
 const SNAPSHOT_PATH = new URL("../fixtures/execution-plan/github-state.json", import.meta.url);
 
 const plan = loadPlan(PLAN_PATH);
