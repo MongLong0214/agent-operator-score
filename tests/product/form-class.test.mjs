@@ -362,3 +362,79 @@ test("the exposure ledger drives form retirement: any exposure retires a form fr
   assert.equal(exposed.exposure_count, 1);
   assert.equal(exposed.scored_count, 0);
 });
+
+// ---------------------------------------------------------------------------------------------
+// Practice and occasion effects (#585)
+
+test("practice contamination is recorded with its exact reason and excludes the form from generalizability evidence", async () => {
+  const { createExposureLedger, practiceAnalysis, recordExposure } = await import("../../lib/form-class.mjs");
+  const digest = `sha256:${"e".repeat(64)}`;
+  const record = (ledger, at, score, duration) => recordExposure(ledger, {
+    form_id: "aos-operational-00e1", form_contract_digest: digest, declared_class: "OPERATIONAL",
+    occurred_at: at, scored: false, score, duration_ms: duration
+  }).ledger;
+  // Nothing administered: nothing to analyse, and null says so rather than a clean bill.
+  const empty = practiceAnalysis(createExposureLedger(), { form_contract_digest: digest });
+  assert.equal(empty.practice_contaminated, null);
+  assert.equal(empty.generalizability_evidence_eligible, null);
+  // One first exposure: uncontaminated, eligible.
+  const once = practiceAnalysis(record(createExposureLedger(), "2026-09-06T10:00:00.000Z", 60, 900000), { form_contract_digest: digest });
+  assert.equal(once.practice_contaminated, false);
+  assert.equal(once.generalizability_evidence_eligible, true);
+  assert.deepEqual(once.exclusion_reasons, []);
+  // A replay with improvement: contaminated, excluded, with the exact reasons on the record.
+  const twice = record(record(createExposureLedger(), "2026-09-06T10:00:00.000Z", 60, 900000), "2026-09-07T10:00:00.000Z", 85, 600000);
+  const analysis = practiceAnalysis(twice, { form_contract_digest: digest });
+  assert.equal(analysis.practice_contaminated, true);
+  assert.equal(analysis.generalizability_evidence_eligible, false);
+  assert.equal(analysis.exclusion_reasons.some((reason) => reason.includes("AOS_PRACTICE_SAME_FORM_REEXPOSURE")), true);
+  assert.equal(analysis.memorization_indicator, true, "improvement on a replayed form is memorisation evidence, not skill evidence");
+  assert.equal(analysis.exclusion_reasons.some((reason) => reason.includes("AOS_PRACTICE_MEMORIZATION_SUSPECTED")), true);
+  assert.equal(analysis.same_form_exposure_count, 2);
+  assert.equal(analysis.oracle_familiarity_count, 1, "the second administration met an oracle the operator had already seen once");
+  assert.deepEqual(analysis.administrations.map((entry) => entry.sequence_position), [1, 2]);
+  assert.equal(analysis.administrations[1].interval_ms, 86400000);
+});
+
+test("speed-only improvement is an indicator on the record, never a skill gain", async () => {
+  const { createExposureLedger, practiceAnalysis, recordExposure } = await import("../../lib/form-class.mjs");
+  const digest = `sha256:${"f".repeat(64)}`;
+  const grow = (ledger, at, score, duration) => recordExposure(ledger, {
+    form_id: "aos-operational-00f1", form_contract_digest: digest, declared_class: "OPERATIONAL",
+    occurred_at: at, scored: false, score, duration_ms: duration
+  }).ledger;
+  const ledger = grow(grow(createExposureLedger(), "2026-09-06T10:00:00.000Z", 70, 900000), "2026-09-07T10:00:00.000Z", 70, 300000);
+  const analysis = practiceAnalysis(ledger, { form_contract_digest: digest });
+  assert.equal(analysis.speed_only_improvement, true);
+  assert.equal(analysis.memorization_indicator, false, "a flat score is not score improvement");
+  assert.equal(analysis.exclusion_reasons.some((reason) => reason.includes("AOS_PRACTICE_SPEED_ONLY")), true);
+  // Without durations the indicator is unobserved, not false.
+  const scoreless = grow(grow(createExposureLedger(), "2026-09-06T10:00:00.000Z", null, null), "2026-09-07T10:00:00.000Z", null, null);
+  assert.equal(practiceAnalysis(scoreless, { form_contract_digest: digest }).speed_only_improvement, null);
+});
+
+test("raw improvement is never marked as skill gain: replay suggests memorisation, an unlinked form withholds, a linked form observes", async () => {
+  const { scoreChangeClaim } = await import("../../lib/form-class.mjs");
+  const digestA = `sha256:${"a1".repeat(32)}`;
+  const digestB = `sha256:${"b2".repeat(32)}`;
+  const earlier = { form_contract_digest: digestA, score: 55 };
+  const later = { form_contract_digest: digestA, score: 90 };
+  const replay = scoreChangeClaim({ earlier, later });
+  assert.equal(replay.delta, 35);
+  assert.equal(replay.interpretable_change, false, "the same form cannot measure the same operator twice");
+  assert.equal(replay.interpretation, "MEMORIZATION_SUSPECTED");
+  // Two different forms with no established equivalence: an easier form explains the delta as
+  // well as skill does, so the claim is withheld -- not made with a caveat.
+  const unlinked = scoreChangeClaim({ earlier, later: { form_contract_digest: digestB, score: 90 } });
+  assert.equal(unlinked.interpretable_change, null);
+  assert.equal(unlinked.interpretation, "WITHHELD_EQUIVALENCE_UNESTABLISHED");
+  // Linked forms put the two scores on one scale; the observed change becomes interpretable,
+  // and it is still only an observed change.
+  const linking = { schema_id: "aos-form-linking-scaffold.v1", equivalence_status: "LINKED", equivalence_decision: true, left_form_contract_digest: digestA, right_form_contract_digest: digestB };
+  const linked = scoreChangeClaim({ earlier, later: { form_contract_digest: digestB, score: 90 }, linking });
+  assert.equal(linked.interpretable_change, true);
+  assert.equal(linked.interpretation, "OBSERVED_ON_LINKED_FORMS");
+  // A linking record about two other forms is not evidence about these two.
+  const foreign = { ...linking, left_form_contract_digest: `sha256:${"c3".repeat(32)}`, right_form_contract_digest: `sha256:${"d4".repeat(32)}` };
+  assert.equal(scoreChangeClaim({ earlier, later: { form_contract_digest: digestB, score: 90 }, linking: foreign }).interpretable_change, null);
+});
