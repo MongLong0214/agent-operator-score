@@ -7908,6 +7908,15 @@ export const GUARDS = [
     name: "no population data permits PROFILE_BOUND but leaves uncertainty and generalizability withheld"
   },
   {
+    guard: 'legacy card carries the NOT COMPARABLE marker',
+    reason: "the card is the one legacy surface built to leave the page with no caption at all (lib/report-card.mjs's own file header), which makes a card missing the marker and its scorer the likeliest of the five to be misread as a current, comparable score",
+    file: 'lib/report-card.mjs',
+    from: '<text x="64" y="128" font-family="${FONT}" font-size="14" font-weight="800" fill="#e0b25c" letter-spacing="0.6">${clip(legacyLine, 100)}</text>',
+    to: '',
+    test: 'tests/product/legacy-band-provenance.test.mjs',
+    name: "the card renders exactly what the contract's legacy_band_surface claims for lib/report-card.mjs: the marker and the stored scorer"
+  },
+  {
     guard: 'legacy markdown reports carry the NOT COMPARABLE marker',
     reason: 'a stored legacy band rendered without LEGACY / NOT COMPARABLE and its scorer id reads as a point on the v0.2.0 scale; the markdown headline line is the only place a markdown reader is told otherwise',
     file: 'lib/report.mjs',
@@ -8531,6 +8540,7 @@ export const ACCOUNTED_GUARDS = [
   "issuance needs a passing canary with evidence",
   "issuance withholds every unbound form metric",
   "issued CLI facet records bind the profile digest",
+  "legacy card carries the NOT COMPARABLE marker",
   "legacy cycle aggregates carry the NOT COMPARABLE marker",
   "legacy dashboard rows carry their scorer provenance",
   "legacy digest separation",

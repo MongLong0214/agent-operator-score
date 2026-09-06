@@ -56,11 +56,40 @@ test("a legacy result's markdown and html carry LEGACY / NOT COMPARABLE with the
   assert.ok(headline !== null && headline[0].includes(LEGACY_MARKER), "the html marker is not in the headline block");
 });
 
+test("the card renders exactly what the contract's legacy_band_surface claims for lib/report-card.mjs: the marker and the stored scorer", () => {
+  // #568 round 1: the contract asserted this claim about the card and the shipped card did not do
+  // it. The point of this test is to keep that from being possible again silently -- so the marker
+  // checked below is read out of the contract's own prose, not retyped as a second copy that could
+  // drift from the first without either failing.
+  const use = loadEcdContract().interpretation_use;
+  assert.ok(
+    use.legacy_band_surface.modules.includes("lib/report-card.mjs"),
+    "lib/report-card.mjs left the contract's legacy_band_surface disclosure, so this test no longer has a claim about the card to check"
+  );
+  const afterMarked = use.legacy_band_surface.statement.split("each marked ")[1];
+  const marker = afterMarked?.slice(0, afterMarked.indexOf(". "));
+  assert.ok(
+    typeof marker === "string" && marker.length > 0,
+    "the contract's statement no longer says what a disclosed module marks a legacy record with"
+  );
+
+  const legacy = legacyResult();
+  const card = renderCard(legacy);
+  // A substring match anywhere in the SVG passes for the `aria-label` too, which is metadata on
+  // the root element, not a rendering a viewer sees. The claim is about the card, so the check has
+  // to land inside a `<text>` element the way every other rendered word on this card does.
+  const escaped = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const visible = (needle) => new RegExp(`<text[^>]*>[^<]*${escaped(needle)}[^<]*</text>`, "u").test(card);
+  assert.ok(visible(marker), `the contract claims lib/report-card.mjs marks a legacy record ${JSON.stringify(marker)} and no visible text element on the shipped card does`);
+  assert.ok(visible(legacy.scorer.id), "the card does not visibly name the stored scorer id the contract's disclosed modules render");
+  assert.ok(visible(legacy.scorer.version), "the card does not visibly name the stored scorer version");
+});
+
 test("a legacy result missing its scorer record still says LEGACY / NOT COMPARABLE and invents no scorer", () => {
   // Recovery renders whatever is on disk. A half-written legacy record without `scorer` must not
   // take the page down, and must not be attributed to a scorer nobody recorded.
   const bare = { schema_id: "aos-mvp-result.v1", run_id: "r", status: "INCOMPLETE", score: null, provisional_raw: 0, dimensions: {}, coverage: { observed: 0, total: 20 }, caps: [], blockers: [] };
-  for (const rendering of [renderMarkdown(bare), renderHtml(bare)]) {
+  for (const rendering of [renderMarkdown(bare), renderHtml(bare), renderCard(bare)]) {
     assert.ok(rendering.includes(LEGACY_MARKER));
     assert.equal(rendering.includes(SCORER_ID), false, "a scorer the record does not carry was invented");
     assert.ok(rendering.includes("unrecorded legacy scorer"));
