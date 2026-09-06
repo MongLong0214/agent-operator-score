@@ -427,6 +427,7 @@ test("the 20-seed report counts implemented decision axes separately from declar
       assert.ok(row.seeded_task_input_variant_count > 1, "FAM-5 no longer carries its seed-specific setup");
       assert.equal(row.unique_oracle_branch_label_count, 1);
       assert.equal(row.cosmetic_only_difference_count, null);
+      assert.ok(row.unimplemented_decision_axes.every((axis) => axis.reason === "The v0.2.0 fixed-form contract records FAM-5 as one assessment identity, so this seeded decision axis is not implemented."), "FAM-5's unimplemented axes do not point to their fixed-form decision");
     } else {
       assert.equal(row.status, "PASS", family);
       assert.equal(row.assessment_identity_status, "SEEDED");
