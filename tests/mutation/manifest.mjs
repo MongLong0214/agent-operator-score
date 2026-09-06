@@ -2320,6 +2320,42 @@ export const GUARDS = [
     name: "a phase that has begun on a blocked issue cannot integrate code either"
   },
   {
+    guard: "a dependency edge has exactly one classification",
+    reason: "an edge sitting in both split fields gives one dependency two gates, and the union check cannot see it because the union is unchanged; round one disabled this branch and 112 tests stayed green",
+    file: "lib/execution-plan.mjs",
+    from: "    if (doubled.length > 0) fail(\"dependency-edge-double-classified\", `#${one.issue} classifies ${asList(doubled)} as both implementation and acceptance`, one.issue);",
+    to: "    if (false) fail();",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a dependency edge classified as both implementation and acceptance fails"
+  },
+  {
+    guard: "a dependency edge cannot be invented",
+    reason: "a new edge written into the split fields adds a dependency the migration inventory never approved -- someone quietly closing a loop is the drift the manifest exists to refuse, and only this branch names it",
+    file: "lib/execution-plan.mjs",
+    from: "    if (inventedClassification.length > 0) fail(\"dependency-edge-invented\", `#${one.issue} classifies non-legacy edge(s) ${asList(inventedClassification)}`, one.issue);",
+    to: "    if (false) fail();",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "an invented dependency edge outside the legacy contract fails"
+  },
+  {
+    guard: "a done issue answers to its acceptance predecessors",
+    reason: "done is the status that unblocks everything downstream, so a done that stands while its acceptance gate reopens propagates; the close-evidence path has its own guard, but the plan-side status check had none",
+    file: "lib/execution-plan.mjs",
+    from: '    if (one.status === "done" && unfinishedAcceptance.length > 0) {',
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a done issue with an unfinished acceptance predecessor fails"
+  },
+  {
+    guard: "the schema byte identity is pinned in the contract ledger",
+    reason: "a schema edit under a retained version identifier redefines what every recorded digest attests to, and the plan-digest guard cannot notice it -- the plan bytes have not moved",
+    file: "lib/execution-plan.mjs",
+    from: "      if (recorded.schema_digest !== schemaDigest) {",
+    to: "      if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a moved schema byte without a moved contract version fails"
+  },
+  {
     guard: "an issue owns a surface",
     reason: "owning nothing means no surface is protected from a second writer",
     file: "lib/execution-plan.mjs",
@@ -8124,11 +8160,14 @@ export const ACCOUNTED_GUARDS = [
   "a deletion-blocking unknown blocks the deletion",
   "a denied confirmation outranks an unread one",
   "a deny the kernel refused, not a file that was not there",
+  "a dependency edge cannot be invented",
+  "a dependency edge has exactly one classification",
   "a derivation cites a receipt the observation carries",
   "a detected capability source remains scorable",
   "a detected model that contradicts the declared one is a mismatch",
   "a diagnostic never issues a profile-bound aggregate",
   "a discovery stage cannot skip the one before it",
+  "a done issue answers to its acceptance predecessors",
   "a facet is not normalised into a digest",
   "a failed check is named rather than blamed on the contract",
   "a failed observation's error is redacted",
@@ -8439,7 +8478,6 @@ export const ACCOUNTED_GUARDS = [
   "every segment of a snapshot name has to be readable",
   "every transport spelling needs the transport approval",
   "everything published passes the one gate",
-
   "evidence bound to the audited revision",
   "evidence contract cannot be switched off",
   "evidence failures decide the route's adequacy",
@@ -8781,6 +8819,7 @@ export const ACCOUNTED_GUARDS = [
   "the runtime's own event outranks the declaration",
   "the same evidence cannot be counted twice",
   "the scanner reads the bytes the grader caps on",
+  "the schema byte identity is pinned in the contract ledger",
   "the schema-digest fallback resolves a rename older than evidence_bindings itself",
   "the scored result carries the boundary it was produced under",
   "the search bound refusal is named as one",

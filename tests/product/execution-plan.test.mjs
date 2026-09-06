@@ -18,6 +18,7 @@ import {
   checkGithubState,
   checkPlan,
   loadPlan,
+  loadPlanContractLedger,
   loadSchema,
   nextWork,
   MAX_REPORTED_CYCLES,
@@ -207,6 +208,16 @@ test("a moved plan byte without a moved contract version fails", () => {
   assert.ok(failures(checkPlan(doc)).includes("plan-contract-version-stale"));
 });
 
+test("a moved schema byte without a moved contract version fails", () => {
+  // The plan here is pristine, so `plan-contract-version-stale` stays quiet: what has drifted is
+  // the ledger's byte identity for the schema file itself. A schema edit under a retained version
+  // identifier redefines what every recorded digest attests to, and this is the only check that
+  // notices -- which is why the assertion is equality on the one failure, not `ok === false`.
+  const ledger = clone(loadPlanContractLedger());
+  ledger.versions.find((one) => one.schema === "aos-execution-plan.v2").schema_digest = `sha256:${"a".repeat(64)}`;
+  assert.deepEqual(failures(checkPlan(plan(), { contractLedger: ledger })), ["plan-schema-version-stale"]);
+});
+
 test("every legacy dependency edge is classified by one split field", () => {
   const doc = plan();
   const issue = entry(doc, 571);
@@ -214,6 +225,38 @@ test("every legacy dependency edge is classified by one split field", () => {
   issue.acceptance_blocked_by = [588];
 
   assert.ok(failures(checkPlan(doc)).includes("dependency-edge-unclassified"));
+});
+
+test("a dependency edge classified as both implementation and acceptance fails", () => {
+  const doc = plan();
+  // #556's legacy edge to #554 is classified as implementation. Claiming it for acceptance too
+  // gives one edge two gates, and the union alone cannot see that -- the union is unchanged,
+  // which is why the check reads the two fields rather than their sum.
+  entry(doc, 556).acceptance_blocked_by.push(554);
+  assert.ok(failures(checkPlan(doc)).includes("dependency-edge-double-classified"));
+});
+
+test("an invented dependency edge outside the legacy contract fails", () => {
+  const doc = plan();
+  // #553 waits on nothing in the v1 contract. A new edge written into the split fields -- with
+  // the reverse edge kept consistent, so the reverse-index check stays quiet -- adds a dependency
+  // the migration inventory never approved, and this check is the one that refuses it by name.
+  entry(doc, 553).implementation_blocked_by.push(554);
+  entry(doc, 554).blocks.push(553);
+  assert.ok(failures(checkPlan(doc)).includes("dependency-edge-invented"));
+});
+
+test("a done issue with an unfinished acceptance predecessor fails", () => {
+  const doc = plan();
+  // `done` is what unblocks everything downstream, so it is the status that answers to the
+  // acceptance gate: re-opening a predecessor has to revoke the successor's `done`, or a
+  // completion stands while the gate it answered to is open again. The example is taken from
+  // whatever the plan says today rather than from a number that was true when this was written.
+  const one = doc.issues.find((each) => each.status === "done" && (each.acceptance_blocked_by ?? []).length > 0);
+  assert.ok(one, "the plan has no done issue with an acceptance predecessor left to serve as the example");
+  entry(doc, one.acceptance_blocked_by[0]).status = "in-progress";
+  const report = checkPlan(doc);
+  assert.ok(report.failures.some((each) => each.check === "done-with-unfinished-acceptance-predecessor" && each.issue === one.issue));
 });
 
 // --- phase-ready is not READY --------------------------------------------------------------
