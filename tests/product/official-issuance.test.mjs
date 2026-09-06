@@ -1042,7 +1042,7 @@ test("a_result_from_an_older_schema_generation_is_named_not_accused", () => {
     // The version literal moves with the generation. #566 bound a stored result's ceilings to the
     // rows beside them, which is a second property a record must carry, so 2.1.0 is superseded for
     // the reason 2.0.0 was -- and the sentence a 2.0.0 record is named with is still its own.
-    assert.match(named.stdout, /2\.0\.0 predates this build's 3\.0\.0/u, named.stdout);
+    assert.match(named.stdout, /2\.0\.0 predates this build's 4\.0\.0/u, named.stdout);
     assert.match(named.stdout, /carries no isolation evidence to recompute/u, named.stdout);
     // And it says nothing else: an older record is not accused of contradicting its own evidence.
     assert.equal(/does not follow from this run's own confinement records/u.test(named.stdout), false, named.stdout);
@@ -1053,7 +1053,7 @@ test("a_result_from_an_older_schema_generation_is_named_not_accused", () => {
     unknown.schema_version = "9.9.9";
     writeFileSync(resultPath, `${canonicalJson(unknown)}\n`);
     const strange = run(cwd, ["verify", "--run", runId], 5);
-    assert.match(strange.stdout, /FAIL\tresult-schema\t9\.9\.9 vs 3\.0\.0/u, strange.stdout);
+    assert.match(strange.stdout, /FAIL\tresult-schema\t9\.9\.9 vs 4\.0\.0/u, strange.stdout);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }
