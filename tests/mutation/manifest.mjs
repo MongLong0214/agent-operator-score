@@ -1298,8 +1298,8 @@ export const GUARDS = [
     guard: "ECD claim stage rests on what was observed",
     reason: "forms_completed is a list of names the caller hands in, and on its own it made a run that observed nothing report performance observed across every locked form",
     file: "lib/ecd-contract.mjs",
-    from: '  const claimStage = missingForms.length === 0 && unsupportedForms.length === 0 && unidentifiedFacets.length === 0 && boundaryWithheld.length === 0 ? "PROFILE_BOUND" : "RUN_DIAGNOSTIC";',
-    to: '  const claimStage = missingForms.length === 0 && unidentifiedFacets.length === 0 && boundaryWithheld.length === 0 ? "PROFILE_BOUND" : "RUN_DIAGNOSTIC";',
+    from: "  const profileFactsEstablished = missingForms.length === 0 && unsupportedForms.length === 0 && unidentifiedFacets.length === 0 && boundaryWithheld.length === 0;",
+    to: "  const profileFactsEstablished = missingForms.length === 0 && unidentifiedFacets.length === 0 && boundaryWithheld.length === 0;",
     test: "tests/product/ecd-interpretation-use.test.mjs",
     name: "naming every form as completed does not make a run that observed nothing PROFILE_BOUND"
   },
@@ -2350,7 +2350,7 @@ export const GUARDS = [
     guard: "evidence bound to the audited revision",
     reason: "the shipped record quoted a manifest digest that no longer matched, and the audit printed PASS",
     file: "lib/github-state.mjs",
-    from: "    checked.evidence_digests_match = results.every(Boolean);",
+    from: "    checked.evidence_digests_match = results.length === 0 ? true : allRequired(results);",
     to: "    checked.evidence_digests_match = true;",
     test: "tests/product/execution-plan.test.mjs",
     name: "three separately true facts are not a confirmation"
@@ -2458,8 +2458,8 @@ export const GUARDS = [
     guard: "a confirmation nobody could check is not a true one",
     reason: "NOT_CHECKED is a non-empty string, so every(Boolean) reads an unresolved confirmation as a confirmed one -- the fail-open version of this whole fix",
     file: "lib/github-state.mjs",
-    from: "    verified: values.every((value) => value === true),",
-    to: "    verified: values.every(Boolean),",
+    from: "    verified: isEstablished(decision),",
+    to: "    verified: true,",
     test: "tests/product/execution-plan.test.mjs",
     name: "a transient failure is not a false fact"
   },
@@ -2467,8 +2467,8 @@ export const GUARDS = [
     guard: "a denied confirmation outranks an unread one",
     reason: "a fact the repository contradicts is contradicted however much else went unread, and collapsing the two reports a forged SHA under the quieter word",
     file: "lib/github-state.mjs",
-    from: '  const resolution = values.every((value) => value === true) ? "verified" : values.some((value) => value !== true && value !== NOT_CHECKED) ? "contradicted" : "not-checked";',
-    to: '  const resolution = values.every((value) => value === true) ? "verified" : "not-checked";',
+    from: '  const resolutionOf = (decision) => decision === true ? "verified" : decision === false ? "contradicted" : "not-checked";',
+    to: '  const resolutionOf = (decision) => decision === true ? "verified" : "not-checked";',
     test: "tests/product/execution-plan.test.mjs",
     name: "a transient failure is not a false fact"
   },
@@ -2476,8 +2476,8 @@ export const GUARDS = [
     guard: "an unread confirmation is not reported as a denied one",
     reason: "close-evidence-unchecked existed and no path reached it, so a rate limit and a forged SHA arrived at the reader as the same sentence and people learned to re-run the gate",
     file: "lib/execution-plan.mjs",
-    from: "      const wrong = REQUIRED_CONFIRMATIONS.filter((key) => checked[key] !== true && checked[key] !== NOT_CHECKED).map((key) => `${key}=${checked[key]}`);",
-    to: "      const wrong = REQUIRED_CONFIRMATIONS.filter((key) => checked[key] !== true);",
+    from: "      const wrong = REQUIRED_CONFIRMATIONS.filter((key) => checked[key] === false).map((key) => `${key}=${checked[key]}`);",
+    to: "      const wrong = REQUIRED_CONFIRMATIONS.filter((key) => checked[key] !== true).map((key) => `${key}=${checked[key]}`);",
     test: "tests/product/execution-plan.test.mjs",
     name: "an unread confirmation and a denied one are different outcomes"
   },
@@ -2494,8 +2494,8 @@ export const GUARDS = [
     guard: "an unavailable permission check is a distinct author state",
     reason: "a 502 must reach the record as NOT_CHECKED with its call and status; passing the failure object through makes it look like an untrusted author again",
     file: "lib/github-state.mjs",
-    from: "      source.author_trusted = access?.answer === NOT_CHECKED ? NOT_CHECKED : access;",
-    to: "      source.author_trusted = access;",
+    from: "      source.author_trusted = access.decision === null ? NOT_CHECKED : access.decision;",
+    to: "      source.author_trusted = access.decision;",
     test: "tests/product/execution-plan.test.mjs",
     name: "a transient write-access failure is not an untrusted author"
   },
@@ -2503,8 +2503,8 @@ export const GUARDS = [
     guard: "an unavailable permission check is not cached",
     reason: "a transient failure must be asked again, or a bad minute becomes the permanent answer for every record by the same author",
     file: "lib/github-state.mjs",
-    from: "    return { answer: NOT_CHECKED, call, status: error?.status ?? null };",
-    to: "    cache.set(login, false); return { answer: NOT_CHECKED, call, status: error?.status ?? null };",
+    from: "    return { decision: null, call, status: error?.status ?? null };",
+    to: "    cache.set(login, false); return { decision: null, call, status: error?.status ?? null };",
     test: "tests/product/execution-plan.test.mjs",
     name: "a transient permission failure is retried before the author is judged"
   },
@@ -2566,8 +2566,8 @@ export const GUARDS = [
     guard: "public write-access lookup has its required name",
     reason: "the tri-state contract belongs to hasWriteAccess; exporting it under a replacement name leaves its callers with a boolean that cannot report an unavailable request's answer, call, and status",
     file: "lib/github-state.mjs",
-    from: "export async function hasWriteAccess(repository, login, { auth, get = httpGet, cache = new Map() } = {}) {",
-    to: "export async function checkWriteAccess(repository, login, { auth, get = httpGet, cache = new Map() } = {}) {",
+    from: "export async function hasWriteAccess(repository, login, options = {}) {",
+    to: "export async function checkWriteAccess(repository, login, options = {}) {",
     test: "tests/product/execution-plan.test.mjs",
     name: "the public write-access lookup preserves allowed, denied, and unavailable answers"
   },
@@ -2638,7 +2638,7 @@ export const GUARDS = [
     guard: "close-evidence repository confirmation",
     reason: "forty hex characters and a positive integer are things a fabricated record has too",
     file: "lib/execution-plan.mjs",
-    from: "    if (checked && checked.verified !== true) {",
+    from: "    if (!isEstablished(completionDecision)) {",
     to: "    if (false) {",
     test: "tests/product/execution-plan.test.mjs",
     name: "a record the repository does not confirm is not evidence"
@@ -4880,8 +4880,8 @@ export const GUARDS = [
     guard: "a recomputation runs under the run's own boundary",
     reason: "the boundary is an input to the evaluation, so a recomputation without it rebuilds every withheld result as an issued one -- the untampered artifact fails its own verification and the check meant to catch a forged number produces the number a forger wants",
     file: "lib/cli.mjs",
-    from: "profile_digest: result.profile_digest, forms_completed: forms, boundary }, contract);",
-    to: "profile_digest: result.profile_digest, forms_completed: forms }, contract);",
+    from: "profile_digest: result.profile_digest, forms_completed: forms, boundary, require_facet_records: true }, contract);",
+    to: "profile_digest: result.profile_digest, forms_completed: forms, require_facet_records: true }, contract);",
     test: "tests/product/official-issuance.test.mjs",
     name: "a_withheld_result_verifies_as_the_result_it_is"
   },
@@ -4952,8 +4952,8 @@ export const GUARDS = [
     guard: "the claim stage reads the boundary",
     reason: "the stage is what a reader is entitled to conclude; without the boundary term a run whose confinement was refused reports PROFILE_BOUND on every surface",
     file: "lib/ecd-contract.mjs",
-    from: "&& boundaryWithheld.length === 0 ? \"PROFILE_BOUND\" : \"RUN_DIAGNOSTIC\";",
-    to: "? \"PROFILE_BOUND\" : \"RUN_DIAGNOSTIC\";",
+    from: "  const profileFactsEstablished = missingForms.length === 0 && unsupportedForms.length === 0 && unidentifiedFacets.length === 0 && boundaryWithheld.length === 0;",
+    to: "  const profileFactsEstablished = missingForms.length === 0 && unsupportedForms.length === 0 && unidentifiedFacets.length === 0;",
     test: "tests/product/official-issuance.test.mjs",
     name: "a_run_that_measured_everything_publishes_no_index_when_the_boundary_did_not_hold"
   },
@@ -7262,8 +7262,8 @@ export const GUARDS = [
     reason:
       "dropped from the list, a record from the previous build reads as a version this build has never heard of -- so an operator with legacy runs is told a mismatch rather than which generation wrote them",
     file: "lib/result-schema.mjs",
-    from: "export const RESULT_SCHEMA_GENERATIONS = Object.freeze([\"2.0.0\", \"2.1.0\", \"2.2.0\"]);",
-    to: "export const RESULT_SCHEMA_GENERATIONS = Object.freeze([\"2.0.0\", \"2.2.0\"]);",
+    from: "export const RESULT_SCHEMA_GENERATIONS = Object.freeze([\"2.0.0\", \"2.1.0\", \"2.2.0\", \"3.0.0\"]);",
+    to: "export const RESULT_SCHEMA_GENERATIONS = Object.freeze([\"2.0.0\", \"2.2.0\", \"3.0.0\"]);",
     test: "tests/product/hard-caps.test.mjs",
     name: "a result written before cap binding existed is named as an older generation, not accused of forging one"
   },
@@ -7455,8 +7455,8 @@ export const GUARDS = [
     guard: "a not-checked verification is unresolved, never verified",
     reason: "a superseded probe is readable but this build cannot establish its claims, so folding its NOT-CHECKED rows into exit 0 or top-level ok would endorse a record the verifier cannot vouch for",
     file: "lib/cli.mjs",
-    from: "  if (checks.some((row) => row.resolution === CHECK_NOT_CHECKED)) return VERIFICATION_UNRESOLVED;",
-    to: "  if (false) return VERIFICATION_UNRESOLVED;",
+    from: "function verificationExitCode(report) {\n  return decisionOutcome(report.decision, {\n    established: 0,\n    contradicted: VERIFY_RUN_CONTRADICTED_EXIT_CODE,\n    withheld: VERIFY_RUN_UNRESOLVED_EXIT_CODE\n  }).exit_code;\n}",
+    to: "function verificationExitCode(report) {\n  return decisionOutcome(report.decision, {\n    established: 0,\n    contradicted: VERIFY_RUN_CONTRADICTED_EXIT_CODE,\n    withheld: 0\n  }).exit_code;\n}",
     test: "tests/product/verify-run.test.mjs",
     name: "A5: a superseded v2 probe stays readable but leaves the run unresolved"
   },
@@ -7762,6 +7762,78 @@ export const GUARDS = [
     to: "if (false) {",
     test: "tests/product/strict-canary-evidence.test.mjs",
     name: "the release-canary script exits zero only for an accepted OBSERVED record"
+  },
+  {
+    guard: "facet evidence enters through the observation issuance boundary",
+    reason: "a facet module no production observation consumes cannot bind any issued claim; the actual observeRun boundary must attach the evidence records before evaluation sees them",
+    file: "lib/observe.mjs",
+    from: "  return facetEvidence === null ? observations : bindFacetRecords(observations, {\n    ...facetEvidence,\n    form_bindings: formBindings\n  });",
+    to: "  return observations;",
+    test: "tests/product/facet-uncertainty.test.mjs",
+    name: "issued observations bind facet records at the production boundary"
+  },
+  {
+    guard: "easier tasks retain their difficulty facet",
+    reason: "removing task difficulty would turn a same-operator easier task into evidence about the person rather than a separately identified administration",
+    file: "lib/facet-calibration.mjs",
+    from: "      difficulty_version: version,",
+    to: "      difficulty_version: null,",
+    test: "tests/product/facet-uncertainty.test.mjs",
+    name: "same operator plus an easier task remains a separately identified task record"
+  },
+  {
+    guard: "stronger models retain their model facet",
+    reason: "a resolved model profile is a condition of a score; dropping it lets a model change read as an operator change",
+    file: "lib/facet-calibration.mjs",
+    from: "      model_profile_digest: modelDigest,",
+    to: "      model_profile_digest: null,",
+    test: "tests/product/facet-uncertainty.test.mjs",
+    name: "a stronger model remains a separate model facet"
+  },
+  {
+    guard: "practice occasions retain their occasion facet",
+    reason: "a later occasion is practice evidence, not an unlabelled repeat that can become an independent person claim",
+    file: "lib/facet-calibration.mjs",
+    from: "      occasion_id: occasionId,",
+    to: "      occasion_id: null,",
+    test: "tests/product/facet-uncertainty.test.mjs",
+    name: "second occasion records practice rather than becoming a second independent person score"
+  },
+  {
+    guard: "strict verifier drift retains its contract digest",
+    reason: "the same response under a different verifier cannot be treated as the same observation; the verifier and its contract must remain separate facets",
+    file: "lib/facet-calibration.mjs",
+    from: "      verifier_contract_digest: digest({ verifier_id: observation.verifier_id ?? null, contract_digest: contractDigest }),",
+    to: "      verifier_contract_digest: contractDigest,",
+    test: "tests/product/facet-uncertainty.test.mjs",
+    name: "the same response under a stricter verifier exposes verifier drift"
+  },
+  {
+    guard: "translated forms retain their language facet",
+    reason: "a translated form needs invariance evidence before direct comparison, so deleting language from its score-unit record would hide the reason comparison is withheld",
+    file: "lib/facet-calibration.mjs",
+    from: "      language,",
+    to: "      language: null,",
+    test: "tests/product/facet-uncertainty.test.mjs",
+    name: "the same translated form withholds direct comparison pending invariance"
+  },
+  {
+    guard: "uncalibrated perfect forms do not establish generalizability",
+    reason: "three perfect local forms are not prospective population calibration; forcing the reducer true would issue a claim that has no universe evidence",
+    file: "lib/facet-calibration.mjs",
+    from: "  const generalizabilityDecision = allRequired([facetDecision, universeDecision, raterDecision]);",
+    to: "  const generalizabilityDecision = true;",
+    test: "tests/product/facet-uncertainty.test.mjs",
+    name: "three perfect uncalibrated forms cannot issue a generalizability claim"
+  },
+  {
+    guard: "missing population evidence leaves the interval null",
+    reason: "an interval without registered empirical prerequisites is a fake precision; the no-population artifact must keep its null rather than manufacture a numeric range",
+    file: "lib/facet-calibration.mjs",
+    from: "  const interval = isEstablished(uncertaintyDecision) && Array.isArray(calibration?.interval) && calibration.interval.length === 2\n    ? [...calibration.interval]\n    : null;",
+    to: "  const interval = [0, 1];",
+    test: "tests/product/facet-uncertainty.test.mjs",
+    name: "no population data permits PROFILE_BOUND but leaves uncertainty and generalizability withheld"
   }
 ];
 
@@ -8232,6 +8304,7 @@ export const ACCOUNTED_GUARDS = [
   "dismissing an unknown requires an argument",
   "doctor checks a required config name has a value",
   "done issues have no withheld phase",
+  "easier tasks retain their difficulty facet",
   "effective execute permission",
   "either spelling of an open pull request blocks",
   "elementary cycle enumeration",
@@ -8260,6 +8333,7 @@ export const ACCOUNTED_GUARDS = [
   "excluded issues present in the snapshot",
   "execution plan cycle detection",
   "explicit keys are keys",
+  "facet evidence enters through the observation issuance boundary",
   "false completion cap",
   "false completion needs the completion claim",
   "fingerprint compare",
@@ -8297,6 +8371,7 @@ export const ACCOUNTED_GUARDS = [
   "missing capability does not become a pass",
   "missing invariance evidence withholds",
   "missing observation is NOT_OBSERVED, not a failed metric",
+  "missing population evidence leaves the interval null",
   "missing route pair does not borrow a fixed form",
   "missing seeded terms do not become empty text matches",
   "missing-result refusal",
@@ -8343,6 +8418,7 @@ export const ACCOUNTED_GUARDS = [
   "phase permissions are pinned, not only phase names",
   "phases are a contract",
   "positive-observation cap guard",
+  "practice occasions retain their occasion facet",
   "pristine error classification",
   "probe process independence",
   "probe result authentication",
@@ -8423,6 +8499,8 @@ export const ACCOUNTED_GUARDS = [
   "started statuses need finished predecessors",
   "stored probe and delegation evidence is rebound during run verification",
   "stored routing evidence is rebound during run verification",
+  "strict verifier drift retains its contract digest",
+  "stronger models retain their model facet",
   "subject nonce non-disclosure",
   "subject runner executed from memory",
   "supply-chain digest covers the .npmrc",
@@ -8618,10 +8696,12 @@ export const ACCOUNTED_GUARDS = [
   "the workspace is named relatively so the store is not",
   "top-level artifact open does not follow",
   "tracked descendants are terminated at teardown",
+  "translated forms retain their language facet",
   "transport approval binding",
   "trend dedupe",
   "trusted-file integrity re-check",
   "trusted-process import prohibition",
+  "uncalibrated perfect forms do not establish generalizability",
   "undecided items are in neither denominator",
   "undeclared isolation is the weakest lane",
   "unread ACL is not a clean ACL",

@@ -265,6 +265,21 @@ jobs:
         run: npm run verify:no-operator-score-hero
       - name: model identity
         run: npm run verify:model-identity
+      # VERIFIER_ACCEPTANCE A7/R10: exact contract-bound facet evidence reaches issued rows.
+      - name: facet records
+        run: npm run verify:facet-records
+      # VERIFIER_ACCEPTANCE A8/R13: no prerequisites means INSUFFICIENT_DATA and a null interval.
+      - name: uncertainty contract
+        run: npm run verify:uncertainty-contract
+      # VERIFIER_ACCEPTANCE A7/R12: empirical calibration is required for the elevated claim.
+      - name: generalizability withholding
+        run: npm run verify:generalizability-withholding
+      # VERIFIER_ACCEPTANCE A9/R17: interfaces exist without calling an operational default psychometric.
+      - name: calibration scaffold
+        run: npm run verify:calibration-scaffold
+      # VERIFIER_ACCEPTANCE A8/R14: population statistics are null until evidence exists.
+      - name: no fake population statistics
+        run: npm run verify:no-fake-population-statistics
 
   operational-form-gates:
     needs: action-pins
