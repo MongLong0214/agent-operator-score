@@ -504,3 +504,81 @@ test("held-out passes establish transfer per relatedness, and delayed tasks answ
   assert.equal(report.uncertainty.status, "SINGLE_OCCASION", "one held-out occasion is not a longitudinal study and the report says so");
   assert.equal(report.included_in_core_composite, false);
 });
+
+// ---------------------------------------------------------------------------------------------
+// DIF / invariance gate: comparison withholding (#585)
+
+test("every cross-facet comparison is withheld until invariance evidence exists, for each declared facet", async () => {
+  const { INVARIANCE_FACETS, comparisonGate } = await import("../../lib/form-class.mjs");
+  const { modelIdentityProjection } = await import("../../lib/model-identity.mjs");
+  assert.deepEqual([...INVARIANCE_FACETS], ["language", "interface", "model_runtime", "platform", "experience", "administration_version"]);
+  for (const facet of INVARIANCE_FACETS) {
+    const gate = comparisonGate({ facet, left_level: "a", right_level: "b" });
+    assert.equal(gate.decision, null, `${facet}: no invariance evidence is a null, not a verdict`);
+    assert.equal(gate.comparison, "WITHHELD", `${facet}: the comparison must be withheld, not made with a caveat`);
+    assert.equal(gate.reasons.some((reason) => reason.includes("INVARIANCE_UNESTABLISHED")), true, facet);
+  }
+  assert.throws(() => comparisonGate({ facet: "hair_colour", left_level: "a", right_level: "b" }), /AOS_COMPARISON_FACET_UNKNOWN/);
+  // Same operator, new model: the projection this product already publishes and this gate answer
+  // the same question the same way, from the same contract state.
+  const projection = modelIdentityProjection();
+  assert.equal(projection.cross_model_comparison, "WITHHELD");
+  assert.equal(comparisonGate({ facet: "model_runtime", left_level: "gpt-x", right_level: "gpt-y" }).comparison, "WITHHELD");
+});
+
+test("translation alone is not invariance: a re-expressed form's comparison is withheld outright", async () => {
+  const { comparisonGate, DIF_RUNNER_REPORT_SCHEMA_ID, DIF_RUNNER_INTERFACE } = await import("../../lib/form-class.mjs");
+  const translated = comparisonGate({ facet: "language", left_level: "ko", right_level: "en" });
+  assert.equal(translated.comparison, "WITHHELD");
+  assert.equal(translated.decision, null);
+  // Evidence about another facet, or about other levels, is not evidence about this comparison.
+  const foreignFacet = comparisonGate({
+    facet: "language", left_level: "ko", right_level: "en",
+    invariance_evidence: { schema_id: DIF_RUNNER_REPORT_SCHEMA_ID, interface_version: DIF_RUNNER_INTERFACE.version, facet: "interface", levels: ["cli", "web"], sample_per_group: { "cli": 40, "web": 40 }, dif_detected: false }
+  });
+  assert.equal(foreignFacet.comparison, "WITHHELD");
+  assert.equal(foreignFacet.reasons.some((reason) => reason.includes("AOS_COMPARISON_EVIDENCE_SCOPE")), true);
+  const foreignLevels = comparisonGate({
+    facet: "language", left_level: "ko", right_level: "en",
+    invariance_evidence: { schema_id: DIF_RUNNER_REPORT_SCHEMA_ID, interface_version: DIF_RUNNER_INTERFACE.version, facet: "language", levels: ["en", "ja"], sample_per_group: { en: 40, ja: 40 }, dif_detected: false }
+  });
+  assert.equal(foreignLevels.comparison, "WITHHELD");
+});
+
+test("a small DIF sample never turns a comparison on, and detected DIF refuses it", async () => {
+  const { comparisonGate, DIF_RUNNER_INTERFACE, DIF_RUNNER_REPORT_SCHEMA_ID } = await import("../../lib/form-class.mjs");
+  assert.equal(DIF_RUNNER_INTERFACE.schema_id, "aos-dif-runner-interface.v1");
+  assert.equal(DIF_RUNNER_INTERFACE.version, "1.0.0");
+  const evidence = (overrides = {}) => ({
+    schema_id: DIF_RUNNER_REPORT_SCHEMA_ID,
+    interface_version: DIF_RUNNER_INTERFACE.version,
+    facet: "language",
+    levels: ["ko", "en"],
+    sample_per_group: { ko: DIF_RUNNER_INTERFACE.minimum_sample_per_group, en: DIF_RUNNER_INTERFACE.minimum_sample_per_group },
+    dif_detected: false,
+    ...overrides
+  });
+  const small = comparisonGate({ facet: "language", left_level: "ko", right_level: "en", invariance_evidence: evidence({ sample_per_group: { ko: 5, en: 200 } }) });
+  assert.equal(small.decision, null, "a small sample is not a smaller yes");
+  assert.equal(small.comparison, "WITHHELD");
+  assert.equal(small.reasons.some((reason) => reason.includes("AOS_COMPARISON_SAMPLE_BELOW_MINIMUM")), true);
+  const passed = comparisonGate({ facet: "language", left_level: "ko", right_level: "en", invariance_evidence: evidence() });
+  assert.equal(passed.decision, true);
+  assert.equal(passed.comparison, "PERMITTED");
+  const detected = comparisonGate({ facet: "language", left_level: "ko", right_level: "en", invariance_evidence: evidence({ dif_detected: true }) });
+  assert.equal(detected.decision, false, "detected DIF is a contradiction, not an absence");
+  assert.equal(detected.comparison, "REFUSED");
+  // An undeclared level is not an equal one: two silences do not compare.
+  const undeclared = comparisonGate({ facet: "language", left_level: null, right_level: null });
+  assert.equal(undeclared.comparison, "WITHHELD");
+  assert.equal(undeclared.decision, null);
+  assert.equal(undeclared.reasons.some((reason) => reason.includes("AOS_COMPARISON_FACET_UNDECLARED")), true);
+  // The same declared level on both sides is not a cross-facet comparison at all.
+  const same = comparisonGate({ facet: "language", left_level: "ko", right_level: "ko" });
+  assert.equal(same.decision, true);
+  assert.equal(same.comparison, "PERMITTED");
+  // A runner that does not speak the versioned interface establishes nothing.
+  const wrongRunner = comparisonGate({ facet: "language", left_level: "ko", right_level: "en", invariance_evidence: evidence({ schema_id: "somebody-elses-dif.v9" }) });
+  assert.equal(wrongRunner.comparison, "WITHHELD");
+  assert.equal(wrongRunner.reasons.some((reason) => reason.includes("AOS_COMPARISON_RUNNER_MISMATCH")), true);
+});
