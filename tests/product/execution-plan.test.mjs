@@ -31,6 +31,12 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 const entry = (doc, issue) => doc.issues.find((one) => one.issue === issue);
 const failures = (report) => report.failures.map((one) => one.check);
 
+// `blocked_by` is gone from the plan document -- an issue's dependencies are now split across
+// `implementation_blocked_by` and `acceptance_blocked_by`. Tests that only need "does this issue
+// wait on anything, of either kind" read the union; tests that exercise the split itself name the
+// field they mean.
+const dependencyBlockedBy = (issue) => [...(issue.implementation_blocked_by ?? []), ...(issue.acceptance_blocked_by ?? [])];
+
 // A snapshot the live path will accept. `{live: true}` alone is a caller's claim; the file has to
 // agree, which is the point of the check being tested here.
 const asLive = (snapshot) => ({ ...snapshot, source: "live" });
@@ -83,23 +89,28 @@ test("the shipped manifest passes every static check", () => {
 test("a dependency cycle fails", () => {
   const doc = plan();
   // #562 waits on #564; making #564 wait on #562 closes the loop the epic calls out by name.
-  entry(doc, 564).blocked_by.push(562);
+  entry(doc, 564).implementation_blocked_by.push(562);
   entry(doc, 562).blocks.push(564);
   assert.ok(failures(checkPlan(doc)).includes("dependency-cycle"));
 });
 
 test("a self dependency fails", () => {
   const doc = plan();
-  entry(doc, 559).blocked_by.push(559);
+  entry(doc, 559).implementation_blocked_by.push(559);
   assert.ok(failures(checkPlan(doc)).includes("self-dependency"));
 });
 
 // Several tests need an issue that is still blocked behind unfinished work. #559 was that example
 // until #582 and #588 were done and it became ready; the plan moves, so the example is taken from
 // whatever it says today rather than from a number that was true when the test was written.
+// Specifically an unfinished IMPLEMENTATION predecessor: `ready-with-unfinished-predecessor` is now
+// gated on implementation_blocked_by alone, so an example whose only pending predecessor is an
+// acceptance block would not reproduce the failure these tests exist to pin.
 const blockedBehindUnfinished = (doc) => {
   const done = new Set(doc.issues.filter((one) => one.status === "done").map((one) => one.issue));
-  const one = doc.issues.find((each) => each.status === "blocked" && each.blocked_by.some((number) => !done.has(number)));
+  const one = doc.issues.find(
+    (each) => each.status === "blocked" && each.implementation_blocked_by.some((number) => !done.has(number))
+  );
   assert.ok(one, "the plan has no blocked issue left to serve as the example");
   return one;
 };
@@ -112,7 +123,9 @@ test("a ready issue with an unfinished predecessor fails", () => {
 
 test("a blocked issue whose predecessors all passed is stale and fails", () => {
   const doc = plan();
-  for (const number of blockedBehindUnfinished(doc).blocked_by) entry(doc, number).status = "done";
+  // Every predecessor of either kind, not just the implementation ones used to find the example:
+  // `stale-blocked-status` only fires once both implementation and acceptance are clear.
+  for (const number of dependencyBlockedBy(blockedBehindUnfinished(doc))) entry(doc, number).status = "done";
   assert.ok(failures(checkPlan(doc)).includes("stale-blocked-status"));
 });
 
@@ -124,7 +137,7 @@ test("two issues owning the same hot file fails", () => {
 
 test("blocked_by and blocks must agree in both directions", () => {
   const doc = plan();
-  entry(doc, 559).blocked_by = entry(doc, 559).blocked_by.filter((n) => n !== 582);
+  entry(doc, 559).implementation_blocked_by = entry(doc, 559).implementation_blocked_by.filter((n) => n !== 582);
   assert.ok(failures(checkPlan(doc)).includes("reverse-edge-inconsistent"));
 });
 
@@ -224,7 +237,7 @@ test("phase-ready is separate from issue ready", () => {
   const phased = doc.issues.filter((one) => (one.phases ?? []).length > 0);
   assert.ok(phased.length > 0, "the plan has no phased issue left to check");
   for (const one of phased) {
-    const unblocked = one.blocked_by.every((number) => done.has(number));
+    const unblocked = dependencyBlockedBy(one).every((number) => done.has(number));
     if (one.status === "done") {
       // Terminal: a finished issue's phases are finished too, including the integrating one.
       for (const phase of one.phases) assert.equal(phase.status, "done", `#${one.issue} phase ${phase.id}`);
@@ -405,13 +418,13 @@ test("the next batch is decidable from the manifest alone", () => {
   const done = new Set(doc.issues.filter((one) => one.status === "done").map((one) => one.issue));
   const ready = doc.issues.filter((one) => one.status === "ready").map((one) => one.issue).sort((a, b) => a - b);
   const expected = doc.issues
-    .filter((one) => one.kind !== "epic" && one.status !== "done" && one.blocked_by.every((number) => done.has(number)))
+    .filter((one) => one.kind !== "epic" && one.status !== "done" && dependencyBlockedBy(one).every((number) => done.has(number)))
     .map((one) => one.issue)
     .sort((a, b) => a - b);
   assert.deepEqual(ready, expected);
   assert.ok(ready.length > 0, "the plan has run out of startable work");
   // And batch 0 is the set that started with nothing to wait for: every one of them is done or ready.
-  for (const one of doc.issues.filter((one) => one.batch === 0 && one.blocked_by.length === 0)) {
+  for (const one of doc.issues.filter((one) => one.batch === 0 && dependencyBlockedBy(one).length === 0)) {
     assert.ok(one.status === "done" || one.status === "ready", `#${one.issue} is batch 0 and ${one.status}`);
   }
 
@@ -425,7 +438,7 @@ test("the next batch is decidable from the manifest alone", () => {
   for (const number of phaseOnly) {
     const one = entry(doc, number);
     assert.notEqual(one.status, "done", `#${number} is done yet carries a ready phase`);
-    assert.ok(!one.blocked_by.every((each) => done.has(each)), `#${number} is startable as itself, so it is not phase-only`);
+    assert.ok(!dependencyBlockedBy(one).every((each) => done.has(each)), `#${number} is startable as itself, so it is not phase-only`);
   }
 });
 
@@ -473,7 +486,7 @@ test("the audit summary carries no issue title, and no absolute path or token in
   const broken = snapshot.issues.find((one) => one.number === 567);
   broken.labels = ["release:v0.2.0", "priority:P0", "area:measurement", "status:done"];
   broken.milestone = 13;
-  entry(doc, 559).blocked_by.push(559);
+  entry(doc, 559).implementation_blocked_by.push(559);
 
   const summary = auditSummary(doc, snapshot, {
     plan: checkPlan(doc),
@@ -764,9 +777,9 @@ test("the two-cycles a shared visited set used to drop are each reported once", 
   const doc = plan();
   // Three issues that all wait on each other. A depth-first search with one shared visited set
   // finds only some of these, and the one it drops is the edge the reader has to remove.
-  entry(doc, 553).blocked_by = [554, 555];
-  entry(doc, 554).blocked_by = [553, 555];
-  entry(doc, 555).blocked_by = [553, 554];
+  entry(doc, 553).implementation_blocked_by = [554, 555];
+  entry(doc, 554).implementation_blocked_by = [553, 555];
+  entry(doc, 555).implementation_blocked_by = [553, 554];
   for (const number of [553, 554, 555]) entry(doc, number).status = "blocked";
 
   const reported = checkPlan(doc)
@@ -1359,7 +1372,8 @@ test("the cycle report is bounded, so a dense graph fails rather than hangs", ()
   // outnumber anything worth enumerating; the answer needed is "this is cyclic, and here is where".
   const numbers = doc.issues.map((one) => one.issue);
   for (const one of doc.issues) {
-    one.blocked_by = numbers.filter((number) => number !== one.issue);
+    one.implementation_blocked_by = numbers.filter((number) => number !== one.issue);
+    one.acceptance_blocked_by = [];
     one.blocks = numbers.filter((number) => number !== one.issue);
   }
   const started = Date.now();
@@ -1463,7 +1477,8 @@ test("a dense acyclic graph finishes quickly instead of exploring every path", (
   // triggered here and the check hung on a graph whose answer is "nothing wrong".
   const numbers = doc.issues.map((one) => one.issue);
   for (const one of doc.issues) {
-    one.blocked_by = numbers.filter((number) => number > one.issue);
+    one.implementation_blocked_by = numbers.filter((number) => number > one.issue);
+    one.acceptance_blocked_by = [];
     one.blocks = numbers.filter((number) => number < one.issue);
   }
   const started = Date.now();
@@ -1477,7 +1492,8 @@ test("a truncated cycle search says so", () => {
   const doc = plan();
   const numbers = doc.issues.map((one) => one.issue);
   for (const one of doc.issues) {
-    one.blocked_by = numbers.filter((number) => number !== one.issue);
+    one.implementation_blocked_by = numbers.filter((number) => number !== one.issue);
+    one.acceptance_blocked_by = [];
     one.blocks = numbers.filter((number) => number !== one.issue);
   }
   const names = failures(checkPlan(doc));
@@ -1585,7 +1601,7 @@ test("a canonical-sized plan cannot carry unbounded edges, at the issue or the p
   // stayed canonical-sized while forcing unbounded work below it -- and it made the reachability
   // search exhaust its budget before reaching the real edge.
   const doc = plan();
-  entry(doc, 553).blocked_by = [...Array.from({ length: 100_001 }, (_, index) => 900_000 + index), 554];
+  entry(doc, 553).implementation_blocked_by = [...Array.from({ length: 100_001 }, (_, index) => 900_000 + index), 554];
   const started = Date.now();
   assert.ok(failures(checkPlan(doc)).includes("schema-invalid"));
   assert.ok(Date.now() - started < 10_000);
@@ -1604,7 +1620,7 @@ test("a reachability answer that ran out of budget is reported, not returned as 
   // two do not depend on each other" about a pair that does.
   const doc = plan();
   const one = entry(doc, 559);
-  one.blocked_by = [...Array.from({ length: 120_000 }, (_, index) => 800_000 + index), 582, 588];
+  one.implementation_blocked_by = [...Array.from({ length: 120_000 }, (_, index) => 800_000 + index), 582, 588];
   one.allowed_parallel_with = [...one.allowed_parallel_with, 582];
   entry(doc, 582).allowed_parallel_with = [...entry(doc, 582).allowed_parallel_with, 559];
 
@@ -1641,7 +1657,8 @@ test("a ring the size of the real plan is reported as exactly one cycle", () => 
   const doc = plan();
   const numbers = doc.issues.map((one) => one.issue);
   doc.issues.forEach((one, index) => {
-    one.blocked_by = [numbers[(index + 1) % numbers.length]];
+    one.implementation_blocked_by = [numbers[(index + 1) % numbers.length]];
+    one.acceptance_blocked_by = [];
     one.blocks = [numbers[(index - 1 + numbers.length) % numbers.length]];
   });
   const report = checkPlan(doc);

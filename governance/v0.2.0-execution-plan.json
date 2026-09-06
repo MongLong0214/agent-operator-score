@@ -1490,14 +1490,14 @@
       ],
       "owned_paths": [
         "governance/v0.2.0-execution-plan.json",
-        "schemas/aos-execution-plan.v1.schema.json",
+        "schemas/aos-execution-plan.v2.schema.json",
         "lib/execution-plan.mjs",
         "lib/github-state.mjs",
         "scripts/verify-v020-execution-plan.mjs"
       ],
       "evidence_bindings": {
         "manifest_digest": "governance/v0.2.0-execution-plan.json",
-        "schema_digest": "schemas/aos-execution-plan.v1.schema.json"
+        "schema_digest": "schemas/aos-execution-plan.v2.schema.json"
       },
       "allowed_parallel_with": [
         553,

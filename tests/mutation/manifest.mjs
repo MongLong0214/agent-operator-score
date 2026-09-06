@@ -2708,10 +2708,10 @@ export const GUARDS = [
   },
   {
     guard: "started statuses need finished predecessors",
-    reason: "constraining only `ready` let an issue be moved to in-progress and then done past its blockers",
+    reason: "constraining only `ready` let an issue be moved to in-progress and then done past its blockers; the split kept the rule but moved it onto implementation_blocked_by alone, since acceptance blocking must not gate opening or merging a PR",
     file: "lib/execution-plan.mjs",
-    from: "    if (STARTED.has(one.status) && unfinished.length > 0) {",
-    to: "    if (one.status === \"ready\" && false) {",
+    from: "    if (STARTED.has(one.status) && unfinishedImplementation.length > 0) {",
+    to: "    if (false) {",
     test: "tests/product/execution-plan.test.mjs",
     name: "in-progress and done are constrained by predecessors, not just ready"
   },
@@ -3828,9 +3828,9 @@ export const GUARDS = [
   },
   {
     guard: "stale blocked status",
-    reason: "a successor still labelled blocked after its predecessors landed hides available work",
+    reason: "a successor still labelled blocked after its predecessors landed hides available work; the split requires both implementation and acceptance predecessors to have landed, since an issue can still legitimately be blocked on acceptance alone",
     file: "lib/execution-plan.mjs",
-    from: 'if (one.status === "blocked" && one.blocked_by.length > 0 && unfinished.length === 0) {',
+    from: 'if (one.status === "blocked" && dependencyBlockedBy(one).length > 0 && unfinishedImplementation.length === 0 && unfinishedAcceptance.length === 0) {',
     to: "if (false) {",
     test: "tests/product/execution-plan.test.mjs",
     name: "a blocked issue whose predecessors all passed is stale and fails"
@@ -7807,6 +7807,33 @@ export const GUARDS = [
     to: "if (false) {",
     test: "tests/product/strict-canary-evidence.test.mjs",
     name: "the release-canary script exits zero only for an accepted OBSERVED record"
+  },
+  {
+    guard: "acceptance blocking withholds close evidence",
+    reason: "the split lets implementation blocking gate only opening and merging a PR; acceptance blocking must still gate issuing a completion record, or a candidate artifact built early could be certified as release evidence before the release predecessors it depends on actually land",
+    file: "lib/execution-plan.mjs",
+    from: "    if (unfinishedAcceptance.length > 0) {",
+    to: "    if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "an unsatisfied acceptance block cannot issue close evidence"
+  },
+  {
+    guard: "every legacy dependency edge lands in exactly one split field",
+    reason: "the split must classify edges, not delete them -- an edge present in the old blocked_by set and absent from both implementation_blocked_by and acceptance_blocked_by would quietly create parallelism the old contract never allowed",
+    file: "lib/execution-plan.mjs",
+    from: "    if (missingClassification.length > 0) fail(\"dependency-edge-unclassified\", `#${one.issue} does not classify legacy edge(s) ${asList(missingClassification)}`, one.issue);",
+    to: "    if (false) fail(\"dependency-edge-unclassified\", `#${one.issue} does not classify legacy edge(s) ${asList(missingClassification)}`, one.issue);",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "every legacy dependency edge is classified by one split field"
+  },
+  {
+    guard: "the plan's contract version tracks its bytes",
+    reason: "issue #631 named exactly this gap -- nothing forced a schema version to move when the plan's bytes did. The split adds fields, which moves the bytes, and the contract ledger is what makes a stale version identifier a failure instead of a silent drift",
+    file: "lib/execution-plan.mjs",
+    from: "      if (recorded.plan_digest !== planDigest(plan)) {",
+    to: "      if (false) {",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a moved plan byte without a moved contract version fails"
   }
 ];
 
@@ -8142,6 +8169,7 @@ export const ACCOUNTED_GUARDS = [
   "absent coverage is not a measured zero",
   "absent protection on both sides is not unchanged protection",
   "abstention cannot outweigh decision",
+  "acceptance blocking withholds close evidence",
   "actual-effect lookup",
   "adapter membership is a published name, not a path shape",
   "advice is answered once",
@@ -8295,6 +8323,7 @@ export const ACCOUNTED_GUARDS = [
   "every directory entry is charged to the scan budget",
   "every invariant family is recorded on both sides",
   "every kind of evidence is required by name",
+  "every legacy dependency edge lands in exactly one split field",
   "every observation a row cites must record a run that succeeded",
   "every projection is compared with the result",
   "every published string is constrained at the mint",
@@ -8579,6 +8608,7 @@ export const ACCOUNTED_GUARDS = [
   "the operator-typed event set is what the gate covers",
   "the per-task invocation bound is compared",
   "the phrase list names the artifact rows it is supposed to check",
+  "the plan's contract version tracks its bytes",
   "the policy digest covers the forbidden rules themselves",
   "the post-deletion observation follows the deletion",
   "the post-deletion observation is taken promptly",
