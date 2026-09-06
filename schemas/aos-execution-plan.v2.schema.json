@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/MongLong0214/agent-operator-score/schemas/aos-execution-plan.v1.schema.json",
+  "$id": "https://github.com/MongLong0214/agent-operator-score/schemas/aos-execution-plan.v2.schema.json",
   "title": "AOS v0.2.0 execution plan",
   "description": "The machine-readable execution contract for the v0.2.0 release. A coding agent reads this file, not the epic prose, to decide what it is allowed to start.",
   "type": "object",
@@ -23,7 +23,7 @@
   ],
   "properties": {
     "schema": {
-      "const": "aos-execution-plan.v1"
+      "const": "aos-execution-plan.v2"
     },
     "release": {
       "type": "string",
@@ -112,7 +112,8 @@
         "kind",
         "status",
         "batch",
-        "blocked_by",
+        "implementation_blocked_by",
+        "acceptance_blocked_by",
         "blocks",
         "priority",
         "area",
@@ -156,7 +157,15 @@
           ],
           "minimum": 0
         },
-        "blocked_by": {
+        "implementation_blocked_by": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "uniqueItems": true,
+          "maxItems": 64
+        },
+        "acceptance_blocked_by": {
           "type": "array",
           "items": {
             "type": "integer"

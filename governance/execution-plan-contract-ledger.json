@@ -1,0 +1,15 @@
+{
+  "schema": "aos-execution-plan-contract-ledger.v1",
+  "versions": [
+    {
+      "schema": "aos-execution-plan.v1",
+      "plan_digest": "sha256:4ce11bc5e58e001786e4b657399903db99288e88abc5ec707f8486f63e84fb7d",
+      "schema_digest": "sha256:05aaa22ec7e9128f55702093fdbb60a4116fb455f8eb0cb2ea8fa73c756098f8"
+    },
+    {
+      "schema": "aos-execution-plan.v2",
+      "plan_digest": "sha256:4502a77ce84be8462960e89c13f7d215e7d7ca50cf25c477805ca470d3878104",
+      "schema_digest": "sha256:7a0bbdf84a7017ac0c52e8b0e2d46ed4904235669958e9e33f923f7d9cd568ab"
+    }
+  ]
+}

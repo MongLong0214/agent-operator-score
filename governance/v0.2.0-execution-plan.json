@@ -1,5 +1,5 @@
 {
-  "schema": "aos-execution-plan.v1",
+  "schema": "aos-execution-plan.v2",
   "release": "v0.2.0",
   "repository": "MongLong0214/agent-operator-score",
   "epic": 573,
@@ -79,7 +79,8 @@
       "kind": "implementation",
       "status": "done",
       "batch": 0,
-      "blocked_by": [],
+      "implementation_blocked_by": [],
+      "acceptance_blocked_by": [],
       "blocks": [
         557,
         562,
@@ -122,7 +123,8 @@
       "kind": "implementation",
       "status": "done",
       "batch": 0,
-      "blocked_by": [],
+      "implementation_blocked_by": [],
+      "acceptance_blocked_by": [],
       "blocks": [
         556,
         561,
@@ -164,7 +166,8 @@
       "kind": "implementation",
       "status": "done",
       "batch": 0,
-      "blocked_by": [],
+      "implementation_blocked_by": [],
+      "acceptance_blocked_by": [],
       "blocks": [
         556,
         562,
@@ -206,9 +209,11 @@
       "kind": "implementation",
       "status": "done",
       "batch": 1,
-      "blocked_by": [
+      "implementation_blocked_by": [
         554,
-        555,
+        555
+      ],
+      "acceptance_blocked_by": [
         588
       ],
       "blocks": [
@@ -274,10 +279,12 @@
       "kind": "implementation",
       "status": "done",
       "batch": 2,
-      "blocked_by": [
+      "implementation_blocked_by": [
         553,
         556,
-        559,
+        559
+      ],
+      "acceptance_blocked_by": [
         588
       ],
       "blocks": [
@@ -314,10 +321,12 @@
       "kind": "implementation",
       "status": "done",
       "batch": 3,
-      "blocked_by": [
+      "implementation_blocked_by": [
         559,
         560,
-        582,
+        582
+      ],
+      "acceptance_blocked_by": [
         588
       ],
       "blocks": [
@@ -354,8 +363,10 @@
       "kind": "implementation",
       "status": "done",
       "batch": 1,
-      "blocked_by": [
-        582,
+      "implementation_blocked_by": [
+        582
+      ],
+      "acceptance_blocked_by": [
         588
       ],
       "blocks": [
@@ -401,9 +412,11 @@
       "kind": "implementation",
       "status": "done",
       "batch": 2,
-      "blocked_by": [
+      "implementation_blocked_by": [
         559,
-        582,
+        582
+      ],
+      "acceptance_blocked_by": [
         588
       ],
       "blocks": [
@@ -443,8 +456,10 @@
       "kind": "implementation",
       "status": "done",
       "batch": 1,
-      "blocked_by": [
-        554,
+      "implementation_blocked_by": [
+        554
+      ],
+      "acceptance_blocked_by": [
         588
       ],
       "blocks": [
@@ -481,8 +496,8 @@
       "issue": 562,
       "kind": "implementation",
       "status": "blocked",
-      "batch": 6,
-      "blocked_by": [
+      "batch": 7,
+      "implementation_blocked_by": [
         553,
         554,
         555,
@@ -501,7 +516,9 @@
         583,
         584,
         585,
-        586,
+        586
+      ],
+      "acceptance_blocked_by": [
         588
       ],
       "blocks": [
@@ -532,8 +549,9 @@
       "issue": 563,
       "kind": "implementation",
       "status": "blocked",
-      "batch": 6,
-      "blocked_by": [
+      "batch": 4,
+      "implementation_blocked_by": [],
+      "acceptance_blocked_by": [
         562,
         588
       ],
@@ -566,13 +584,15 @@
       "kind": "implementation",
       "status": "ready",
       "batch": 4,
-      "blocked_by": [
+      "implementation_blocked_by": [
         553,
         558,
         560,
         567,
         582,
-        583,
+        583
+      ],
+      "acceptance_blocked_by": [
         588
       ],
       "blocks": [
@@ -607,7 +627,8 @@
       "kind": "implementation",
       "status": "done",
       "batch": 0,
-      "blocked_by": [],
+      "implementation_blocked_by": [],
+      "acceptance_blocked_by": [],
       "blocks": [
         569,
         578,
@@ -650,9 +671,11 @@
       "kind": "implementation",
       "status": "done",
       "batch": 3,
-      "blocked_by": [
+      "implementation_blocked_by": [
         557,
-        559,
+        559
+      ],
+      "acceptance_blocked_by": [
         588
       ],
       "blocks": [
@@ -689,7 +712,8 @@
       "kind": "implementation",
       "status": "done",
       "batch": 0,
-      "blocked_by": [],
+      "implementation_blocked_by": [],
+      "acceptance_blocked_by": [],
       "blocks": [
         562,
         564,
@@ -729,10 +753,12 @@
       "kind": "implementation",
       "status": "blocked",
       "batch": 5,
-      "blocked_by": [
+      "implementation_blocked_by": [
         559,
         582,
-        584,
+        584
+      ],
+      "acceptance_blocked_by": [
         588
       ],
       "blocks": [
@@ -767,8 +793,9 @@
       "issue": 569,
       "kind": "release",
       "status": "blocked",
-      "batch": 8,
-      "blocked_by": [
+      "batch": 4,
+      "implementation_blocked_by": [],
+      "acceptance_blocked_by": [
         553,
         554,
         555,
@@ -825,7 +852,8 @@
       "kind": "release",
       "status": "done",
       "batch": 0,
-      "blocked_by": [],
+      "implementation_blocked_by": [],
+      "acceptance_blocked_by": [],
       "blocks": [
         571,
         577,
@@ -867,10 +895,12 @@
       "issue": 571,
       "kind": "release",
       "status": "blocked",
-      "batch": 8,
-      "blocked_by": [
+      "batch": 4,
+      "implementation_blocked_by": [
+        570
+      ],
+      "acceptance_blocked_by": [
         569,
-        570,
         588
       ],
       "blocks": [
@@ -903,7 +933,8 @@
       "kind": "audit",
       "status": "ready",
       "batch": 0,
-      "blocked_by": [],
+      "implementation_blocked_by": [],
+      "acceptance_blocked_by": [],
       "blocks": [],
       "priority": "P2",
       "area": "repo",
@@ -960,7 +991,8 @@
       "kind": "epic",
       "status": "tracking",
       "batch": null,
-      "blocked_by": [],
+      "implementation_blocked_by": [],
+      "acceptance_blocked_by": [],
       "blocks": [],
       "priority": "P0",
       "area": "measurement",
@@ -983,11 +1015,13 @@
       "kind": "implementation",
       "status": "done",
       "batch": 2,
-      "blocked_by": [
+      "implementation_blocked_by": [
         554,
         555,
         556,
-        561,
+        561
+      ],
+      "acceptance_blocked_by": [
         588
       ],
       "blocks": [
@@ -1021,8 +1055,9 @@
       "issue": 575,
       "kind": "implementation",
       "status": "blocked",
-      "batch": 7,
-      "blocked_by": [
+      "batch": 4,
+      "implementation_blocked_by": [],
+      "acceptance_blocked_by": [
         562,
         563,
         574,
@@ -1058,10 +1093,12 @@
       "kind": "implementation",
       "status": "ready",
       "batch": 3,
-      "blocked_by": [
+      "implementation_blocked_by": [
         559,
         560,
-        583,
+        583
+      ],
+      "acceptance_blocked_by": [
         588
       ],
       "blocks": [
@@ -1096,11 +1133,13 @@
       "issue": 577,
       "kind": "release",
       "status": "blocked",
-      "batch": 8,
-      "blocked_by": [
+      "batch": 5,
+      "implementation_blocked_by": [
+        571
+      ],
+      "acceptance_blocked_by": [
         569,
         570,
-        571,
         575,
         588
       ],
@@ -1131,8 +1170,12 @@
       "issue": 578,
       "kind": "acceptance",
       "status": "blocked",
-      "batch": 9,
-      "blocked_by": [
+      "batch": 6,
+      "implementation_blocked_by": [
+        571,
+        577
+      ],
+      "acceptance_blocked_by": [
         553,
         554,
         555,
@@ -1151,11 +1194,9 @@
         568,
         569,
         570,
-        571,
         574,
         575,
         576,
-        577,
         582,
         583,
         584,
@@ -1190,7 +1231,8 @@
       "kind": "implementation",
       "status": "done",
       "batch": 0,
-      "blocked_by": [],
+      "implementation_blocked_by": [],
+      "acceptance_blocked_by": [],
       "blocks": [
         558,
         559,
@@ -1246,11 +1288,13 @@
       "kind": "implementation",
       "status": "done",
       "batch": 3,
-      "blocked_by": [
+      "implementation_blocked_by": [
         558,
         559,
         560,
-        582,
+        582
+      ],
+      "acceptance_blocked_by": [
         588
       ],
       "blocks": [
@@ -1288,12 +1332,14 @@
       "kind": "implementation",
       "status": "blocked",
       "batch": 4,
-      "blocked_by": [
+      "implementation_blocked_by": [
         559,
         561,
         564,
         582,
-        583,
+        583
+      ],
+      "acceptance_blocked_by": [
         588
       ],
       "blocks": [
@@ -1329,10 +1375,12 @@
       "kind": "implementation",
       "status": "blocked",
       "batch": 5,
-      "blocked_by": [
+      "implementation_blocked_by": [
         564,
         583,
-        584,
+        584
+      ],
+      "acceptance_blocked_by": [
         588
       ],
       "blocks": [
@@ -1368,12 +1416,14 @@
       "kind": "implementation",
       "status": "blocked",
       "batch": 5,
-      "blocked_by": [
+      "implementation_blocked_by": [
         565,
         568,
         582,
         584,
-        585,
+        585
+      ],
+      "acceptance_blocked_by": [
         588
       ],
       "blocks": [
@@ -1406,7 +1456,8 @@
       "kind": "governance",
       "status": "done",
       "batch": 0,
-      "blocked_by": [],
+      "implementation_blocked_by": [],
+      "acceptance_blocked_by": [],
       "blocks": [
         556,
         557,
