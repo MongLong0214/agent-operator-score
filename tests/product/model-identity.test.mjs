@@ -1091,7 +1091,11 @@ test("same exact model with a different executable identity is not one cohort", 
   const cycle = { seeds: [1], profile_digest: left.profile_digest, suite_major: 0, scorer_major: 0 };
   const run = { seed: 1, profile_digest: right.profile_digest, suite_major: 0, scorer_major: 0, terminal_committed: true, issued: true };
   assert.deepEqual(runValidity(cycle, run), { valid: false, reason: "PROFILE_CHANGED" });
-  assert.deepEqual(runValidity(cycle, { ...run, profile_digest: left.profile_digest }), { valid: true, reason: null });
+  // #585. No `form_classification` on this fixture run, so the exposure ledger never saw it --
+  // named `UNVERIFIED` rather than folded into the same `valid: true` a verified run would produce.
+  assert.deepEqual(runValidity(cycle, { ...run, profile_digest: left.profile_digest }), {
+    valid: true, reason: null, exposure: { decision: null, status: "UNVERIFIED" }
+  });
 });
 
 test("same model id with a different adapter, environment policy or isolation is not one cohort", () => {
