@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync, readdirSync } from "node:fs";
 
-import { checkEcdContract, evaluate, loadEcdContract, loadEcdSchema, opportunitiesOf } from "../../lib/ecd-contract.mjs";
+import { ECD_CONTRACT_VERSION, checkEcdContract, evaluate, loadEcdContract, loadEcdSchema, opportunitiesOf } from "../../lib/ecd-contract.mjs";
 import { METRICS, METRIC_IDS, observationOf } from "../../lib/metrics.mjs";
 
 // verify:no-construct-shortcuts
@@ -232,4 +232,19 @@ test("the documented cell fields are the fields the schema requires", () => {
   // The structural fields are what a cell *is*; the rest are what it has to say.
   const structural = ["cell_id", "title", "subcheck_ids", "subcheck_administered_by", "required_for_construct", "credit_bearing", "population_status"];
   assert.deepEqual([...listed].sort(), required.filter((field) => !structural.includes(field)).sort());
+});
+
+test("the form-variation section names the contract's current version, not a stale one", () => {
+  // #568 round 2. This section named `1.5.0` as the ECD contract's version long after #568 round 1
+  // moved every artifact -- and `ECD_CONTRACT_VERSION` -- to `1.6.0` for an unrelated reason, so the
+  // doc kept asserting a present that had already become past. This is not a check that every
+  // version number this file narrates matches today's: `1.2.0`, `1.3.0` and the rest are honest
+  // history, each tied by its own sentence to the specific change that produced it, and this test
+  // does not touch them. It checks the one sentence a reader takes as "the contract's version,
+  // right now" against the live constant, so that sentence cannot drift out from under a future
+  // version bump the way this one did.
+  const doc = readFileSync(new URL("../../docs/ECD_CONTRACT.md", import.meta.url), "utf8");
+  const [, section = ""] = doc.split("## Form-variation contract v0.2.0");
+  const paragraph = section.split(/\n##/)[0];
+  assert.ok(paragraph.includes(`\`${ECD_CONTRACT_VERSION}\``), `the form-variation section does not name the current contract version ${ECD_CONTRACT_VERSION}`);
 });

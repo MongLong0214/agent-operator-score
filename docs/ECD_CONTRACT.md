@@ -19,8 +19,12 @@ have produced it, and what happens when it is absent.
 
 ## Form-variation contract v0.2.0
 
-The task model's `form_variation` contract is versioned at `0.2.0`, and its change moves the ECD
-contract to `1.5.0`. Meaningful variation is required for FAM-1, FAM-2, FAM-3, FAM-4, and FAM-6.
+The task model's `form_variation` contract is versioned at `0.2.0`; its own change moved the ECD
+contract to `1.5.0` when this section was written. Later, unrelated changes -- #568's legacy-surface
+disclosure and #585's exposure-ledger evidence, both recorded in the version history atop
+`lib/ecd-contract.mjs` -- moved every artifact again, so `1.5.0` is not this contract's current
+version; `1.7.0` (`ECD_CONTRACT_VERSION`) is. Meaningful
+variation is required for FAM-1, FAM-2, FAM-3, FAM-4, and FAM-6.
 FAM-5 has the fixed assessment identity `aos-fam-5-fixed-v0.2.0`: changing its seed does not make
 another assessment form or add meaningful variation. Its task, oracle, and evidence binding remains
 required with the other five families, and its isolated four-probe verifier and success criteria do
@@ -248,11 +252,14 @@ That is a statement about this contract, and the interpretation argument now say
 An earlier draft assumed "no category, band, cut score, percentile or rank is emitted at any stage"
 and recorded the evidence as passing, which was a true claim about the contract published as a false
 one about the product: `lib/scorer-v1.mjs` still assigns a category to a legacy result, and
-`lib/cli.mjs`, `lib/report.mjs`, `lib/report-card.mjs` and `lib/dashboard.mjs` render it. The
-artifact carries a `legacy_band_surface` block naming all five modules, the modules excluded from it
-by name and why, and the issue that owns the removal (#568). A test scans `lib/` in both directions
-and fails if the disclosure and the source ever disagree -- checking only that every declared module
-carries a band is the easy direction, and it passed while three of those five were undeclared.
+`lib/report.mjs`, `lib/report-i18n.mjs`, `lib/report-card.mjs` and `lib/dashboard.mjs` render it --
+`lib/cli.mjs` left that list for the reason the artifact itself gives: since #559 the assessment
+path writes a profile result and the CLI prints no category at all. The artifact carries a `legacy_band_surface` block naming all five modules,
+the modules excluded from it by name and why, and the issue that owns the removal (#568). A test
+scans `lib/` in both directions and fails if the disclosure and the source ever disagree -- checking
+only that every declared module carries a band is the easy direction, and it passed while three of
+those five were undeclared. That same test is what a stale rewrite of this paragraph could not have
+caught: it checks the artifact against the source tree, not this prose against the artifact.
 
 It does not define what a profile is. `evaluate` takes `context.profile_digest` and does not compute
 one: #559 owns the profile shape and its aggregation, and a digest of something this module invented
