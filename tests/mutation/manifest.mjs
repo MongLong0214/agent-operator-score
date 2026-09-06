@@ -7906,7 +7906,89 @@ export const GUARDS = [
     to: "  const interval = [0, 1];",
     test: "tests/product/facet-uncertainty.test.mjs",
     name: "no population data permits PROFILE_BOUND but leaves uncertainty and generalizability withheld"
+  },
+  {
+    guard: "a prior exposure reclassifies an operational administration as practice",
+    reason: "the scored-once policy is this branch: an OPERATIONAL administration of a form the ledger has already seen must become practice, or an abandoned-and-reopened cycle scores the same form twice",
+    file: "lib/form-class.mjs",
+    from: "  if (prior.length > 0) {",
+    to: "  if (false) {",
+    test: "tests/product/form-class.test.mjs",
+    name: "an operational form is scored once; its replay is classified practice and refused official scoring"
+  },
+  {
+    guard: "the cycle refuses a run the exposure ledger did not permit official scoring",
+    reason: "classification that never reaches runValidity is a label, not a gate; without this clause a practice-classified replay is recorded valid and its score enters the official aggregate",
+    file: "lib/cycle.mjs",
+    from: "  const classification = run.form_classification ?? null;\n  if (classification !== null && classification.official_scoring_permitted !== true) {\n    return { valid: false, reason: classification.refusal_code ?? \"AOS_FORM_NOT_OFFICIAL\" };\n  }",
+    to: "  const classification = run.form_classification ?? null;\n  if (false) {\n    return { valid: false, reason: classification.refusal_code ?? \"AOS_FORM_NOT_OFFICIAL\" };\n  }",
+    test: "tests/product/form-class.test.mjs",
+    name: "a cycle excludes a practice-classified administration from the official aggregate"
+  },
+  {
+    guard: "assess records every graded administration into the exposure ledger",
+    reason: "the write at the one place every graded administration passes through is what makes a bare preview count as exposure; without it the ledger never grows and every replay classifies as a first administration",
+    file: "lib/cli.mjs",
+    from: "      writeJson(exposureLedgerPath(home), recordExposure(preRunLedger, {",
+    to: "      if (false) writeJson(exposureLedgerPath(home), recordExposure(preRunLedger, {",
+    test: "tests/product/form-class.test.mjs",
+    name: "a replayed operational form crosses runs as practice, never as official aggregate evidence"
+  },
+  {
+    guard: "the cycle run carries the ledger's classification onto the recorded run",
+    reason: "runValidity can only refuse what it is handed; a cycle command that drops the classification on the floor records the replay as a historical run with no classification, which stays valid",
+    file: "lib/cli.mjs",
+    from: "        form_classification: formClassification\n      });",
+    to: "        form_classification: null\n      });",
+    test: "tests/product/form-class.test.mjs",
+    name: "a replayed operational form crosses runs as practice, never as official aggregate evidence"
+  },
+  {
+    guard: "linking without empirical evidence stays unestablished",
+    reason: "the null initialisation is the honest default the whole scaffold rests on; started at LINKED, two forms that were merely generated differently ship an equivalence nobody measured",
+    file: "lib/form-class.mjs",
+    from: "  let decision = null;\n  let status = \"UNESTABLISHED\";",
+    to: "  let decision = true;\n  let status = \"LINKED\";",
+    test: "tests/product/form-class.test.mjs",
+    name: "different seeds alone never link two forms: equivalence stays unestablished with the missing evidence named"
+  },
+  {
+    guard: "a small linking sample is not a smaller yes",
+    reason: "without the sample floor a two-response study links two forms; the branch must divert an inadequate sample to null before any delta is compared to a threshold",
+    file: "lib/form-class.mjs",
+    from: "    } else if (!samplesAdequate) {",
+    to: "    } else if (false) {",
+    test: "tests/product/form-class.test.mjs",
+    name: "a small linking sample never passes: the decision stays null and names the floor"
+  },
+  {
+    guard: "phase A collaboration earns no transfer credit",
+    reason: "deriving transfer only from phase B tasks is the C7 separation itself; a phase A success that can synthesise a passed phase B task turns collaborative success into independent transfer",
+    file: "lib/form-class.mjs",
+    from: "  const tasks = phaseB === null ? [] : phaseB.tasks;",
+    to: "  const tasks = phaseB === null ? [{ relatedness: \"near\", passed: phaseA?.collaborative_success === true, independent_verification_observed: true, delayed: false }] : phaseB.tasks;",
+    test: "tests/product/form-class.test.mjs",
+    name: "collaborative success with solo transfer failure stays a C7 fact and touches no core outcome"
+  },
+  {
+    guard: "a cross-facet comparison without invariance evidence is withheld",
+    reason: "this return is the withholding: without it a translated or re-expressed form compares as if invariance had been shown, which is the exact overclaim the DIF gate exists to stop",
+    file: "lib/form-class.mjs",
+    from: "    return gateAnswer(facet, leftLevel, rightLevel, null, \"WITHHELD\",\n      [`INVARIANCE_UNESTABLISHED no empirical invariance evidence exists for ${facet}; the comparison is withheld, not made with a caveat`]);",
+    to: "    return gateAnswer(facet, leftLevel, rightLevel, true, \"PERMITTED\", []);",
+    test: "tests/product/form-class.test.mjs",
+    name: "every cross-facet comparison is withheld until invariance evidence exists, for each declared facet"
+  },
+  {
+    guard: "an undeclared facet level does not compare as equal",
+    reason: "two silences are equal as strings and incomparable as facts; without this branch two undeclared levels fall through to the same-level case and compare as PERMITTED",
+    file: "lib/form-class.mjs",
+    from: "  if (!nonEmpty(leftLevel) || !nonEmpty(rightLevel)) {",
+    to: "  if (false) {",
+    test: "tests/product/form-class.test.mjs",
+    name: "a small DIF sample never turns a comparison on, and detected DIF refuses it"
   }
+
 ];
 
 /**
@@ -8069,6 +8151,7 @@ export const ACCOUNTED_GUARDS = [
   "a credential is what it is filed under, at any length",
   "a credential-shaped name is refused as an ordinary allowed name",
   "a credential-shaped name is refused at the carry as well",
+  "a cross-facet comparison without invariance evidence is withheld",
   "a cut-off probe remains retryable and provider-undetermined",
   "a cut-off trial is not a measurement",
   "a cycle answers with the provenance its runs resolved",
@@ -8137,6 +8220,7 @@ export const ACCOUNTED_GUARDS = [
   "a policy that narrows the run-metadata door is applied, not merely recorded",
   "a post-advice initial cannot be replayed as independent",
   "a pre-advice payload cannot smuggle a post-advice response",
+  "a prior exposure reclassifies an operational administration as practice",
   "a probe that observed nothing is not a runtime that can do nothing",
   "a probed run is scored from what was probed, never from the adapter table",
   "a process with no key for a run says so",
@@ -8184,6 +8268,7 @@ export const ACCOUNTED_GUARDS = [
   "a settlement nobody could check does not pass",
   "a settlement nobody could check is not a clean one",
   "a skipped real lane is not a verified one",
+  "a small linking sample is not a smaller yes",
   "a spawn refusal rebinds from AOS's safe pre-spawn class",
   "a started phase cannot integrate code on a blocked issue",
   "a state revision is stated, never defaulted",
@@ -8304,6 +8389,7 @@ export const ACCOUNTED_GUARDS = [
   "an unavailable author is reported as unavailable",
   "an unavailable permission check is a distinct author state",
   "an unavailable permission check is not cached",
+  "an undeclared facet level does not compare as equal",
   "an unexplained holder of the run's directories withholds",
   "an unidentified runtime cannot carry the lane",
   "an unknown capability source is not scorable",
@@ -8328,6 +8414,7 @@ export const ACCOUNTED_GUARDS = [
   "aos-known is not a scorable runtime capability source",
   "artifact top-level mode",
   "artifact type in the envelope",
+  "assess records every graded administration into the exposure ledger",
   "axis metric ids belong to the administered family contract",
   "baseline-proven task-input changes preserve a separate observation",
   "binary handling",
@@ -8441,6 +8528,7 @@ export const ACCOUNTED_GUARDS = [
   "legacy digest separation",
   "legacy ledger row is not holdout evidence",
   "legacy migration guard",
+  "linking without empirical evidence stays unestablished",
   "local reference redirection",
   "locked cycle seed",
   "main and dev are compared across the deletion itself",
@@ -8494,6 +8582,7 @@ export const ACCOUNTED_GUARDS = [
   "package main remains absent while the tri-state module is deep-import-only",
   "parent writable refusal",
   "parsed truthiness scanner detects each bare write-access use",
+  "phase A collaboration earns no transfer credit",
   "phase permissions are pinned, not only phase names",
   "phases are a contract",
   "positive-observation cap guard",
@@ -8642,6 +8731,8 @@ export const ACCOUNTED_GUARDS = [
   "the count deletion turns on is recorded",
   "the credential is reduced to a name and a source where it is resolved",
   "the cycle command quotes the stored decision",
+  "the cycle refuses a run the exposure ledger did not permit official scoring",
+  "the cycle run carries the ledger's classification onto the recorded run",
   "the dashboard quotes the stored cycle decision",
   "the deleted ref is live at the commit being deleted",
   "the deleted ref still exists live",
@@ -8805,5 +8896,5 @@ export const ACCOUNTED_GUARDS = [
   "workspace snapshot map is null-prototype",
   "workspace snapshot reads bytes",
   "workspace snapshot records directories",
-  "write access asked of the repository",
+  "write access asked of the repository"
 ];
