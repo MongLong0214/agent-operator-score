@@ -1696,17 +1696,26 @@ test("the phase contract pins what a phase may do, not only what it is called", 
 });
 
 test("the evidence contract lives outside the document it checks", () => {
-  for (const edit of [
-    (d) => { entry(d, 588).evidence_bindings = {}; },
-    (d) => { entry(d, 588).evidence_bindings = { manifest_digest: "README.md", schema_digest: "README.md" }; },
-    (d) => { entry(d, 553).required_evidence_fields = ["x"]; },
-    (d) => { const e = entry(d, 567); e.required_evidence_fields = e.required_evidence_fields.filter((f) => f !== "raw_byte_digest_api"); },
-    (d) => { entry(d, 553).owned_paths = ["README.md"]; },
-    (d) => { entry(d, 553).owned_paths = ["docs/whatever.md"]; }
+  // Pinned to the specific check each edit is supposed to trip, not only to `ok === false`.
+  // Every one of these docs also fails `plan-contract-version-stale` -- any edited plan does,
+  // since the ledger only matches the pristine file -- and that failure alone made `ok === false`
+  // true regardless of whether the contract-specific check still fired. `owned-paths-documentation-only`
+  // survived a mutation run entirely unnoticed this way: disabling it changed nothing this test
+  // could see.
+  for (const [edit, expected] of [
+    [(d) => { entry(d, 588).evidence_bindings = {}; }, "evidence-binding-dropped"],
+    [(d) => { entry(d, 588).evidence_bindings = { manifest_digest: "README.md", schema_digest: "README.md" }; }, "evidence-binding-dropped"],
+    [(d) => { entry(d, 553).required_evidence_fields = ["x"]; }, "evidence-fields-do-not-match-contract"],
+    [(d) => { const e = entry(d, 567); e.required_evidence_fields = e.required_evidence_fields.filter((f) => f !== "raw_byte_digest_api"); }, "evidence-fields-do-not-match-contract"],
+    [(d) => { entry(d, 553).owned_paths = ["README.md"]; }, "owned-paths-documentation-only"],
+    [(d) => { entry(d, 553).owned_paths = ["docs/whatever.md"]; }, "owned-paths-documentation-only"]
   ]) {
     const doc = plan();
     edit(doc);
-    assert.equal(checkPlan(doc).ok, false, "a one-line edit weakened the contract and passed");
+    assert.ok(
+      failures(checkPlan(doc)).includes(expected),
+      `a one-line edit weakened the contract and "${expected}" did not fire`
+    );
   }
 });
 
