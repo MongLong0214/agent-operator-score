@@ -444,7 +444,12 @@ test("a cycle with no recorded result schema is not described as a legacy aggreg
     assert.match(body, /cycle-empty/);
     assert.equal(/LEGACY \/ NOT COMPARABLE/.test(body), false, "an unknown schema was rendered as a legacy aggregate");
     assert.equal(/legacy scorer aggregate/.test(body), false, "an unknown schema was rendered as a legacy aggregate");
-    assert.match(body, /cycle aggregation withheld/);
+    // Round 6 changed the wording, not the fact: this cycle now gets the ordinary card -- keeping
+    // its seeds and its `N of 3 valid run(s)` progress, which the old stripped card dropped from
+    // every freshly created cycle -- and only its provenance line differs. Withheld is still
+    // withheld, and the provenance is still explicitly unclaimed rather than assumed legacy.
+    assert.match(body, /Operator Score withheld/);
+    assert.match(body, /PROVENANCE UNRECORDED/);
     assert.match(body, /recorded no result schema/);
   } finally {
     await dashboard.close();

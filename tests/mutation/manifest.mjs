@@ -8073,8 +8073,8 @@ export const GUARDS = [
     guard: 'a cycle with no recorded result schema is withheld, not asserted legacy',
     reason: '#568 round 2 BLOCKER. assertUniformResultSchema returns null when no run in the cycle recorded a result schema at all -- an absence, not a value -- and folding that null case back into the legacy branch let the dashboard print "a legacy scorer aggregate, rendered as stored" over a cycle nothing ever observed to be legacy',
     file: 'lib/dashboard.mjs',
-    from: '  if (schema === null) {',
-    to: '  if (false) {',
+    from: '  const provenance = schema === null',
+    to: '  const provenance = false',
     test: 'tests/product/dashboard.test.mjs',
     name: 'a cycle with no recorded result schema is not described as a legacy aggregate'
   },
@@ -8293,6 +8293,24 @@ export const GUARDS = [
     to: "  return values.length === 0;",
     test: "tests/product/standard-setting-gate.test.mjs",
     name: "an object whose every value is absent is not a considered field"
+  },
+  {
+    guard: "an unknown cycle schema keeps the ordinary card and only its provenance changes",
+    reason: "#568 round 6 NIT. The unknown-schema case returned a card of its own, dropping the seeds, the N of 3 valid run(s) progress and the cycle lines -- and since createCycle writes runs: [], that stripped card was every freshly started cycle rather than an anomalous one",
+    file: "lib/dashboard.mjs",
+    from: "  if (schema !== null && schema !== \"aos-mvp-result.v1\") {",
+    to: "  if (schema !== \"aos-mvp-result.v1\") {",
+    test: "tests/product/dashboard.test.mjs",
+    name: "a cycle with no recorded result schema is not described as a legacy aggregate"
+  },
+  {
+    guard: "the terminal marks an issued legacy median NOT COMPARABLE",
+    reason: "#568 round 6 NIT. The dashboard card carried LEGACY / NOT COMPARABLE over the same stored decision while the terminal printed the identical median bare -- one number on two surfaces and only one of them refusing comparability",
+    file: "lib/cli.mjs",
+    from: "  emit(io, `LEGACY / NOT COMPARABLE \u2014 ${legacyCycleScorerName(home, stored.runs ?? [])} \u2014 a legacy scorer aggregate, rendered as stored; not comparable with a v0.2.0 profile result`);",
+    to: "  ;",
+    test: "tests/product/cycle-command.test.mjs",
+    name: "an issued legacy median is marked NOT COMPARABLE on the terminal, as it is on the dashboard"
   }
 ];
 
@@ -8713,6 +8731,7 @@ export const ACCOUNTED_GUARDS = [
   "an unidentified runtime cannot carry the lane",
   "an unknown capability source is not scorable",
   "an unknown capability source keeps no abilities",
+  "an unknown cycle schema keeps the ordinary card and only its provenance changes",
   "an unknown isolation lane is refused, not defaulted",
   "an unknown model withholds the aggregate by its own name",
   "an unknown protection state is not an unprotected branch",
@@ -9185,6 +9204,7 @@ export const ACCOUNTED_GUARDS = [
   "the table shows the decision and not the label",
   "the task model's form lists agree with the cell they name",
   "the teardown observation reports what cleanup returned",
+  "the terminal marks an issued legacy median NOT COMPARABLE",
   "the terminal prints the ceiling the other renderers print",
   "the total invocation bound is compared",
   "the transcript recogniser knows the configured workspaces root",
