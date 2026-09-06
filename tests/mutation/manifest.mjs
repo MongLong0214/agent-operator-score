@@ -7962,6 +7962,15 @@ export const GUARDS = [
     name: 'a standard-setting record missing its consequence review is an emission refusal, not a stored null'
   },
   {
+    guard: 'standardSettingDecision refuses a mismatched schema id on its own',
+    reason: "assertStandardSettingGate already throws AOS_STANDARD_SETTING_SCHEMA before ever calling standardSettingDecision, so that call site cannot witness this check; round 1 found the whole condition survived being replaced with `if (false)` while the suite stayed green, and a caller reaching the exported function directly with a mismatched schema id must get false (contradicted), not the null a registry-withheld record gets",
+    file: 'lib/standard-setting.mjs',
+    from: '  if (!isPlainObject(record) || record.schema_id !== STANDARD_SETTING_SCHEMA_ID) return false;',
+    to: '  if (!isPlainObject(record)) return false;',
+    test: 'tests/product/standard-setting-gate.test.mjs',
+    name: 'standardSettingDecision refuses a record under a different schema id on its own, not only behind the gate that wraps it'
+  },
+  {
     guard: 'category emission requires an established standard-setting decision',
     reason: 'a category, cut score, band, percentile or rank offered to the builder without an established decision must be refused, not dropped; silently nulling it tells the caller their category was issued as null when the truth is it was refused',
     file: 'lib/standard-setting.mjs',
@@ -8684,6 +8693,7 @@ export const ACCOUNTED_GUARDS = [
   "stale-branch audit deletion recommendations carry a reason",
   "stale-branch audit preserves orphaned unmerged work",
   "standard-setting completeness is checked field by field",
+  "standardSettingDecision refuses a mismatched schema id on its own",
   "started statuses need finished predecessors",
   "stored probe and delegation evidence is rebound during run verification",
   "stored routing evidence is rebound during run verification",

@@ -90,6 +90,17 @@ test("the gate's decision is tri-state: no record establishes nothing rather tha
   assert.equal(standardSettingDecision(completeRecord(), populated), null);
 });
 
+test("standardSettingDecision refuses a record under a different schema id on its own, not only behind the gate that wraps it", () => {
+  // assertStandardSettingGate already throws AOS_STANDARD_SETTING_SCHEMA before it ever calls
+  // standardSettingDecision, so that call site can never exercise this function's own schema_id
+  // check -- round 1 found the check survived being replaced with `if (false)` and this suite
+  // stayed green. standardSettingDecision is exported and documented as returning false for a
+  // record that "contradicts the shape a standard-setting study must have"; a wrong schema id is
+  // exactly that, and a caller that reaches this function directly, as this test does, must not
+  // read it as the tri-state null a registry-withheld record gets.
+  assert.equal(standardSettingDecision({ ...completeRecord(), schema_id: "aos-standard-setting.v0" }, populated), false);
+});
+
 test("an explicit null record is the ordinary result, not an attempted emission", () => {
   const result = build({ standard_setting: null, category: null, cut_score: null, percentile: null, rank: null, band: null });
   assert.equal(result.category, null);
