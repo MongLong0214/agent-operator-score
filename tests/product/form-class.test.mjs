@@ -170,10 +170,14 @@ test("an operational form is scored once; its replay is classified practice and 
 
 test("a corrupt exposure ledger refuses rather than reading as empty", async () => {
   const { openExposureLedger, createExposureLedger } = await import("../../lib/form-class.mjs");
-  assert.deepEqual(openExposureLedger(null), createExposureLedger());
+  // `undefined` is the one true absence -- no ledger file exists yet.
   assert.deepEqual(openExposureLedger(undefined), createExposureLedger());
   // A ledger that cannot be read is not an empty one: reading it as empty would grant an exposed
-  // form a second official scoring, which is exactly the gate this file exists to hold.
+  // form a second official scoring, which is exactly the gate this file exists to hold. A file
+  // holding the JSON literal `null` is one of these shapes, not a second spelling of absence -- it
+  // silently recorded 0 runs before this test existed, which is indistinguishable from a home that
+  // never administered anything even though the two are not the same claim.
+  assert.throws(() => openExposureLedger(null), /AOS_EXPOSURE_LEDGER_CORRUPT/);
   assert.throws(() => openExposureLedger({ schema_id: "something-else", entries: [] }), /AOS_EXPOSURE_LEDGER_CORRUPT/);
   assert.throws(() => openExposureLedger({ schema_id: "aos-exposure-ledger.v1", entries: "not-a-list" }), /AOS_EXPOSURE_LEDGER_CORRUPT/);
   // Calendar, not Date.parse: an instant that does not exist cannot anchor an interval.
