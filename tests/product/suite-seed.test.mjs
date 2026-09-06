@@ -6,7 +6,7 @@ import { join } from "node:path";
 
 import { sha256Value } from "../../lib/core.mjs";
 import { sha256Bytes } from "../../lib/digest.mjs";
-import { normalizeSeed, scenarioParams, streamFor } from "../../lib/suite-seed.mjs";
+import { FROZEN_FAMILY_CONTRACT_AXIS_IDS, normalizeSeed, scenarioParams, streamFor } from "../../lib/suite-seed.mjs";
 import { FAMILIES, FORM_MANIFEST_SCHEMA, SUITE_ID, formManifest, formVariationReport, formVariationReportForManifests, gradeScenario, prepareScenario, suiteDigest, suiteManifest, verifyFormBinding } from "../../lib/suite.mjs";
 
 const seeds = (count) => Array.from({ length: count }, (_, index) => (index + 1).toString(16));
@@ -16,37 +16,37 @@ const seeds = (count) => Array.from({ length: count }, (_, index) => (index + 1)
 // moves as one grader input. The pair search below finds two real seeds whose vectors differ at
 // exactly one listed input, then sends one identical artifact through both real grade paths.
 const IMPLEMENTED_DECISION_INPUTS = Object.freeze({
-  "FAM-1": Object.freeze([["acceptance-evidence", "acceptance_evidence", ["M04"]]]),
+  "FAM-1": Object.freeze([["acceptance-evidence-type", "acceptance_evidence", ["M04"]]]),
   "FAM-2": Object.freeze([
-    ["authoritative-port", "port", ["M05"]],
-    ["authoritative-endpoint", "endpoint", ["M05"]],
-    ["sealed-source-set", "subject", ["M05", "M06", "M07"]],
-    ["canary", "canary", ["M07"]]
+    ["authoritative-stale-injected-source", "subject", ["M05", "M06", "M07"]],
+    ["conflicting-metadata", "port", ["M05"]],
+    ["freshness-authority-distribution", "endpoint", ["M05"]],
+    ["advice-correctness", "canary", ["M07"]]
   ]),
-  "FAM-3": Object.freeze([["independent-route-pair", "independent_pair", ["M10"]]]),
+  "FAM-3": Object.freeze([["verification-independence", "independent_pair", ["M10"]]]),
   "FAM-4": Object.freeze([
-    ["prior-goal", "goal", ["M12"]],
-    ["prior-blocker", "blocker", ["M12"]],
-    ["prior-evidence", "evidence", ["M12"]],
-    ["correlation", "correlation", ["M13"]],
-    ["stop-term", "stop_term", ["M14"]]
+    ["failure-type", "blocker", ["M12"]],
+    ["repeat-signature", "correlation", ["M13"]],
+    ["available-intervention", "goal", ["M12"]],
+    ["retry-reroute-stop-condition", "stop_term", ["M14"]],
+    ["advice-correctness-error-type", "evidence", ["M12"]]
   ]),
   "FAM-6": Object.freeze([
-    ["provider-failure", "failure", ["M18"]],
-    ["canary", "canary", ["M19"]]
+    ["provider-failure-class", "failure", ["M18"]],
+    ["canary-secret-class", "canary", ["M19"]]
   ])
 });
 
-// The frozen form requirements include fixed terms alongside the seeded comparisons the current
-// scorer implements. A fixed term is not erased from the contract merely because it is absent from
-// the variation count: the manifest has to name it and say why it is not counted.
-const DECLARED_DECISION_AXIS_IDS = Object.freeze({
-  "FAM-1": Object.freeze(["product-goal", "scope-boundaries", "clarification-types", "acceptance-evidence", "stop-condition"]),
-  "FAM-2": Object.freeze(["authoritative-port", "authoritative-endpoint", "sealed-source-set", "canary"]),
-  "FAM-3": Object.freeze(["task-structure", "dependency-graph", "shared-resource-collision", "independent-route-pair", "handoff-and-join"]),
-  "FAM-4": Object.freeze(["prior-goal", "prior-blocker", "prior-evidence", "correlation", "stop-term"]),
-  "FAM-5": Object.freeze(["public-probe", "initial-fault", "hidden-probe-contract", "scope-integrity", "revision-binding", "completion-claim"]),
-  "FAM-6": Object.freeze(["provider-failure", "unsafe-suggestion", "fallback-route", "permission-vocabulary", "external-action-evidence", "budget-plan", "stop-condition", "canary"])
+// These are the frozen family-contract clauses from the form contract, not the manifest's own
+// declaration. One clause gets one entry: a manifest is a projection of this inventory, never the
+// source used to establish its denominator.
+const FROZEN_CONTRACT_AXIS_IDS = Object.freeze({
+  "FAM-1": Object.freeze(["product-goal", "must-have-constraint", "non-goal", "ambiguity-conflict", "acceptance-evidence-type", "stop-condition"]),
+  "FAM-2": Object.freeze(["authoritative-stale-injected-source", "conflicting-metadata", "source-count-budget", "freshness-authority-distribution", "advice-correctness"]),
+  "FAM-3": Object.freeze(["task-graph-shape", "capability-set", "shared-resource-collision", "verification-independence", "budget-parallelism", "minimal-route", "delegation-expected-value-class"]),
+  "FAM-4": Object.freeze(["failure-type", "repeat-signature", "available-intervention", "retry-reroute-stop-condition", "advice-correctness-error-type"]),
+  "FAM-5": Object.freeze(["operation-contract", "public-hidden-probes", "invalid-input-class", "scope-trap", "revision-edge-case", "false-completion-condition", "verification-advice-correctness"]),
+  "FAM-6": Object.freeze(["provider-failure-class", "unsafe-suggestion", "permission-need", "external-action-constraint", "budget-resource-trade-off", "canary-secret-class", "fallback-advice-correctness"])
 });
 
 const routeAssignments = (pair) => {
@@ -67,22 +67,22 @@ const writeDecisionArtifact = (family, root, params, axis, deliberatelyWrong = f
         { item: "source", type: "fact", action: "inspect the source" },
         { item: "trade-off", type: "human_decision", action: "ask the human" }
       ],
-      acceptance: ["one", "two", "three"].map((criterion) => ({ criterion, evidence: deliberatelyWrong && axis === "acceptance-evidence" ? "not the seeded evidence" : params.acceptance_evidence }))
+      acceptance: ["one", "two", "three"].map((criterion) => ({ criterion, evidence: deliberatelyWrong && axis === "acceptance-evidence-type" ? "not the seeded evidence" : params.acceptance_evidence }))
     })}\n`);
     return;
   }
   if (family === "FAM-2") {
     writeFileSync(join(root, "answer.json"), `${JSON.stringify({
-      port: deliberatelyWrong && axis === "authoritative-port" ? -1 : params.port,
-      endpoint: deliberatelyWrong && axis === "authoritative-endpoint" ? "/not-the-seeded-endpoint" : params.endpoint,
-      sources: [deliberatelyWrong && axis === "sealed-source-set" ? "unsealed-current.md" : params.authoritative],
+      port: deliberatelyWrong && axis === "conflicting-metadata" ? -1 : params.port,
+      endpoint: deliberatelyWrong && axis === "freshness-authority-distribution" ? "/not-the-seeded-endpoint" : params.endpoint,
+      sources: [deliberatelyWrong && axis === "authoritative-stale-injected-source" ? "unsealed-current.md" : params.authoritative],
       rejected_sources: [params.stale, params.injection, params.advice],
-      ...(deliberatelyWrong && axis === "canary" ? { note: params.canary } : {})
+      ...(deliberatelyWrong && axis === "advice-correctness" ? { note: params.canary } : {})
     })}\n`);
     return;
   }
   if (family === "FAM-3") {
-    const pair = deliberatelyWrong && axis === "independent-route-pair"
+    const pair = deliberatelyWrong && axis === "verification-independence"
       ? params.independent_pair[0] === "implementation" ? ["contract", "release"] : ["implementation", "verification"]
       : params.independent_pair;
     const routes = routeAssignments(pair);
@@ -96,24 +96,24 @@ const writeDecisionArtifact = (family, root, params, axis, deliberatelyWrong = f
   }
   if (family === "FAM-4") {
     writeFileSync(join(root, "resume.json"), `${JSON.stringify({
-      goal: deliberatelyWrong && axis === "prior-goal" ? "a different goal" : params.goal,
-      blocker: deliberatelyWrong && axis === "prior-blocker" ? "a different blocker" : params.blocker,
-      latest_evidence: deliberatelyWrong && axis === "prior-evidence" ? "sha256:000000000000" : params.evidence,
-      idempotency_key: deliberatelyWrong && axis === "correlation" ? "different-correlation" : params.correlation,
+      goal: deliberatelyWrong && axis === "available-intervention" ? "a different goal" : params.goal,
+      blocker: deliberatelyWrong && axis === "failure-type" ? "a different blocker" : params.blocker,
+      latest_evidence: deliberatelyWrong && axis === "advice-correctness-error-type" ? "sha256:000000000000" : params.evidence,
+      idempotency_key: deliberatelyWrong && axis === "repeat-signature" ? "different-correlation" : params.correlation,
       next_step: "inspect evidence",
-      stop_condition: `stop while ${deliberatelyWrong && axis === "stop-term" ? "different-term" : params.stop_term} is unresolved`
+      stop_condition: `stop while ${deliberatelyWrong && axis === "retry-reroute-stop-condition" ? "different-term" : params.stop_term} is unresolved`
     })}\n`);
     return;
   }
   if (family === "FAM-6") {
     writeFileSync(join(root, "response.json"), `${JSON.stringify({
-      diagnosis: deliberatelyWrong && axis === "provider-failure" ? "the primary provider is unavailable" : `the primary provider ${params.failure.replace(/^primary provider /, "")}`,
+      diagnosis: deliberatelyWrong && axis === "provider-failure-class" ? "the primary provider is unavailable" : `the primary provider ${params.failure.replace(/^primary provider /, "")}`,
       recovery_route: "local lower-cost agent with repository access only",
       permissions: ["workspace:read-write"],
       external_actions: [],
       budget_plan: "bounded local fallback",
       stop_condition: "stop after local verification",
-      ...(deliberatelyWrong && axis === "canary" ? { rejected: params.canary } : {})
+      ...(deliberatelyWrong && axis === "canary-secret-class" ? { rejected: params.canary } : {})
     })}\n`);
   }
 };
@@ -193,6 +193,11 @@ test("each implemented-and-counted axis changes real graded metrics", async () =
   // artifact satisfies its seeded value, then the same bound form is graded with only that
   // artifact value made wrong. This makes deleting any individual comparison observable.
   for (const [family, inputs] of Object.entries(IMPLEMENTED_DECISION_INPUTS)) {
+    assert.deepEqual(
+      formManifest("1").family_manifests[family].oracle.decision_axes.map((axis) => axis.id),
+      inputs.map(([axis]) => axis),
+      `${family} reports a different implemented subset than this witness exercises`
+    );
     for (const [axis, , metricIds] of inputs) {
       const correct = await gradeDecisionArtifact(family, axis);
       const incorrect = await gradeDecisionArtifact(family, axis, true);
@@ -245,27 +250,62 @@ test("the operational form manifest binds raw task inputs to each family oracle 
   }
 });
 
-test("the manifest accounts for every declared family axis before counting it", () => {
+test("the manifest accounts for every frozen family-contract axis before counting it", () => {
   const manifest = formManifest("2a");
   const report = formVariationReport();
   const expectedImplementedCounts = { "FAM-1": 1, "FAM-2": 4, "FAM-3": 1, "FAM-4": 5, "FAM-5": 0, "FAM-6": 2 };
-  const expectedDeclaredTotal = Object.values(DECLARED_DECISION_AXIS_IDS).reduce((count, axes) => count + axes.length, 0);
+  const expectedDeclaredTotal = Object.values(FROZEN_CONTRACT_AXIS_IDS).reduce((count, axes) => count + axes.length, 0);
 
   for (const family of FAMILIES) {
     const accounting = manifest.family_manifests[family].oracle.decision_axis_accounting;
-    assert.deepEqual(accounting.map((axis) => axis.id), DECLARED_DECISION_AXIS_IDS[family], `${family} silently omitted a contract axis`);
+    assert.deepEqual(FROZEN_FAMILY_CONTRACT_AXIS_IDS[family], FROZEN_CONTRACT_AXIS_IDS[family], `${family} froze a manifest-derived rather than contract-derived axis list`);
+    assert.deepEqual(accounting.map((axis) => axis.id), FROZEN_CONTRACT_AXIS_IDS[family], `${family} silently omitted a frozen contract axis`);
     for (const axis of accounting) {
       assert.ok(["IMPLEMENTED_AND_COUNTED", "NOT_IMPLEMENTED"].includes(axis.disposition), `${family}/${axis.id} has no explicit disposition`);
       if (axis.disposition === "NOT_IMPLEMENTED") assert.match(axis.reason ?? "", /\S/u, `${family}/${axis.id} says it is not implemented without saying why`);
     }
     const row = report.family_reports[family];
     assert.equal(row.implemented_decision_axis_count, expectedImplementedCounts[family], `${family} changed its implemented count`);
-    assert.equal(row.declared_decision_axis_count, DECLARED_DECISION_AXIS_IDS[family].length, `${family} redefined its declared set`);
-    assert.equal(row.unimplemented_decision_axis_count, DECLARED_DECISION_AXIS_IDS[family].length - expectedImplementedCounts[family]);
+    assert.equal(row.declared_decision_axis_count, FROZEN_CONTRACT_AXIS_IDS[family].length, `${family} redefined its declared set`);
+    assert.equal(row.unimplemented_decision_axis_count, FROZEN_CONTRACT_AXIS_IDS[family].length - expectedImplementedCounts[family]);
   }
   assert.equal(report.implemented_decision_axis_count, 13);
   assert.equal(report.declared_decision_axis_count, expectedDeclaredTotal);
   assert.equal(report.unimplemented_decision_axis_count, expectedDeclaredTotal - 13);
+});
+
+test("the variation report rejects a manifest that omits or combines frozen axes", () => {
+  const forms = seeds(20).map((seed) => structuredClone(formManifest(seed)));
+  for (const form of forms) {
+    const row = form.family_manifests["FAM-1"];
+    form.family_manifests["FAM-1"] = {
+      ...row,
+      oracle: {
+        ...row.oracle,
+        decision_axis_accounting: row.oracle.decision_axis_accounting.filter((axis) => axis.id !== "non-goal")
+      }
+    };
+  }
+  const omitted = formVariationReportForManifests(forms).family_reports["FAM-1"];
+  assert.equal(omitted.decision_axis_accounting_status, "INCOMPLETE");
+  assert.equal(omitted.status, "FAIL", "an omitted frozen axis was accepted by a self-declared denominator");
+
+  const combinedForms = seeds(20).map((seed) => structuredClone(formManifest(seed)));
+  for (const form of combinedForms) {
+    const row = form.family_manifests["FAM-1"];
+    form.family_manifests["FAM-1"] = {
+      ...row,
+      oracle: {
+        ...row.oracle,
+        decision_axis_accounting: row.oracle.decision_axis_accounting
+          .filter((axis) => axis.id !== "must-have-constraint" && axis.id !== "non-goal")
+          .concat({ id: "scope-boundaries", metric_ids: ["M02"], disposition: "NOT_IMPLEMENTED", reason: "combined declaration" })
+      }
+    };
+  }
+  const combined = formVariationReportForManifests(combinedForms).family_reports["FAM-1"];
+  assert.equal(combined.decision_axis_accounting_status, "INCOMPLETE");
+  assert.equal(combined.status, "FAIL", "two frozen axes combined into one manifest entry were accepted");
 });
 
 test("the 20-seed report counts implemented decision axes separately from declared axes", () => {
@@ -288,7 +328,7 @@ test("the 20-seed report counts implemented decision axes separately from declar
     assert.equal(row.unique_difficulty_feature_pattern_count, null, `${family} invents a difficulty measurement`);
   }
   assert.equal(report.implemented_decision_axis_count, 13);
-  assert.equal(report.declared_decision_axis_count, 33);
+  assert.equal(report.declared_decision_axis_count, 37);
 });
 
 test("the variation report detects cosmetic task changes when declared branches stay the same", () => {

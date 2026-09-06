@@ -31,7 +31,7 @@ export const GUARDS = [
     from: "  decision_axis_accounting: decisionAxisAccountingFor(family),",
     to: "  decision_axis_accounting: [],",
     test: "tests/product/suite-seed.test.mjs",
-    name: "the manifest accounts for every declared family axis before counting it"
+    name: "the manifest accounts for every frozen family-contract axis before counting it"
   },
   {
     guard: "form binding task identity is recomputed",
@@ -59,6 +59,15 @@ export const GUARDS = [
     to: "    ...(observedResult === null ? {} : {})",
     test: "tests/product/suite-seed.test.mjs",
     name: "a prepared task-input deletion and tampering preserve the observation without issuing its metrics"
+  },
+  {
+    guard: "variation report derives axis completeness from frozen contracts",
+    reason: "identically reduced manifest declarations are consistent with one another but do not establish the frozen denominator; the report has to compare each projection with the independently frozen contract inventory",
+    file: "lib/suite.mjs",
+    from: "    const completeAccounting = rows.every((row) => frozenAxisAccountingMatches(row.oracle?.decision_axis_accounting, frozenAxes));",
+    to: "    const completeAccounting = true;",
+    test: "tests/product/suite-seed.test.mjs",
+    name: "the variation report rejects a manifest that omits or combines frozen axes"
   },
   {
     guard: "missing seeded terms do not become empty text matches",
@@ -8601,6 +8610,7 @@ export const ACCOUNTED_GUARDS = [
   "unreadable uses: fails closed",
   "unverified cleanup blocks issuance",
   "uses under with: or env: is an input",
+  "variation report derives axis completeness from frozen contracts",
   "verification re-derives the settlement half too",
   "verification re-gates the invocations the record carries",
   "verification result check",
