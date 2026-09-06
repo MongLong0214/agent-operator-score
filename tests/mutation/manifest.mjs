@@ -4626,8 +4626,8 @@ export const GUARDS = [
     guard: "a recomputation compares the boundary facts it published",
     reason: "the isolation block was outside the compared surfaces, so level, backend, both axes, the policy digest and the network row could be rewritten -- NOT_OBSERVED to denied -- and `verify --run` still reported PASS recompute",
     file: "lib/cli.mjs",
-    from: "      one.boundary_withheld, one.isolation,",
-    to: "      one.boundary_withheld,",
+    from: "      boundary_withheld: one.boundary_withheld,\n      isolation: one.isolation,",
+    to: "      boundary_withheld: one.boundary_withheld,",
     test: "tests/product/official-issuance.test.mjs",
     name: "a_withheld_result_verifies_as_the_result_it_is"
   },
@@ -5994,8 +5994,8 @@ export const GUARDS = [
     guard: "the claim is compared like the numbers are",
     reason: "verify recomputes the result from its own record, and a comparison that omitted the claim reported that an elevated one still followed from the observations",
     file: "lib/cli.mjs",
-    from: "      one.forbidden_uses, one.profile_digest, one.contract",
-    to: "      one.forbidden_uses, one.profile_digest",
+    from: "      forbidden_uses: one.forbidden_uses,\n      profile_digest: one.profile_digest,\n      contract: one.contract",
+    to: "      forbidden_uses: one.forbidden_uses,\n      profile_digest: one.profile_digest",
     test: "tests/product/verify-run.test.mjs",
     name: "a claim the stored result is not entitled to make is caught by the verifier, not only by the reader"
   },
@@ -6066,7 +6066,7 @@ export const GUARDS = [
     guard: "the rebuild is handed the reliance the result was built from",
     reason: "the ten metrics are an input like the caps are, and a rebuild that dropped them compared its withheld default against a stored PARTIAL profile -- a result carrying any reliance evidence could never verify",
     file: "lib/cli.mjs",
-    from: "      reliance: relianceInputOf(result),",
+    from: "      reliance: relianceInputOf(result)",
     to: "",
     test: "tests/product/verify-run.test.mjs",
     name: "a result carrying reliance evidence is recomputed from its own record too"
@@ -7782,6 +7782,24 @@ export const GUARDS = [
     name: "a scored result carries the boundary it was produced under, by name and never by value"
   },
   {
+    guard: "facet coverage preserves evidence digests",
+    reason: "the coverage projection repeats the profile and contract evidence that verification re-derives; publishing a bare digest there makes an honest result fail because the stored and reconstructed spellings no longer agree",
+    file: "lib/result-schema.mjs",
+    from: "      declared: facetIdentity,",
+    to: "      declared: structuredClone(evaluation.facet_coverage.declared),",
+    test: "tests/product/verify-run.test.mjs",
+    name: "a stored result is recomputed from its own record"
+  },
+  {
+    guard: "verifier rederives uncertainty instead of trusting it",
+    reason: "R10 requires verification to rebuild the uncertainty and claim decisions from bound facet evidence; supplying the stored uncertainty turns the artifact into its own authority",
+    file: "lib/cli.mjs",
+    from: "      reliance: relianceInputOf(result)",
+    to: "      reliance: relianceInputOf(result),\n      uncertainty: result.uncertainty",
+    test: "tests/product/verify-run.test.mjs",
+    name: "a stored result is recomputed from its own record"
+  },
+  {
     guard: "easier tasks retain their difficulty facet",
     reason: "removing task difficulty would turn a same-operator easier task into evidence about the person rather than a separately identified administration",
     file: "lib/facet-calibration.mjs",
@@ -8342,6 +8360,7 @@ export const ACCOUNTED_GUARDS = [
   "excluded issues present in the snapshot",
   "execution plan cycle detection",
   "explicit keys are keys",
+  "facet coverage preserves evidence digests",
   "facet evidence enters through the observation issuance boundary",
   "false completion cap",
   "false completion needs the completion claim",
@@ -8723,6 +8742,7 @@ export const ACCOUNTED_GUARDS = [
   "verification re-derives the settlement half too",
   "verification re-gates the invocations the record carries",
   "verification result check",
+  "verifier rederives uncertainty instead of trusting it",
   "version comment after a flow mapping",
   "version comment is a version",
   "what runs after a reroute belongs to the decision that caused it",

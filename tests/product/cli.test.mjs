@@ -68,7 +68,7 @@ test("one agent can complete a controlled assessment", () => {
     run(cwd, ["assess", "--plan", plan, "--json"], 3);
     const result = newestResult(cwd);
     const record = newestRecord(cwd);
-    assert.equal(result.schema_id, "aos-result.v2");
+    assert.equal(result.schema_id, "aos-result.v3");
     assert.equal(Object.hasOwn(result, "score"), false);
     // The three profiles, and what each of them rests on. The composite is withheld because the
     // process index is: the contract's operator-process cells are not populated in this build, and
