@@ -150,7 +150,7 @@ test("three attended runs of the new instrument are recorded, and the cycle with
     const stored = cycleOf(home);
     assert.equal(stored.runs.length, 3);
     assert.equal(new Set(stored.runs.map((entry) => entry.run_id)).size, 3, "a run id was recorded twice");
-    assert.deepEqual(stored.runs.map((entry) => entry.result_schema), ["aos-result.v3", "aos-result.v3", "aos-result.v3"]);
+    assert.deepEqual(stored.runs.map((entry) => entry.result_schema), ["aos-result.v4", "aos-result.v4", "aos-result.v4"]);
     // Nothing in the ledger carries a number for these runs, which is what stops one being averaged.
     assert.deepEqual(stored.runs.map((entry) => entry.final_score), [null, null, null]);
     for (const entry of stored.runs) assert.deepEqual(entry.dimensions, {});
@@ -162,7 +162,7 @@ test("three attended runs of the new instrument are recorded, and the cycle with
     const summary = JSON.parse(report.stdout);
     assert.equal(summary.aggregate, null);
     assert.equal(summary.complete, false);
-    assert.equal(summary.result_schema, "aos-result.v3");
+    assert.equal(summary.result_schema, "aos-result.v4");
     assert.match(summary.withheld_reason, /AOS_CYCLE_AGGREGATION_UNDEFINED/u);
     assert.match(summary.withheld_reason, /#563/u);
     // Admission, which is #561's half: every run landed on the cohort key the cycle locked, so
@@ -196,7 +196,7 @@ test("an unattended run is recorded as the run it was, and the cycle still has n
     cycleRun(cwd, plan, { answers: "" });
     const stored = cycleOf(home);
     assert.equal(stored.runs.length, 1);
-    assert.equal(stored.runs[0].result_schema, "aos-result.v3");
+    assert.equal(stored.runs[0].result_schema, "aos-result.v4");
     assert.equal(stored.runs[0].final_score, null);
 
     const report = spawnSync(process.execPath, [cli, "cycle"], { cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: home } });

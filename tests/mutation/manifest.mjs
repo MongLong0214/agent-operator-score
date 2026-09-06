@@ -5846,7 +5846,7 @@ export const GUARDS = [
   {
     guard: "withheld is never a number, and issued is never a reason",
     reason: "the three fields are one state, and three fields nothing binds together are three fields a stored file can disagree with itself in -- writing 0 over a withheld index left the reasons in place and printed 0.0 with nothing beside it, which is the one reading this instrument exists to refuse; the coupling is stated in the schema, where a reader of the artifact outside this repository checks it too",
-    file: "schemas/aos-result.v3.schema.json",
+    file: "schemas/aos-result.v4.schema.json",
     from: "\"operator_process_profile\": {\n      \"type\": \"object\",\n      \"additionalProperties\": false,\n      \"oneOf\": [\n        {\n          \"properties\": {\n            \"issued\": {\n              \"const\": true\n            },\n            \"index\": {\n              \"type\": \"number\"\n            },\n            \"withheld_reason\": {\n              \"type\": \"null\"\n            }\n          }\n        },\n        {\n          \"properties\": {\n            \"issued\": {\n              \"const\": false\n            },\n            \"index\": {\n              \"type\": \"null\"\n            },",
     to: "\"operator_process_profile\": {\n      \"type\": \"object\",\n      \"additionalProperties\": false,\n      \"oneOf\": [\n        {\n          \"properties\": {\n            \"issued\": {\n              \"const\": true\n            },\n            \"index\": {\n              \"type\": \"number\"\n            },\n            \"withheld_reason\": {\n              \"type\": \"null\"\n            }\n          }\n        },\n        {\n          \"properties\": {\n            \"issued\": {\n              \"const\": false\n            },\n            \"index\": {\n              \"type\": [\"null\", \"number\"]\n            },",
     test: "tests/product/projection-consistency.test.mjs",
@@ -5855,7 +5855,7 @@ export const GUARDS = [
   {
     guard: "the reader checks the state it was handed",
     reason: "a builder that cannot emit a contradiction is not a reader that cannot be handed one: the file on disk was written by some other build, or edited, and the fields no renderer may default -- the uncertainty among them -- are required by the schema or by nothing",
-    file: "schemas/aos-result.v3.schema.json",
+    file: "schemas/aos-result.v4.schema.json",
     from: "    \"uncertainty\",\n    \"calibration\",\n    \"permitted_interpretation\",",
     to: "    \"calibration\",\n    \"permitted_interpretation\",",
     test: "tests/product/profile-aggregation.test.mjs",
@@ -5918,7 +5918,7 @@ export const GUARDS = [
   {
     guard: "a status this build does not know is refused",
     reason: "a status is a state, not a word in a file; the schema enumerates the states a cell may be in, and a schema that admits one more admits every one a renderer would then carry through to the reader",
-    file: "schemas/aos-result.v3.schema.json",
+    file: "schemas/aos-result.v4.schema.json",
     from: "    \"cell_status\": {\n      \"enum\": [\n        \"ISSUED\",",
     to: "    \"cell_status\": {\n      \"enum\": [\n        \"ATTACKER_DEFINED\",\n        \"ISSUED\",",
     test: "tests/product/profile-aggregation.test.mjs",
@@ -6020,7 +6020,7 @@ export const GUARDS = [
   {
     guard: "a row is read as a whole",
     reason: "an absent field is not an empty one: a row that lost the cells it was averaged over was read as a row averaged over nothing, and its number printed anyway -- the schema's required list is where that is now said",
-    file: "schemas/aos-result.v3.schema.json",
+    file: "schemas/aos-result.v4.schema.json",
     from: "\"required\": [\n        \"domain_id\",\n        \"title\",\n        \"axis\",\n        \"estimate\",\n        \"value\",\n        \"status\",\n        \"required_cells\",\n        \"cells\",",
     to: "\"required\": [\n        \"domain_id\",\n        \"title\",\n        \"axis\",\n        \"estimate\",\n        \"value\",\n        \"status\",\n        \"required_cells\",",
     test: "tests/product/profile-aggregation.test.mjs",
@@ -6083,7 +6083,7 @@ export const GUARDS = [
   {
     guard: "a weight is a reciprocal or it is not a weight",
     reason: "a weight of 0 alongside one of 0.5 is not a share of anything; the schema enumerates the reciprocals so the impossible values are refused where every consumer of the artifact reads it, not only where this repository looks",
-    file: "schemas/aos-result.v3.schema.json",
+    file: "schemas/aos-result.v4.schema.json",
     from: "      \"additionalProperties\": {\n        \"enum\": [1, 0.5,",
     to: "      \"additionalProperties\": {\n        \"enum\": [0, 1, 0.5,",
     test: "tests/product/profile-aggregation.test.mjs",
@@ -6155,7 +6155,7 @@ export const GUARDS = [
   {
     guard: "a metric's status and its value are one state",
     reason: "the surface-level issuance triple was coupled and the metric one level below it was not, so a withheld metric carrying a zero validated and was rendered as 0.00 with WITHHELD beside it",
-    file: "schemas/aos-result.v3.schema.json",
+    file: "schemas/aos-result.v4.schema.json",
     from: "            \"status\": {\n              \"enum\": [\n                \"NOT_COMPUTED\",\n                \"WITHHELD\"\n              ]\n            },\n            \"value\": {\n              \"type\": \"null\"\n            }",
     to: "            \"status\": {\n              \"enum\": [\n                \"NOT_COMPUTED\",\n                \"WITHHELD\"\n              ]\n            },\n            \"value\": {\n              \"type\": [\"null\", \"number\"]\n            }",
     test: "tests/product/profile-aggregation.test.mjs",
@@ -7262,8 +7262,8 @@ export const GUARDS = [
     reason:
       "dropped from the list, a record from the previous build reads as a version this build has never heard of -- so an operator with legacy runs is told a mismatch rather than which generation wrote them",
     file: "lib/result-schema.mjs",
-    from: "export const RESULT_SCHEMA_GENERATIONS = Object.freeze([\"2.0.0\", \"2.1.0\", \"2.2.0\", \"3.0.0\"]);",
-    to: "export const RESULT_SCHEMA_GENERATIONS = Object.freeze([\"2.0.0\", \"2.2.0\", \"3.0.0\"]);",
+    from: "export const RESULT_SCHEMA_GENERATIONS = Object.freeze([\"2.0.0\", \"2.1.0\", \"2.2.0\", \"3.0.0\", \"4.0.0\"]);",
+    to: "export const RESULT_SCHEMA_GENERATIONS = Object.freeze([\"2.0.0\", \"2.2.0\", \"3.0.0\", \"4.0.0\"]);",
     test: "tests/product/hard-caps.test.mjs",
     name: "a result written before cap binding existed is named as an older generation, not accused of forging one"
   },
@@ -7819,12 +7819,12 @@ export const GUARDS = [
   },
   {
     guard: "practice occasions retain their occasion facet",
-    reason: "a later occasion is practice evidence, not an unlabelled repeat that can become an independent person claim",
+    reason: "an administration order must be observed before it is published; defaulting an unknown position to one turns absence into a confident occasion facet",
     file: "lib/facet-calibration.mjs",
-    from: "      occasion_id: occasionId,",
-    to: "      occasion_id: null,",
-    test: "tests/product/facet-uncertainty.test.mjs",
-    name: "second occasion records practice rather than becoming a second independent person score"
+    from: "      sequence_position: sequencePosition,",
+    to: "      sequence_position: 1,",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a scored result carries the boundary it was produced under, by name and never by value"
   },
   {
     guard: "strict verifier drift retains its contract digest",

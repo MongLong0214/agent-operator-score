@@ -796,7 +796,7 @@ test("buildResult takes only a result evaluate emitted under the contract it is 
   assert.throws(() => buildResult({}), /AOS_UNEMITTED_EVALUATION/);
 });
 
-test("the canonical result validates against schemas/aos-result.v3.schema.json and the schema bounds every array", () => {
+test("the canonical result validates against schemas/aos-result.v4.schema.json and the schema bounds every array", () => {
   const schema = loadSchema(RESULT_SCHEMA_URL);
   const result = buildResult({ contract: populated, evaluation: fullRun(), run: { run_id: "run-1", seed: "seed-1", suite_digest: "sha256:abc" } });
   assert.deepEqual(validateAgainstSchema(JSON.parse(canonicalJson(result)), schema).errors, []);

@@ -791,6 +791,11 @@ test("a scored result carries the boundary it was produced under, by name and ne
       expected_difficulty_version: stored.suite_manifest.form_manifest.form_contract_digest,
       observation: formMismatches[0] ?? null
     }));
+    const sequenceMismatches = scored.filter((observation) => observation.facet_record?.sequence_position !== null);
+    assert.equal(sequenceMismatches.length, 0, JSON.stringify({
+      expected_sequence_position: null,
+      observation: sequenceMismatches[0] ?? null
+    }));
     // And no value of any kind reached either file -- the published result least of all.
     const serialized = JSON.stringify(stored) + JSON.stringify(issued);
     assert.equal(serialized.includes("ghp_notarealtokenusedonlyforthistest4"), false, "a credential value reached the result");
