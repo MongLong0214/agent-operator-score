@@ -257,6 +257,10 @@ test("a replayed operational form crosses runs as practice, never as official ag
     assert.equal(afterPreview.entries[0].scored, false);
     assert.equal(afterPreview.entries[0].sequence_position, 1);
     assert.equal(afterPreview.entries[0].cycle_id, null);
+    // #585. The wall clock the command itself measured, on every administration whether or not it
+    // scores -- without it `speed_only_improvement` can never leave null from real use.
+    assert.equal(typeof afterPreview.entries[0].duration_ms, "number");
+    assert.equal(afterPreview.entries[0].duration_ms >= 0, true);
 
     // The previewed seed inside a cycle: the ledger has seen the exact form, so the run is
     // classified practice and excluded from the official aggregate, by name.
@@ -288,6 +292,14 @@ test("a replayed operational form crosses runs as practice, never as official ag
     assert.equal(finalLedger.entries[2].sequence_position, 3);
     const result = JSON.parse(readFileSync(runPaths(home, officialRun.run_id).result, "utf8"));
     assert.deepEqual(result.facet_coverage.occasions.observed_levels, [finalLedger.entries[2].occasion_id], "the run's facet records do not carry the administration occasion the ledger assigned");
+    // #585. `score` and `duration_ms` travel onto the ledger entry from this exact run, not as a
+    // fabricated number: the ledger's score is the run's own issued composite value, whatever it
+    // is (including null, if the composite withheld) -- never a number this administration did not
+    // earn. Without this, `memorization_indicator` and `speed_only_improvement` could never leave
+    // null from real use, whatever `practiceAnalysis` computes from a form with two administrations.
+    assert.equal(finalLedger.entries[2].score, result.aos_composite.value, "the ledger's score must be the run's own issued composite, not left null while a real one exists");
+    assert.equal(typeof finalLedger.entries[2].duration_ms, "number");
+    assert.equal(finalLedger.entries[2].duration_ms >= 0, true);
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }
