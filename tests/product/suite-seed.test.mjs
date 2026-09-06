@@ -426,7 +426,7 @@ test("the 20-seed report counts implemented decision axes separately from declar
       assert.equal(row.unique_assessment_form_count, 1);
       assert.ok(row.seeded_task_input_variant_count > 1, "FAM-5 no longer carries its seed-specific setup");
       assert.equal(row.unique_oracle_branch_label_count, 1);
-      assert.equal(row.cosmetic_only_difference_count, null);
+      assert.equal(row.cosmetic_only_difference_count, 3, "FAM-5's fixed form does not record its seed-specific setup differences");
       assert.ok(row.unimplemented_decision_axes.every((axis) => axis.reason === "The v0.2.0 fixed-form contract records FAM-5 as one assessment identity, so this seeded decision axis is not implemented."), "FAM-5's unimplemented axes do not point to their fixed-form decision");
     } else {
       assert.equal(row.status, "PASS", family);
@@ -456,6 +456,7 @@ test("FAM-5 replays as one fixed assessment identity across seeds", () => {
   assert.equal(fam5.assessment_identity, "aos-fam-5-fixed-v0.2.0");
   assert.equal(fam5.unique_assessment_form_count, 1, "a second seed counted as another FAM-5 assessment form");
   assert.equal(fam5.seeded_task_input_variant_count, 2, "the fixed identity discarded the seed-bound task inputs");
+  assert.equal(fam5.cosmetic_only_difference_count, 1, "the fixed identity did not record its seed-specific setup difference");
 
   const forged = structuredClone(second);
   forged.family_manifests["FAM-5"].assessment_identity = "aos-fam-5-forged-second-form";

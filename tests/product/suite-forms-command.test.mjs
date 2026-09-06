@@ -23,6 +23,7 @@ test("the shipped forms command produces the 20-seed variation report", () => {
         assert.equal(row.unique_assessment_form_count, 1);
         assert.equal(row.decision_status, "DESCRIPTIVE_ONLY");
         assert.equal(row.implemented_decision_axis_count, 0);
+        assert.equal(row.cosmetic_only_difference_count, 3);
       } else {
         assert.equal(row.status, "PASS", family);
         assert.equal(row.decision_status, "DECISION_BOUND");
