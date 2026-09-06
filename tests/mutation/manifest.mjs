@@ -2530,8 +2530,8 @@ export const GUARDS = [
     guard: "a confirmed author resists an unavailable overwrite",
     reason: "NOT_CHECKED is truthy, so truthiness would let a newer unavailable source overwrite a confirmed record; only a strictly true author may do that",
     file: "lib/github-state.mjs",
-    from: "      if (found?.author_trusted === true && trusted !== true) {",
-    to: "      if (found?.author_trusted === true && !trusted) {",
+    from: "      if (isEstablished(found?.author_trusted) && !isEstablished(trusted)) {",
+    to: "      if (isEstablished(found?.author_trusted) && !trusted) {",
     test: "tests/product/execution-plan.test.mjs",
     name: "an unavailable author cannot overwrite a confirmed author"
   },
@@ -2647,7 +2647,7 @@ export const GUARDS = [
     guard: "close-evidence author trust",
     reason: "anyone can comment on a public issue; not everyone can attest that work was done",
     file: "lib/execution-plan.mjs",
-    from: "    if (record && record.author_trusted !== true) {",
+    from: "    if (record && !isEstablished(record.author_trusted)) {",
     to: "    if (false) {",
     test: "tests/product/execution-plan.test.mjs",
     name: "a record from someone without write access is not an attestation"
