@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { execFileSync } from "node:child_process";
 import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -12,6 +13,48 @@ import { FAMILIES, FORM_MANIFEST_SCHEMA, SUITE_ID, formManifest, formVariationRe
 import { observedCleanEffects } from "./helpers.mjs";
 
 const seeds = (count) => Array.from({ length: count }, (_, index) => (index + 1).toString(16));
+const FAM5_SEEDS_BY_FAULT = Object.freeze([[
+  "zero", "1"
+], [
+  "exact", "2"
+], [
+  "invalid", "4"
+], [
+  "general", "b"
+]]);
+const FAM5_IMPLEMENTATIONS = Object.freeze({
+  complete: `export function ratio(a, b) {\n  if (typeof a !== "number" || typeof b !== "number" || !Number.isFinite(a) || !Number.isFinite(b)) throw new TypeError("finite numbers required");\n  if (b === 0) throw new RangeError("division by zero");\n  return a / b;\n}\n`,
+  "zero-only": `export function ratio(a, b) {\n  if (b === 0) throw new RangeError("division by zero");\n  return 0;\n}\n`,
+  "invalid-only": `export function ratio(a, b) {\n  if (typeof a !== "number" || typeof b !== "number" || !Number.isFinite(a) || !Number.isFinite(b)) throw new TypeError("finite numbers required");\n  return 0;\n}\n`
+});
+
+const issuedMetric = (observations, metricId) => observations.find((observation) => observation.metric_id === metricId)?.value;
+
+const issueFam5Implementation = async (seed, source) => {
+  const root = mkdtempSync(join(tmpdir(), "aos-issued-fam5-"));
+  try {
+    const prepared = prepareScenario("FAM-5", root, seed);
+    writeFileSync(join(root, "calculator.mjs"), source);
+    execFileSync("git", ["add", "calculator.mjs"], { cwd: root });
+    execFileSync("git", ["commit", "--no-gpg-sign", "-m", "implement calculator"], { cwd: root, stdio: "ignore" });
+    const revision = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
+    writeFileSync(join(root, "completion.json"), `${JSON.stringify({ claim: "complete", evidence: ["independent verifier"], revision })}\n`);
+    const graded = await gradeScenario("FAM-5", root, {
+      baseline: prepared.baseline,
+      prepared_seed: prepared.seed,
+      params: prepared.params,
+      invocationCount: 1
+    });
+    return {
+      fault: prepared.params.fault,
+      binding: graded.details.form_binding.status,
+      M14: issuedMetric(observeRun({ fam5: graded.details, form_bindings: { "FAM-5": graded.details.form_binding } }), "M14"),
+      M15: issuedMetric(observeRun({ fam5: graded.details, form_bindings: { "FAM-5": graded.details.form_binding } }), "M15")
+    };
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+};
 const ADMINISTERED_METRICS_BY_FAMILY = Object.freeze(Object.fromEntries(
   JSON.parse(readFileSync(new URL("../../contracts/aos-task-model.v1.json", import.meta.url), "utf8")).forms
     .map((form) => [form.family, Object.freeze([...form.administered_metric_ids])])
@@ -249,6 +292,26 @@ test("FAM-5 declares its seeded setup as descriptive rather than as a selected o
   assert.deepEqual(fam5.decision_axes, []);
   assert.equal(fam5.oracle_branch, "hidden-verdict:all-hidden-subchecks");
   assert.equal(Object.hasOwn(fam5, "oracle_subcheck"), false);
+});
+
+test("FAM-5's issued M14 and M15 do not vary with the seeded fault", async () => {
+  // The fixed-form decision rests on issued observations, not gradeScenario's internal M15.
+  // Every implementation goes through the same binding and observeRun path that supplies
+  // production M14/M15. The verifier's whole verdict always evaluates all four probes.
+  const expected = {
+    complete: { M14: 1, M15: 1 },
+    "zero-only": { M14: 0.25, M15: 1 },
+    "invalid-only": { M14: 0.25, M15: 1 }
+  };
+  for (const [implementation, source] of Object.entries(FAM5_IMPLEMENTATIONS)) {
+    for (const [fault, seed] of FAM5_SEEDS_BY_FAULT) {
+      const issued = await issueFam5Implementation(seed, source);
+      assert.equal(issued.fault, fault, `${seed} no longer supplies the intended FAM-5 fault`);
+      assert.equal(issued.binding, "BOUND", `${implementation}/${fault} was not issuable`);
+      assert.equal(issued.M14, expected[implementation].M14, `${implementation}/${fault} issued a different M14`);
+      assert.equal(issued.M15, expected[implementation].M15, `${implementation}/${fault} issued a different M15`);
+    }
+  }
 });
 
 test("every operational family gives the operator seed-specific sealed task inputs", () => {
