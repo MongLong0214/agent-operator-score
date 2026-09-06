@@ -816,18 +816,80 @@
     {
       "number": 564,
       "title": "[P0][suite] 6개 family의 operational form을 construct opportunity·oracle 기준으로 의미 있게 변형한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:measurement",
         "priority:P0",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 564,
+        "pr": 638,
+        "final_sha": "7afd2c976b1444148eab8862d54812144050afc8",
+        "merge_commit_sha": "bbf972e6a3f425b14abc641197bb7d627b12afe9",
+        "ci_run_ids": [
+          34006562346,
+          34007844262
+        ],
+        "verdict": "PASS_WITH_KNOWN_RESIDUE",
+        "evidence": {
+          "suite_form_digests": "The shipped `aos forms --json` at the merged head reports schema aos-form-variation-contract.v2, contract_version 0.2.0, sample_size 20, minimum_unique_task_forms 2, maximum_cosmetic_only_differences 0, and one fixed assessment identity aos-fam-5-fixed-v0.2.0 for FAM-5. Per-family implemented/declared decision axes: FAM-1 1/6 PASS, FAM-2 4/5 PASS, FAM-3 1/7 PASS, FAM-4 5/5 PASS, FAM-5 0/7 FIXED_FORM, FAM-6 2/7 PASS. Declared 37, implemented 13, unimplemented 24. Meaningful variation required 5 satisfied 5; task/oracle/evidence binding required 6 satisfied 6, FAM-5 included. historical_axis_accounting_status PRESERVED, with basis 'Original six-family variation contract before the v0.2.0 fixed-form amendment' and fam5_unimplemented_decision_axis_count 7. Round 1 derived the 37 independently from FROZEN_FAMILY_CONTRACT_AXES clause-for-clause against the issue rather than from the manifest's own declaration, and reproduced the completeness witness dying both when a frozen axis is omitted and when two are merged.",
+          "form_equivalence_status": "UNCALIBRATED. No equivalence between forms is claimed and none could be established here: difficulty is already UNESTABLISHED in the ECD contract, so UNCALIBRATED hides nothing this work could have shown. The boundary was verified in both directions by round 1. Cross-seed forgery fails closed: replacing a prepared seed-1 FAM-1 task with seed-2 bytes and answering seed 1's oracle withholds M01-M04 while the tampering stays recorded in a non-scoring observed_result, and an incomplete binding withholds at least as hard as a mismatched one.",
+          "mutation": "833/833 guards load-bearing, `npm run test:mutation` unqualified on darwin at the final head, with the one linux-owned deferral ('raw filename bytes') unchanged and still describing this code. The blocker that reframed this PR was a mutation-visible one: withholding had been implemented in gradeScenario while the twenty published observations came from observeRun, which took no binding argument at all, so a seed-2 task under seed 1's oracle still issued M01 PASS 1 and graded.metrics was read at exactly one site in the tree. Withholding now reaches issuance and every earlier closure was re-checked against the issuance path rather than against gradeScenario."
+        },
+        "review": {
+          "protocol": "sol-simplify-review-v1",
+          "note": "round 1 was RESTARTED: the branch was rebased to follow a moved dev, so the sealed round-1 head became unreachable. Re-sealing would have attached an inventory written against a vanished head to different code.",
+          "inventory_sha256": "d1e564a7d235bb6ea3604c22a7bd707a9031b39534f480f8e0d61274569148c9",
+          "round1_head_sha": "5d8a696cb5a2527ca9e48207db9119583e71b5f7",
+          "round1": {
+            "verdict": "BLOCK",
+            "items": 53,
+            "pass": 36,
+            "blocker": 4,
+            "nit": 9
+          },
+          "round2": {
+            "verdict": "PASS WITH NITS",
+            "commands": 79,
+            "regressions": 0,
+            "protocol_escapes": 0
+          },
+          "executors": "implementer, round-1 reviewer and round-2 reviewer were three different executors"
+        },
+        "not_established": [
+          "meaningful variation for FAM-5: it has no place for a seeded axis, since verdict.hidden already requires every subcheck. Confirmed on the ISSUANCE path in #641 across all 16 (probe, fault) configurations x 3 implementations — 48 issued observations, three distinct rows, no seeded fault moving M14, M15, M16 or M17",
+          "the ORIGINAL six-family variation obligation. These 13 axes ship under the AMENDED contract landed by #641 / PR #643 (ECD 1.5.0, form-variation contract v0.2.0), which narrows variation to five families while keeping task/oracle/evidence binding at six. This issue is not closed as fulfilment of the contract as originally written; 13/37 and FAM-5's seven-axis gap are preserved in the shipped report as historical accounting"
+        ],
+        "known_residue": [
+          "FAM-5 has no implemented seeded decision axis (0 of 7 declared). It ships as a fixed assessment form under the v0.2.0 amendment landed by #641 / PR #643, and re-running it under another seed never counts as another form or as additional variation. Confirmed inert on the ISSUANCE path across all 16 (probe, fault) configurations x 3 implementations: 48 issued observations, three distinct rows, no seeded fault moving M14, M15, M16 or M17.",
+          "24 of the 37 axes the original frozen family contracts declare are not implemented: FAM-1 5, FAM-2 1, FAM-3 6, FAM-5 7, FAM-6 5. Each is accounted for in the shipped manifest with an explicit NOT_IMPLEMENTED disposition and a reason; none is silently absent from the count. The report carries historical_axis_accounting_status PRESERVED so the shortfall against the original contract stays visible rather than being erased by the amendment.",
+          "aos forms reads its obligations from the contract rather than pinning them, so the reporting surface is not the enforcing surface. checkEcdContract is, and it errs closed: a contract with FAM-5 removed from the binding list is refused by shippedEcdContract(), which both aos assess and aos verify --run call.",
+          "verify:execution-plan:live and verify:real-runtime-strict were UNVERIFIABLE at review time. The real-runtime STRICT lane reports NOT_OBSERVED because the provider refused to serve under a usage limit, which is the third value that lane exists to distinguish and is not a pass."
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
       "closing_references": [
         "#564",
         "#575",
@@ -841,7 +903,9 @@
         "#583",
         "#567",
         "#584",
-        "#585"
+        "#585",
+        "#641",
+        "#643"
       ]
     },
     {
@@ -1588,7 +1652,7 @@
         "area:measurement",
         "priority:P0",
         "release:v0.2.0",
-        "status:blocked"
+        "status:ready"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
