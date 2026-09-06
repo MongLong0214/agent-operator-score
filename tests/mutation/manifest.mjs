@@ -7773,6 +7773,15 @@ export const GUARDS = [
     name: "issued observations bind facet records at the production boundary"
   },
   {
+    guard: "issued CLI facet records bind the profile digest",
+    reason: "the shipping assessment path must bind its resolved profile to each issued score unit; a bare or missing digest makes the record neither comparable nor verifiable",
+    file: "lib/cli.mjs",
+    from: "        model_profile_digest: `sha256:${runProfileDigest}`",
+    to: "        model_profile_digest: null",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a scored result carries the boundary it was produced under, by name and never by value"
+  },
+  {
     guard: "easier tasks retain their difficulty facet",
     reason: "removing task difficulty would turn a same-operator easier task into evidence about the person rather than a separately identified administration",
     file: "lib/facet-calibration.mjs",
@@ -8359,6 +8368,7 @@ export const ACCOUNTED_GUARDS = [
   "issuance needs STRICT",
   "issuance needs a passing canary with evidence",
   "issuance withholds every unbound form metric",
+  "issued CLI facet records bind the profile digest",
   "legacy digest separation",
   "legacy ledger row is not holdout evidence",
   "legacy migration guard",

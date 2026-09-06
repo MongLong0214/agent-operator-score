@@ -766,8 +766,20 @@ test("a scored result carries the boundary it was produced under, by name and ne
         assert.equal(invocation.env_policy_digest, record.env_policy_digest, "an invocation ran under a policy the record does not describe");
       }
     }
+    // The issued result carries the contract-bound facet records created at the production
+    // observation boundary, including a self-describing profile digest rather than a bare hash.
+    const issued = newestResult(cwd);
+    const facetMismatches = issued.observations.filter((observation) =>
+      observation.facet_record?.model_profile_digest !== issued.profile_digest ||
+      observation.facet_record?.facet_contract_digest !== issued.contract.digests.combined
+    );
+    assert.equal(facetMismatches.length, 0, JSON.stringify({
+      expected_profile: issued.profile_digest,
+      expected_contract: issued.contract.digests.combined,
+      observation: facetMismatches[0] ?? null
+    }));
     // And no value of any kind reached either file -- the published result least of all.
-    const serialized = JSON.stringify(stored) + JSON.stringify(newestResult(cwd));
+    const serialized = JSON.stringify(stored) + JSON.stringify(issued);
     assert.equal(serialized.includes("ghp_notarealtokenusedonlyforthistest4"), false, "a credential value reached the result");
     assert.equal(serialized.includes("/tmp/aos-test-python"), false, "an environment value reached the result");
   } finally {
