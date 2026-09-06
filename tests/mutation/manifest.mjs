@@ -7906,6 +7906,96 @@ export const GUARDS = [
     to: "  const interval = [0, 1];",
     test: "tests/product/facet-uncertainty.test.mjs",
     name: "no population data permits PROFILE_BOUND but leaves uncertainty and generalizability withheld"
+  },
+  {
+    guard: 'legacy markdown reports carry the NOT COMPARABLE marker',
+    reason: 'a stored legacy band rendered without LEGACY / NOT COMPARABLE and its scorer id reads as a point on the v0.2.0 scale; the markdown headline line is the only place a markdown reader is told otherwise',
+    file: 'lib/report.mjs',
+    from: '    `- **LEGACY / NOT COMPARABLE** — scored by ${legacyScorerName(result)}; rendered as stored, not comparable with a v0.2.0 profile result and never mixed into one aggregate`,',
+    to: '    `- scored by ${legacyScorerName(result)}`,',
+    test: 'tests/product/legacy-band-provenance.test.mjs',
+    name: "a legacy result's markdown and html carry LEGACY / NOT COMPARABLE with the stored scorer, and its band verbatim"
+  },
+  {
+    guard: 'legacy html reports carry the NOT COMPARABLE marker',
+    reason: 'the html headline is where the band is drawn, so the comparability refusal has to sit in the same block; dropping the legacy div leaves the band as the loudest and only claim',
+    file: 'lib/report.mjs',
+    from: '    + `<div class="legacy">${t("legacyBadge")} · ${htmlEscape(legacyScorerName(result))}<div class="muted">${t("legacyExplain")}</div></div>`;',
+    to: '    + "";',
+    test: 'tests/product/legacy-band-provenance.test.mjs',
+    name: "a legacy result's markdown and html carry LEGACY / NOT COMPARABLE with the stored scorer, and its band verbatim"
+  },
+  {
+    guard: 'legacy dashboard rows carry their scorer provenance',
+    reason: 'the dashboard index is the screen where legacy and profile rows sit closest together, so a legacy row without LEGACY / NOT COMPARABLE and its stored scorer invites exactly the cross-instrument reading the schema refuses',
+    file: 'lib/dashboard.mjs',
+    from: '<td>${htmlEscape(`LEGACY / NOT COMPARABLE · ${scorer}`)}</td></tr>`);',
+    to: '<td></td></tr>`);',
+    test: 'tests/product/legacy-band-provenance.test.mjs',
+    name: 'the dashboard names every legacy row LEGACY / NOT COMPARABLE with the scorer that produced it'
+  },
+  {
+    guard: 'legacy cycle aggregates carry the NOT COMPARABLE marker',
+    reason: "the legacy median is the one aggregate screen left that prints a single Operator Score; without the marker it renders as the current instrument's number above the current instrument's runs",
+    file: 'lib/dashboard.mjs',
+    from: '<p class="legacy-note">LEGACY / NOT COMPARABLE · a legacy scorer aggregate, rendered as stored; not comparable with a v0.2.0 profile result</p>',
+    to: '<p class="legacy-note"></p>',
+    test: 'tests/product/legacy-band-provenance.test.mjs',
+    name: 'a legacy cycle aggregate is marked LEGACY / NOT COMPARABLE on the dashboard'
+  },
+  {
+    guard: 'standard-setting completeness is checked field by field',
+    reason: 'a standard-setting record missing consequence_review or any required field must refuse emission by naming the field; with the check gone the record falls through to a generic refusal and a future registry could validate an incomplete study',
+    file: 'lib/standard-setting.mjs',
+    from: '    if (missing.length > 0) {',
+    to: '    if (false) {',
+    test: 'tests/product/standard-setting-gate.test.mjs',
+    name: 'a standard-setting record missing its consequence review is an emission refusal, not a stored null'
+  },
+  {
+    guard: 'category emission requires an established standard-setting decision',
+    reason: 'a category, cut score, band, percentile or rank offered to the builder without an established decision must be refused, not dropped; silently nulling it tells the caller their category was issued as null when the truth is it was refused',
+    file: 'lib/standard-setting.mjs',
+    from: '  if (claimed.length > 0 && !isEstablished(decision)) {',
+    to: '  if (false) {',
+    test: 'tests/product/standard-setting-gate.test.mjs',
+    name: 'a category handed to the builder without an established standard-setting decision is refused by name'
+  },
+  {
+    guard: 'registry absence never establishes a standard-setting decision',
+    reason: 'absence never opens a gate: a contract whose standard_setting slot is null has registered nothing, and reading that absence as permission would let a complete but unvalidated record emit a category',
+    file: 'lib/standard-setting.mjs',
+    from: '  if (use.standard_setting === null || use.standard_setting === undefined) return null;',
+    to: '  if (use.standard_setting === null || use.standard_setting === undefined) return true;',
+    test: 'tests/product/standard-setting-gate.test.mjs',
+    name: 'a complete standard-setting record is still refused while the validation registry permits no category'
+  },
+  {
+    guard: 'buildResult runs the standard-setting gate',
+    reason: 'a gate that exists as an export and is not called at the issuing boundary gates nothing; buildResult is where a published result is made, so the call there is the whole enforcement',
+    file: 'lib/result-schema.mjs',
+    from: '  assertStandardSettingGate({ standard_setting, category, cut_score, percentile, rank, band }, contract);',
+    to: '  ;',
+    test: 'tests/product/standard-setting-gate.test.mjs',
+    name: 'every required standard-setting field is load-bearing for the gate'
+  },
+  {
+    guard: 'uncertainty interval and coverage counts are headline phrases',
+    reason: 'two results with one value and two uncertainties must be two results on every surface; with only the status word in the headline a surface can say COMPUTED and drop the interval and counts that make the statuses distinguishable',
+    file: 'lib/result-schema.mjs',
+    from: '    view.claim.uncertainty_interval, view.claim.uncertainty_counts, view.claim.facet_coverage,',
+    to: '    view.claim.uncertainty,',
+    test: 'tests/product/uncertainty-coverage-visible.test.mjs',
+    name: 'the interval and the coverage counts are headline phrases, held to every surface'
+  },
+  {
+    guard: 'a band value cannot enter the published result',
+    reason: "the v4 result's band is typed null and emitted null; a builder writing any other value would hand every renderer a category the contract never issued, and the schema check on the projection is what stops the stored file from being read at all",
+    file: 'lib/result-schema.mjs',
+    from: '    band: null,',
+    to: '    band: "ROBUST",',
+    test: 'tests/product/no-active-score-bands.test.mjs',
+    name: 'a new result in the low nineties carries no band, and no surface prints one'
   }
 ];
 
@@ -8030,6 +8120,7 @@ export const ACCOUNTED_GUARDS = [
   "a SUPERSEDED accounting is compared against the commits the collector derived",
   "a URL carrying userinfo is a credential",
   "a backend refusal loses the path it named",
+  "a band value cannot enter the published result",
   "a bare alias is never an exact identity",
   "a binary swapped since registration never reaches official support",
   "a binding mismatch withholds metrics without exception",
@@ -8335,6 +8426,7 @@ export const ACCOUNTED_GUARDS = [
   "both blocking issues are named while the log is blocked",
   "both canary judges share one denial predicate",
   "bubblewrap mounts what the policy declares",
+  "buildResult runs the standard-setting gate",
   "canonical manifest order and uniqueness",
   "canonical path, type and mode tuple",
   "canonical row field alphabet",
@@ -8344,6 +8436,7 @@ export const ACCOUNTED_GUARDS = [
   "captured stderr byte authority",
   "captured stream byte authority",
   "carriage returns stripped",
+  "category emission requires an established standard-setting decision",
   "central redaction",
   "checkpoint evidence preserved",
   "checkpoint observation reads who wrote the record",
@@ -8438,8 +8531,12 @@ export const ACCOUNTED_GUARDS = [
   "issuance needs a passing canary with evidence",
   "issuance withholds every unbound form metric",
   "issued CLI facet records bind the profile digest",
+  "legacy cycle aggregates carry the NOT COMPARABLE marker",
+  "legacy dashboard rows carry their scorer provenance",
   "legacy digest separation",
+  "legacy html reports carry the NOT COMPARABLE marker",
   "legacy ledger row is not holdout evidence",
+  "legacy markdown reports carry the NOT COMPARABLE marker",
   "legacy migration guard",
   "local reference redirection",
   "locked cycle seed",
@@ -8539,6 +8636,7 @@ export const ACCOUNTED_GUARDS = [
   "refusal marker in the tree digest",
   "refused size in the tree digest",
   "refused tree is not artifact identity",
+  "registry absence never establishes a standard-setting decision",
   "relay advice remains sealed in checkpoint state",
   "relay advice stays hidden before initial commit",
   "relay autonomous answer refusal",
@@ -8575,6 +8673,7 @@ export const ACCOUNTED_GUARDS = [
   "stale blocked status",
   "stale-branch audit deletion recommendations carry a reason",
   "stale-branch audit preserves orphaned unmerged work",
+  "standard-setting completeness is checked field by field",
   "started statuses need finished predecessors",
   "stored probe and delegation evidence is rebound during run verification",
   "stored routing evidence is rebound during run verification",
@@ -8781,6 +8880,7 @@ export const ACCOUNTED_GUARDS = [
   "trusted-file integrity re-check",
   "trusted-process import prohibition",
   "uncalibrated perfect forms do not establish generalizability",
+  "uncertainty interval and coverage counts are headline phrases",
   "undecided items are in neither denominator",
   "undeclared isolation is the weakest lane",
   "unread ACL is not a clean ACL",
@@ -8805,5 +8905,5 @@ export const ACCOUNTED_GUARDS = [
   "workspace snapshot map is null-prototype",
   "workspace snapshot reads bytes",
   "workspace snapshot records directories",
-  "write access asked of the repository",
+  "write access asked of the repository"
 ];
