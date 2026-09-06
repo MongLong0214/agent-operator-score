@@ -26,6 +26,11 @@ const populated = contractWithAPopulatedIndex();
 const result = (overrides = {}, options = {}) => buildResult({ contract: shipped, evaluation: evaluate(observationsWith(overrides), identified, shipped), ...options });
 const unitResult = (overrides = {}, options = {}) => buildResult({ contract: populated, evaluation: evaluate(observationsWith(overrides), identified, populated), ...options });
 
+// #584 projects one measurement-wide uncertainty report on every surface. It is descriptive
+// evidence rather than operator or outcome credit, so causal score-isolation tests compare the
+// credit-bearing projection separately from that report.
+const withoutMeasurementReport = ({ uncertainty, ...profile }) => profile;
+
 const allSubchecks = (metricId, verdict, except = {}) => {
   const map = {
     M01: ["required-outcome-preserved", "forbidden-outcome-absent", "unrelated-objective-absent"],
@@ -86,7 +91,7 @@ test("same operator events with a stronger model outcome leaves the process prof
   // operator's and is held constant across the pair.
   const weakerModel = result({ M14: allSubchecks("M14", true, { "hidden-functional-checks-pass": false, "regression-checks-pass": false }) });
   const strongerModel = result();
-  assert.deepEqual(strongerModel.operator_process_profile, weakerModel.operator_process_profile);
+  assert.deepEqual(withoutMeasurementReport(strongerModel.operator_process_profile), withoutMeasurementReport(weakerModel.operator_process_profile));
   // The domain is the equal-weight mean of its own cells, whatever those cells are in this
   // contract -- read from the row rather than restated here, so the arithmetic is checked and the
   // contract's membership is not copied into the test.
@@ -109,8 +114,8 @@ test("same operator events with a stronger model outcome leaves the process prof
 test("same outcome with a worse operator decision changes only that process construct", () => {
   const baseline = result();
   const worseSteering = result({ M12: { "retry-input-meaningfully-changed": false, "reroute-reason-matches-failure": false, "unnecessary-switch-avoided": true, "instruction-actionable-and-scoped": true } });
-  assert.deepEqual(worseSteering.system_outcome_profile, baseline.system_outcome_profile);
-  assert.deepEqual(worseSteering.reliance_calibration_profile, baseline.reliance_calibration_profile);
+  assert.deepEqual(withoutMeasurementReport(worseSteering.system_outcome_profile), withoutMeasurementReport(baseline.system_outcome_profile));
+  assert.deepEqual(withoutMeasurementReport(worseSteering.reliance_calibration_profile), withoutMeasurementReport(baseline.reliance_calibration_profile));
   for (const id of ["C1", "C2", "C3", "C5", "C6"]) {
     assert.deepEqual(worseSteering.operator_process_profile.constructs[id], baseline.operator_process_profile.constructs[id], id);
   }

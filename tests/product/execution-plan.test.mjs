@@ -1044,7 +1044,7 @@ test("an unreadable historical plan is not a false fact", async () => {
   };
 
   const checked = await verifyCompletionRecord("o/r", record, { get, issue: currentIssue });
-  assert.equal(checked.evidence_digests_match, NOT_CHECKED, "an outage reading the historical plan was recorded as the evidence being false");
+  assert.equal(checked.evidence_digests_match, null, "an outage reading the historical plan was recorded as the evidence being false");
   assert.notEqual(checked.evidence_digests_match, false);
   assert.equal(checked.verified, false);
 });
@@ -1052,7 +1052,8 @@ test("an unreadable historical plan is not a false fact", async () => {
 test("a one-key forgery of the whole audit does not pass", () => {
   const snapshot = state();
   snapshot.issues.find((one) => one.number === 588).close_evidence_checked = { verified: true };
-  assert.ok(auditCloseEvidence(plan(), asLive(snapshot), { live: true }).failures.some((one) => one.check === "close-evidence-unverified"));
+  const failures = auditCloseEvidence(plan(), asLive(snapshot), { live: true }).failures;
+  assert.ok(failures.some((one) => one.check === "close-evidence-unverified" && one.detail.includes("evidence_digests_match")));
 
   const partial = state();
   partial.issues.find((one) => one.number === 588).close_evidence_checked = { ...verified(), pr_produced_the_commit: false };
@@ -1083,7 +1084,7 @@ test("an empty array is not a digest and false is not a count", () => {
 });
 
 test("the public write-access lookup preserves allowed, denied, and unavailable answers", async () => {
-  const { hasWriteAccess } = await import("../../lib/github-state.mjs");
+  const { hasWriteAccess, writeAccessEvidence } = await import("../../lib/github-state.mjs");
   const withRole = (permission) => async () => ({ body: { permission } });
   assert.equal(await hasWriteAccess("o/r", "a", { get: withRole("admin") }), true);
   assert.equal(await hasWriteAccess("o/r", "a", { get: withRole("write") }), true);
@@ -1091,18 +1092,25 @@ test("the public write-access lookup preserves allowed, denied, and unavailable 
   // A collaborator with the read or triage role would have attested to completed work.
   assert.equal(await hasWriteAccess("o/r", "a", { get: withRole("triage") }), false);
   assert.equal(await hasWriteAccess("o/r", "a", { get: withRole("read") }), false);
-  // A 403 is neither a denial nor a pass. The public lookup keeps the third answer and its
-  // diagnostic context, so an audit can distinguish it from a known untrusted author.
-  const unavailable = await hasWriteAccess("o/r", "a", {
+  // A 403 is neither a denial nor a pass. The decision API returns null; its separately named
+  // evidence record retains the diagnostic context without becoming truthy authority.
+  const unavailable = await writeAccessEvidence("o/r", "a", {
     get: async () => {
       const error = new Error("403");
       error.status = 403;
       throw error;
     }
   });
-  assert.equal(unavailable.answer, NOT_CHECKED);
+  assert.equal(unavailable.decision, null);
   assert.equal(unavailable.call, "/repos/o/r/collaborators/a/permission");
   assert.equal(unavailable.status, 403);
+  assert.equal(await hasWriteAccess("o/r", "a", {
+    get: async () => {
+      const error = new Error("403");
+      error.status = 403;
+      throw error;
+    }
+  }), null);
   assert.equal(await hasWriteAccess("o/r", null, { get: withRole("admin") }), false);
 });
 
@@ -1134,7 +1142,7 @@ test("a 404 permission answer is a cached denial", async () => {
 });
 
 test("a transient permission failure is retried before the author is judged", async () => {
-  const { hasWriteAccess } = await import("../../lib/github-state.mjs");
+  const { hasWriteAccess, writeAccessEvidence } = await import("../../lib/github-state.mjs");
   const cache = new Map();
   let calls = 0;
   const get = async () => {
@@ -1147,8 +1155,8 @@ test("a transient permission failure is retried before the author is judged", as
     return { body: { permission: "write" } };
   };
 
-  const unavailable = await hasWriteAccess("o/r", "legitimate-writer", { get, cache });
-  assert.equal(unavailable.answer, NOT_CHECKED, "the first 502 was filed as a settled no-access answer");
+  const unavailable = await writeAccessEvidence("o/r", "legitimate-writer", { get, cache });
+  assert.equal(unavailable.decision, null, "the first 502 was filed as a settled no-access answer");
   assert.equal(unavailable.status, 502);
   assert.match(unavailable.call, /collaborators\/legitimate-writer\/permission$/u);
   assert.equal(calls, 1, "the first permission lookup did not run");
@@ -2005,7 +2013,7 @@ test("a transient failure is not a false fact", async () => {
   // keeps the answer it earned; the branch question was never answered and must not read as no.
   const flaky = await verifyCompletionRecord("o/r", record, { get: refusing("/compare/", 502), issue: owner });
   assert.equal(flaky.commit_exists, true, "the call that succeeded still counts");
-  assert.equal(flaky.commit_on_integration_branch, NOT_CHECKED, "a 502 was recorded as the fact being false");
+  assert.equal(flaky.commit_on_integration_branch, null, "a 502 was recorded as the fact being false");
   assert.notEqual(flaky.commit_on_integration_branch, false);
   assert.equal(flaky.verified, false, "an unresolved record must not pass");
   assert.equal(flaky.resolution, "not-checked", "an unread confirmation was filed as a denied one");
@@ -2020,7 +2028,7 @@ test("a transient failure is not a false fact", async () => {
   // "could not check" would turn the third state into the bucket a forged SHA hides in.
   const absent = await verifyCompletionRecord("o/r", record, { get: refusing("/commits/", 404), issue: owner });
   assert.equal(absent.commit_exists, false, "a 404 on a commit that does not exist was swallowed as unreachable");
-  assert.notEqual(absent.commit_exists, NOT_CHECKED);
+  assert.notEqual(absent.commit_exists, null);
   assert.equal(absent.resolution, "contradicted");
   assert.deepEqual(absent.unresolved, []);
   assert.equal(absent.verified, false);
@@ -2045,9 +2053,9 @@ test("runs are not disowned by a pull request nobody could read", async () => {
     return { body: { conclusion: "success", head_sha: "b".repeat(40) } };
   };
   const checked = await verifyCompletionRecord("o/r", record, { get, issue: owner });
-  assert.equal(checked.pr_merged, NOT_CHECKED);
+  assert.equal(checked.pr_merged, null);
   assert.equal(checked.ci_runs_succeeded, true, "the runs themselves were read and did succeed");
-  assert.equal(checked.ci_runs_ran_on_this_work, NOT_CHECKED, "an unread pull request made a run look like somebody else's");
+  assert.equal(checked.ci_runs_ran_on_this_work, null, "an unread pull request made a run look like somebody else's");
   assert.notEqual(checked.ci_runs_ran_on_this_work, false);
   assert.equal(checked.resolution, "not-checked");
   assert.ok(checked.unresolved.some((one) => one.confirmation === "ci_runs_ran_on_this_work" && one.status === 429), JSON.stringify(checked.unresolved));
@@ -2063,7 +2071,7 @@ test("an unread confirmation and a denied one are different outcomes", () => {
     return auditCloseEvidence(plan(), asLive(snapshot), { live: true });
   };
 
-  const unread = withChecked({ ...verified(), commit_on_integration_branch: NOT_CHECKED, verified: false, resolution: "not-checked" });
+  const unread = withChecked({ ...verified(), commit_on_integration_branch: null, verified: false, resolution: "not-checked" });
   const names = unread.failures.filter((one) => one.issue === 588).map((one) => one.check);
   assert.deepEqual(names, ["close-evidence-unchecked"], `an unread confirmation was reported as ${names.join(", ") || "nothing"}`);
   assert.match(unread.failures.find((one) => one.issue === 588).detail, /commit_on_integration_branch/u);
@@ -2077,7 +2085,7 @@ test("an unread confirmation and a denied one are different outcomes", () => {
 
   // Both at once is a denial: a fact the repository contradicts is contradicted however much else
   // went unread, so "could not check" cannot become the quieter word a false fact is filed under.
-  const both = withChecked({ ...verified(), commit_exists: false, pr_merged: NOT_CHECKED, verified: false, resolution: "contradicted" });
+  const both = withChecked({ ...verified(), commit_exists: false, pr_merged: null, verified: false, resolution: "contradicted" });
   assert.deepEqual(both.failures.filter((one) => one.issue === 588).map((one) => one.check), ["close-evidence-unverified"]);
 
   // And the shipped fixture, whose confirmations are all plain `true`, still passes.
