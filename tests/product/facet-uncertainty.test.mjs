@@ -75,6 +75,15 @@ test("issued observations bind facet records at the production boundary", () => 
   assert.ok(observations.every((observation) => observation.facet_record.facet_contract_digest === contractDigests(contract).combined));
 });
 
+test("missing runtime harness evidence refuses facet-record issuance", () => {
+  assert.throws(() => bindFacetRecords(observationsWith(), {
+    contract_digest: contractDigests(contract).combined,
+    cells_by_metric: cellsByMetric,
+    family_by_metric: familyByMetric,
+    model_profile_digest: identified.profile_digest
+  }), /AOS_FACET_RUNTIME_DIGEST/);
+});
+
 test("a stronger model remains a separate model facet", () => {
   // RED counterfactual: same operator + stronger model.
   const first = evaluated({ records: { model_profile_digest: digest("model-a") } });
