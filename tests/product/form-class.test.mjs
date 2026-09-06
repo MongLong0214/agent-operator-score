@@ -268,3 +268,97 @@ test("a replayed operational form crosses runs as practice, never as official ag
     rmSync(cwd, { recursive: true, force: true });
   }
 });
+
+// ---------------------------------------------------------------------------------------------
+// Alternate-form linking: equivalence, drift, retirement (#585)
+
+const linkingFixtures = () => {
+  const digestL = `sha256:${"7".repeat(64)}`;
+  const digestR = `sha256:${"8".repeat(64)}`;
+  const left = { form_id: "aos-operational-00aa", form_contract_digest: digestL, construct_opportunity_ids: ["C1.GF.01", "C2.SC.01", "C3.RD.01", "C4.IQ.01"] };
+  const right = { form_id: "aos-operational-00ab", form_contract_digest: digestR, construct_opportunity_ids: ["C1.GF.01", "C2.SC.01", "C3.RD.01", "C5.VF.01"] };
+  const anchors = ["C1.GF.01", "C2.SC.01", "C3.RD.01"];
+  const empirical = {
+    method: "anchored-delta.v1",
+    method_version: "1.0.0",
+    sample_per_form: { left: 25, right: 25 },
+    anchor_deltas: { "C1.GF.01": 0.02, "C2.SC.01": -0.03, "C3.RD.01": 0.01 }
+  };
+  return { left, right, anchors, empirical };
+};
+
+test("different seeds alone never link two forms: equivalence stays unestablished with the missing evidence named", async () => {
+  const { linkForms } = await import("../../lib/form-class.mjs");
+  const { left, right } = linkingFixtures();
+  const scaffold = linkForms({ left_form: left, right_form: right });
+  assert.equal(scaffold.equivalence_decision, null, "no empirical linking data is a null, not a verdict either way");
+  assert.equal(scaffold.equivalence_status, "UNESTABLISHED");
+  assert.equal(scaffold.claim_stage_ceiling, "PROFILE_BOUND");
+  assert.equal(scaffold.drift.status, "NOT_MONITORED");
+  for (const missing of ["anchor_opportunity_ids", "exposure_history", "task_model_digest", "cross_form_response_patterns"]) {
+    assert.equal(scaffold.inputs_missing.includes(missing), true, `${missing} is absent and the scaffold does not say so`);
+  }
+  // The coverage comparison is computable without any empirical study, and is reported.
+  assert.deepEqual(scaffold.coverage.shared, ["C1.GF.01", "C2.SC.01", "C3.RD.01"]);
+  assert.deepEqual(scaffold.coverage.left_only, ["C4.IQ.01"]);
+  assert.deepEqual(scaffold.coverage.right_only, ["C5.VF.01"]);
+});
+
+test("a small linking sample never passes: the decision stays null and names the floor", async () => {
+  const { linkForms, LINKING_METHOD_INTERFACE } = await import("../../lib/form-class.mjs");
+  const { left, right, anchors, empirical } = linkingFixtures();
+  const scaffold = linkForms({
+    left_form: left, right_form: right, anchor_ids: anchors,
+    exposure_history: { left_prior_exposure_count: 0, right_prior_exposure_count: 0 },
+    task_model_digest: `sha256:${"9".repeat(64)}`,
+    response_patterns: { ...empirical, sample_per_form: { left: LINKING_METHOD_INTERFACE.minimum_sample_per_form - 1, right: 25 } }
+  });
+  assert.equal(scaffold.equivalence_decision, null);
+  assert.equal(scaffold.equivalence_status, "UNESTABLISHED");
+  assert.equal(scaffold.reasons.some((reason) => reason.includes("AOS_LINKING_SAMPLE_BELOW_MINIMUM")), true);
+});
+
+test("adequate anchor evidence within thresholds links; beyond them it drifts; disjoint anchors fail", async () => {
+  const { linkForms } = await import("../../lib/form-class.mjs");
+  const { left, right, anchors, empirical } = linkingFixtures();
+  const complete = {
+    left_form: left, right_form: right, anchor_ids: anchors,
+    exposure_history: { left_prior_exposure_count: 0, right_prior_exposure_count: 0 },
+    task_model_digest: `sha256:${"9".repeat(64)}`
+  };
+  const linked = linkForms({ ...complete, response_patterns: empirical });
+  assert.equal(linked.equivalence_decision, true);
+  assert.equal(linked.equivalence_status, "LINKED");
+  assert.equal(linked.claim_stage_ceiling, null);
+  assert.equal(linked.drift.status, "WITHIN_THRESHOLDS");
+  const drifted = linkForms({ ...complete, response_patterns: { ...empirical, anchor_deltas: { ...empirical.anchor_deltas, "C3.RD.01": 0.4 } } });
+  assert.equal(drifted.equivalence_decision, false);
+  assert.equal(drifted.equivalence_status, "DRIFTED");
+  assert.equal(drifted.claim_stage_ceiling, "PROFILE_BOUND");
+  assert.equal(drifted.drift.status, "EXCEEDED");
+  const disjoint = linkForms({ ...complete, anchor_ids: ["C9.XX.01", "C1.GF.01", "C2.SC.01"], response_patterns: empirical });
+  assert.equal(disjoint.equivalence_decision, false);
+  assert.equal(disjoint.equivalence_status, "FAILED");
+  assert.equal(disjoint.reasons.some((reason) => reason.includes("AOS_LINKING_ANCHORS_NOT_SHARED")), true);
+  // Linking a form to itself is not a question this scaffold answers.
+  assert.throws(() => linkForms({ ...complete, right_form: left, response_patterns: empirical }), /AOS_LINKING_SAME_FORM/);
+  // And a linked scaffold is what lets a bank record say LINKED -- derived, not declared.
+  const { formBankRecord: bank } = await import("../../lib/form-class.mjs");
+  const record = bank({ form_id: left.form_id, form_class: "OPERATIONAL", construct_opportunity_ids: left.construct_opportunity_ids, oracle_digest: `sha256:${"c".repeat(64)}`, linking: linked });
+  assert.equal(record.equivalence_status, "LINKED");
+});
+
+test("the exposure ledger drives form retirement: any exposure retires a form from official use", async () => {
+  const { createExposureLedger, formLifecycleState, recordExposure } = await import("../../lib/form-class.mjs");
+  const digest = `sha256:${"d".repeat(64)}`;
+  const fresh = formLifecycleState(createExposureLedger(), { form_contract_digest: digest });
+  assert.equal(fresh.retirement_status, "ACTIVE");
+  assert.equal(fresh.exposure_count, 0);
+  assert.equal(fresh.equivalence_status, "UNESTABLISHED");
+  assert.equal(fresh.drift_status, "NOT_MONITORED");
+  const { ledger } = recordExposure(createExposureLedger(), { form_id: "f", form_contract_digest: digest, declared_class: "OPERATIONAL", administered_class: "PRACTICE", occurred_at: "2026-09-06T10:00:00.000Z", scored: false });
+  const exposed = formLifecycleState(ledger, { form_contract_digest: digest });
+  assert.equal(exposed.retirement_status, "RETIRED_FROM_OFFICIAL_USE", "an unscored exposure still burns the form: the operator has met the oracle");
+  assert.equal(exposed.exposure_count, 1);
+  assert.equal(exposed.scored_count, 0);
+});
