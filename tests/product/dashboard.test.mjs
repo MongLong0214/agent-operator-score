@@ -590,6 +590,54 @@ test("the legacy caption withholds a name rather than borrowing one from an excl
   }
 });
 
+test("the legacy caption withholds a name when only some of the counted runs still have a result on disk", async () => {
+  // #568 round 4 BLOCKER. The counted runs whose result file could not be read were filtered out
+  // before the names were compared, so silence agreed with whatever was still on disk: two counted
+  // runs, one readable, and the readable one's scorer was captioned as the whole aggregate's
+  // provenance while the run that recorded nothing could not disagree with it. The agreement being
+  // tested has to hold among the runs the median counted, not among the ones that happen to still
+  // be readable.
+  const home = mkdtempSync(join(tmpdir(), "aos-dash-scorer-partial-"));
+  initHome(home);
+  const legacyResult = (runId, scorerId) => ({
+    run_id: runId, status: "SCORED",
+    score: { final: 80, raw: 80, band: "STRONG" },
+    dimensions: { D1: 80, D2: 80, D3: 80, D4: 80, D5: 80, D6: 80 },
+    coverage: { observed: 6, total: 6 },
+    caps: [], blockers: [], metrics: [], limitations: [],
+    scorer: { id: scorerId, version: "1.0.0" }
+  });
+  const { runId: readableRunId } = createRun(home, { mode: "TEST" });
+  writeResult(home, readableRunId, legacyResult(readableRunId, "scorer-readable"), "md", "<h1>r</h1>");
+  // Counted by the median, but nothing was ever scored into its directory.
+  const { runId: unreadableRunId } = createRun(home, { mode: "TEST" });
+
+  writeJson(join(home, "cycle.json"), {
+    schema_id: "aos-cycle.v1",
+    cycle_id: "cycle-partial",
+    profile_digest: "d".repeat(64),
+    suite_major: 1,
+    scorer_major: 1,
+    seeds: ["s1", "s2"],
+    runs: [
+      { seed: "s1", run_id: readableRunId, valid: true, invalid_reason: null, final_score: 80, dimensions: { D1: 80 } },
+      { seed: "s2", run_id: unreadableRunId, valid: true, invalid_reason: null, final_score: 80, dimensions: { D1: 80 } }
+    ]
+  });
+  const dashboard = await startDashboard({ home });
+  try {
+    const body = await (await get(dashboard.port, `/?t=${dashboard.token}`)).text();
+    assert.equal(
+      /scorer-readable 1\.0\.0 · a legacy scorer aggregate/.test(body), false,
+      "one readable counted run's scorer was captioned as the whole aggregate's, though another counted run recorded none"
+    );
+    assert.match(body, /not every counted run&#39;s scorer is on disk/u);
+  } finally {
+    await dashboard.close();
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
 test("a cycle whose runs recorded a schema this build does not recognise is not described as a profile result", async () => {
   // #568 round 3 NIT 1. `assertUniformResultSchema` returns whatever single string every run in
   // the cycle agreed on, and it never checks that string against a schema this build can actually

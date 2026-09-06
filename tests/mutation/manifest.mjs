@@ -8082,8 +8082,8 @@ export const GUARDS = [
     guard: 'the legacy scorer caption prefers a run the median counted',
     reason: "#568 round 2 NIT. legacyCycleScorerName used to read whichever run's result file came first in array order with no regard for `valid`, so a run the median excluded -- a superseded seed, an infrastructure retry -- could caption an aggregate it took no part in",
     file: 'lib/dashboard.mjs',
-    from: '    .filter((run) => run?.valid === true)',
-    to: '    .filter((run) => true)',
+    from: '  const counted = runs.filter((run) => run?.valid === true);',
+    to: '  const counted = runs.filter((run) => true);',
     test: 'tests/product/dashboard.test.mjs',
     name: 'the legacy aggregate is captioned by a run the median counted, not one it excluded'
   },
@@ -8154,8 +8154,8 @@ export const GUARDS = [
     guard: 'buildResult runs the standard-setting gate',
     reason: 'a gate that exists as an export and is not called at the issuing boundary gates nothing; buildResult is where a published result is made, so the call there is the whole enforcement',
     file: 'lib/result-schema.mjs',
-    from: '  assertStandardSettingGate({ standard_setting, category, cut_score, percentile, rank, band }, contract);',
-    to: '  ;',
+    from: '  const standardSettingEstablished = assertStandardSettingGate({ standard_setting, category, cut_score, percentile, rank, band }, contract);',
+    to: '  const standardSettingEstablished = null;',
     test: 'tests/product/standard-setting-gate.test.mjs',
     name: 'every required standard-setting field is load-bearing for the gate'
   },
@@ -8239,6 +8239,33 @@ export const GUARDS = [
     to: "  if (typeof value === \"string\") return value === \"\";",
     test: "tests/product/standard-setting-gate.test.mjs",
     name: "a whitespace-only string and a container whose only member is empty are not a considered field"
+  },
+  {
+    guard: "the legacy caption tests agreement among counted runs, not among readable ones",
+    reason: "#568 round 4 BLOCKER. Counted runs whose result file could not be read were filtered out before the names were compared, so one readable run's scorer was captioned as the whole aggregate's provenance while the counted runs that recorded nothing could not disagree with it",
+    file: "lib/dashboard.mjs",
+    from: "  if (countedNames.length > 0 && countedNames.length < counted.length) return \"not every counted run's scorer is on disk\";",
+    to: "  if (false) return \"not every counted run's scorer is on disk\";",
+    test: "tests/product/dashboard.test.mjs",
+    name: "the legacy caption withholds a name when only some of the counted runs still have a result on disk"
+  },
+  {
+    guard: "an explicit registry refusal is reported as a refusal, not as an unasked registry",
+    reason: "#568 round 4 NIT. The gate threw AOS_STANDARD_SETTING_UNREGISTERED for both an absent registry entry and one explicitly saying FAIL, and its text described the absent case to an operator whose registry already held a refusal -- the tri-state restored in the decision, collapsed again in the sentence a person reads",
+    file: "lib/standard-setting.mjs",
+    from: "    if (registryDecision === false) {",
+    to: "    if (false) {",
+    test: "tests/product/standard-setting-gate.test.mjs",
+    name: "an explicit registry refusal and an unasked registry are different refusals to read"
+  },
+  {
+    guard: "an established standard-setting decision is refused rather than silently nulled",
+    reason: "#568 round 4 NIT. On the one branch where a category would be legitimate the builder still wrote all five fields null and dropped the caller's values, which is the silent drop the gate's own rationale says refusing replaced, surviving exactly where it would matter",
+    file: "lib/result-schema.mjs",
+    from: "  if (standardSettingEstablished === true) {",
+    to: "  if (false) {",
+    test: "tests/product/standard-setting-gate.test.mjs",
+    name: "an established decision is refused by name rather than published as a silent null"
   }
 ];
 
@@ -8607,11 +8634,13 @@ export const ACCOUNTED_GUARDS = [
   "an empty string, array or object is not read as a considered field",
   "an entry records its reference scan and tag containment",
   "an equal rank is a tie and not a winner",
+  "an established standard-setting decision is refused rather than silently nulled",
   "an event's capability digest is recomputed and compared",
   "an excused head is classified as the in-flight work it claims to be",
   "an excused head records no SHA it cannot have",
   "an excused head's own claims are checked against the observation",
   "an explicit registry FAIL is contradicted, not withheld",
+  "an explicit registry refusal is reported as a refusal, not as an unasked registry",
   "an id-only scorer record says its version is unrecorded",
   "an import reads every event before it creates a Run",
   "an imported run is written down",
@@ -9037,6 +9066,7 @@ export const ACCOUNTED_GUARDS = [
   "the lane's identity comes from the runtime that authenticated",
   "the ledger's owner replaces the declaration",
   "the legacy caption names a scorer only when the counted runs agree",
+  "the legacy caption tests agreement among counted runs, not among readable ones",
   "the legacy scorer caption prefers a run the median counted",
   "the manifest projects every contract axis with its disposition",
   "the matrix decides the process axis with the run's own helper",

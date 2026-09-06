@@ -4,7 +4,7 @@ import test from "node:test";
 import { evaluate } from "../../lib/ecd-contract.mjs";
 import { buildResult } from "../../lib/result-schema.mjs";
 import {
-  STANDARD_SETTING_FIELDS, STANDARD_SETTING_SCHEMA_ID, missingStandardSettingFields,
+  STANDARD_SETTING_FIELDS, STANDARD_SETTING_SCHEMA_ID, assertStandardSettingGate, missingStandardSettingFields,
   registryPermitsCategory, standardSettingDecision
 } from "../../lib/standard-setting.mjs";
 import { contractWithAPopulatedIndex, identified, observationsWith } from "./ecd-fixtures.mjs";
@@ -214,4 +214,54 @@ test("standardSettingDecision reads a false out of the registry as contradicted,
   assert.equal(standardSettingDecision(completeRecord(), withEntry("ESTABLISHED")), true);
   assert.equal(standardSettingDecision(completeRecord(), withEntry("FAIL")), false);
   assert.equal(standardSettingDecision(completeRecord(), withEntry("UNESTABLISHED")), null);
+});
+
+test("an explicit registry refusal and an unasked registry are different refusals to read", () => {
+  // #568 round 4 NIT. `registryPermitsCategory` told a FAIL entry apart from an absent one, but
+  // the gate threw the same AOS_STANDARD_SETTING_UNREGISTERED for both, and its text -- "until a
+  // registered standard-setting study establishes it" -- describes the wrong world to an operator
+  // whose registry already contains a refusal. The decision stayed tri-state; the sentence a
+  // person reads did not.
+  const withEntry = (status) => ({
+    interpretation_use: {
+      standard_setting: { method: "bookmark" },
+      validation_registry: [{ category: "standard-setting", status, detail: "a synthetic entry; this category is not in the shipped schema's enum" }]
+    }
+  });
+  const absent = { interpretation_use: { standard_setting: { method: "bookmark" }, validation_registry: [] } };
+  assert.throws(
+    () => assertStandardSettingGate({ standard_setting: completeRecord() }, withEntry("FAIL")),
+    /AOS_STANDARD_SETTING_REFUSED/u
+  );
+  assert.throws(
+    () => assertStandardSettingGate({ standard_setting: completeRecord() }, absent),
+    /AOS_STANDARD_SETTING_UNREGISTERED/u
+  );
+});
+
+test("an established decision is refused by name rather than published as a silent null", () => {
+  // #568 round 4 NIT. The gate's rationale says refusing beats the silent drop this builder used
+  // to do, and on every branch that throws it did. On the one branch where a category would be
+  // legitimate -- a complete record under an ESTABLISHED registry, where the gate returns true and
+  // does not throw -- `buildResult` still wrote all five fields null and dropped what the caller
+  // passed, which is the silent drop surviving exactly where it would matter. The v4 schema types
+  // those fields null-only, so the honest answer is a named refusal, not a null the caller reads
+  // as their category. Not a live witness: no v0.2.0 contract reaches this, for the same reason
+  // the rest of the gate does not.
+  const established = {
+    interpretation_use: {
+      standard_setting: { method: "bookmark" },
+      validation_registry: [{ category: "standard-setting", status: "ESTABLISHED", detail: "a synthetic entry; this category is not in the shipped schema's enum" }]
+    }
+  };
+  assert.equal(standardSettingDecision(completeRecord(), established), true);
+  assert.throws(
+    () => buildResult({
+      contract: established,
+      evaluation: evaluate(observationsWith(), identified, contractWithAPopulatedIndex()),
+      observations: observationsWith(),
+      standard_setting: completeRecord()
+    }),
+    /AOS_STANDARD_SETTING_UNPUBLISHABLE/u
+  );
 });
