@@ -8082,8 +8082,8 @@ export const GUARDS = [
     guard: 'the legacy scorer caption prefers a run the median counted',
     reason: "#568 round 2 NIT. legacyCycleScorerName used to read whichever run's result file came first in array order with no regard for `valid`, so a run the median excluded -- a superseded seed, an infrastructure retry -- could caption an aggregate it took no part in",
     file: 'lib/dashboard.mjs',
-    from: '    if (run?.valid !== true) continue;',
-    to: '    if (false) continue;',
+    from: '    .filter((run) => run?.valid === true)',
+    to: '    .filter((run) => true)',
     test: 'tests/product/dashboard.test.mjs',
     name: 'the legacy aggregate is captioned by a run the median counted, not one it excluded'
   },
@@ -8194,6 +8194,51 @@ export const GUARDS = [
     to: '    band: "ROBUST",',
     test: 'tests/product/no-active-score-bands.test.mjs',
     name: 'a new result in the low nineties carries no band, and no surface prints one'
+  },
+  {
+    guard: "the legacy caption names a scorer only when the counted runs agree",
+    reason: "#568 round 3 BLOCKER. legacyCycleScorerName returned the first counted run's scorer with nothing checking the other counted runs named the same one, so two counted runs under two scorer identities had the first in array order captioned as the whole aggregate's provenance and the disagreement never reached the page",
+    file: "lib/dashboard.mjs",
+    from: "  if (distinctCountedNames.length > 1) return \"the counted runs disagree on scorer\";",
+    to: "  if (false) return \"the counted runs disagree on scorer\";",
+    test: "tests/product/dashboard.test.mjs",
+    name: "the legacy caption says the counted runs disagree on scorer, rather than naming the first one in array order"
+  },
+  {
+    guard: "the pre-valid fallback fires only for a cycle that never decided which runs counted",
+    reason: "#568 round 3 BLOCKER. The fallback pass read any run at all the moment no counted run's file was readable, printing a scorer from a run the median excluded as though it were the aggregate's own; it is honest only for a cycle written before `valid` existed at all",
+    file: "lib/dashboard.mjs",
+    from: "  const cyclePredatesValid = runs.every((run) => typeof run?.valid !== \"boolean\");",
+    to: "  const cyclePredatesValid = true;",
+    test: "tests/product/dashboard.test.mjs",
+    name: "the legacy caption withholds a name rather than borrowing one from an excluded run when the counted run's file is missing"
+  },
+  {
+    guard: "an unrecognised result schema is not described as a profile result",
+    reason: "#568 round 3 NIT. assertUniformResultSchema passes through whatever single string the runs agreed on and never checks it against a schema this build can project, so an unrecognised id was printed as `profile result(s)` -- a provenance nobody observed",
+    file: "lib/dashboard.mjs",
+    from: "    if (!PROFILE_RESULT_SCHEMA_IDS.has(schema)) {",
+    to: "    if (false) {",
+    test: "tests/product/dashboard.test.mjs",
+    name: "a cycle whose runs recorded a schema this build does not recognise is not described as a profile result"
+  },
+  {
+    guard: "an explicit registry FAIL is contradicted, not withheld",
+    reason: "#568 round 3 NIT. registryPermitsCategory answered null for both an absent registry entry and an entry explicitly saying FAIL, collapsing this repository's three-state vocabulary inside the one gate written to catch that class for the field it guards",
+    file: "lib/standard-setting.mjs",
+    from: "  if (entry.status === \"FAIL\") return false;",
+    to: "  if (entry.status === \"FAIL\") return null;",
+    test: "tests/product/standard-setting-gate.test.mjs",
+    name: "registryPermitsCategory distinguishes an explicit FAIL from an absent registry entry"
+  },
+  {
+    guard: "a whitespace-only string is not a considered field",
+    reason: "#568 round 3 NIT. isEmptyValue tested `value === \"\"`, and `\"   \"` is not `===` to `\"\"`, so a whitespace-only required field read as considered -- the same hole the empty string itself had closed one round earlier",
+    file: "lib/standard-setting.mjs",
+    from: "  if (typeof value === \"string\") return value.trim() === \"\";",
+    to: "  if (typeof value === \"string\") return value === \"\";",
+    test: "tests/product/standard-setting-gate.test.mjs",
+    name: "a whitespace-only string and a container whose only member is empty are not a considered field"
   }
 ];
 
@@ -8522,6 +8567,7 @@ export const ACCOUNTED_GUARDS = [
   "a violation decides before the floor does",
   "a weight is a reciprocal or it is not a weight",
   "a weight is a share of an equal-weight mean",
+  "a whitespace-only string is not a considered field",
   "a withheld corpus does not pass",
   "a withheld identity caps the canonical claim",
   "a withheld identity withholds the composite",
@@ -8565,6 +8611,7 @@ export const ACCOUNTED_GUARDS = [
   "an excused head is classified as the in-flight work it claims to be",
   "an excused head records no SHA it cannot have",
   "an excused head's own claims are checked against the observation",
+  "an explicit registry FAIL is contradicted, not withheld",
   "an id-only scorer record says its version is unrecorded",
   "an import reads every event before it creates a Run",
   "an imported run is written down",
@@ -8619,6 +8666,7 @@ export const ACCOUNTED_GUARDS = [
   "an unproven lane blocks issuance",
   "an unread confirmation is not reported as a denied one",
   "an unreadable store is reported and not read as an empty one",
+  "an unrecognised result schema is not described as a profile result",
   "an unsafe sentence is not an unsafe run",
   "an unstated work floor withholds rather than falling back to the route",
   "an untrusted executable blocks the candidate outright",
@@ -8988,6 +9036,7 @@ export const ACCOUNTED_GUARDS = [
   "the lane is bound into the cohort",
   "the lane's identity comes from the runtime that authenticated",
   "the ledger's owner replaces the declaration",
+  "the legacy caption names a scorer only when the counted runs agree",
   "the legacy scorer caption prefers a run the median counted",
   "the manifest projects every contract axis with its disposition",
   "the matrix decides the process axis with the run's own helper",
@@ -9007,6 +9056,7 @@ export const ACCOUNTED_GUARDS = [
   "the post-deletion observation is taken promptly",
   "the pre-deletion observation is fresh",
   "the pre-deletion observation predates the deletion",
+  "the pre-valid fallback fires only for a cycle that never decided which runs counted",
   "the prepared seed, not a supplied binding, selects the oracle",
   "the printed shape is named",
   "the private tmpfs is declared before it is mounted",

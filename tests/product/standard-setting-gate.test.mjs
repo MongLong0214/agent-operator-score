@@ -4,7 +4,8 @@ import test from "node:test";
 import { evaluate } from "../../lib/ecd-contract.mjs";
 import { buildResult } from "../../lib/result-schema.mjs";
 import {
-  STANDARD_SETTING_FIELDS, STANDARD_SETTING_SCHEMA_ID, missingStandardSettingFields, standardSettingDecision
+  STANDARD_SETTING_FIELDS, STANDARD_SETTING_SCHEMA_ID, missingStandardSettingFields,
+  registryPermitsCategory, standardSettingDecision
 } from "../../lib/standard-setting.mjs";
 import { contractWithAPopulatedIndex, identified, observationsWith } from "./ecd-fixtures.mjs";
 
@@ -159,4 +160,58 @@ test("an empty value is still honest for the three fields an unrun estimate may 
     const record = { ...completeRecord(), [field]: null };
     assert.deepEqual(missingStandardSettingFields(record), []);
   }
+});
+
+test("a whitespace-only string and a container whose only member is empty are not a considered field", () => {
+  // #568 round 3 NIT 3. `isEmptyValue` closed `""`, `[]` and `{}` one round ago but missed two
+  // shapes that name nothing any more than those do: a string of only spaces, and an array whose
+  // one element is itself empty (`[null]`) rather than the array being empty outright.
+  for (const [field, empty] of [
+    ["intended_decision", "   "],
+    ["method", "\t\n"],
+    ["cut_scores", [null]],
+    ["fairness_invariance_evidence_ids", [null]],
+    ["consequence_review", [""]]
+  ]) {
+    const record = { ...completeRecord(), [field]: empty };
+    assert.deepEqual(missingStandardSettingFields(record), [field], field);
+    assert.throws(() => build({ standard_setting: record }), new RegExp(`AOS_STANDARD_SETTING_INCOMPLETE.*${field}`, "u"), field);
+  }
+});
+
+test("registryPermitsCategory distinguishes an explicit FAIL from an absent registry entry", () => {
+  // #568 round 3 NIT 2. `null` used to answer both "no registry entry for standard-setting exists"
+  // and "a registry entry exists and explicitly says FAIL" -- a contradicted decision and an
+  // absent one reading alike, this repository's recurring defect. The contract below is
+  // synthetic on purpose: v0.2.0's own schema never lets `standard_setting` be anything but
+  // `null` (see the "ten required fields ... null" test above for the same reasoning), so this is
+  // not a live witness, it is the guard against the day some future contract opens the path.
+  const withEntry = (status) => ({
+    interpretation_use: {
+      standard_setting: { method: "bookmark" },
+      validation_registry: [{ category: "standard-setting", status, detail: "a synthetic entry; this category is not in the shipped schema's enum" }]
+    }
+  });
+  const absent = { interpretation_use: { standard_setting: { method: "bookmark" }, validation_registry: [] } };
+  assert.equal(registryPermitsCategory(withEntry("ESTABLISHED")), true);
+  assert.equal(registryPermitsCategory(withEntry("FAIL")), false);
+  assert.equal(registryPermitsCategory(withEntry("UNESTABLISHED")), null);
+  assert.equal(registryPermitsCategory(absent), null);
+});
+
+test("standardSettingDecision reads a false out of the registry as contradicted, not withheld", () => {
+  // Confirms the tri-state composition in `allRequired` (lib/decision.mjs) still does the right
+  // thing once `registryPermitsCategory` can itself return `false`: `allRequired([true, false])`
+  // is `false` (contradicted), not `null` (withheld), and a caller that reaches this function
+  // directly -- as this test does -- must see that distinction rather than the flattened `null`
+  // every registry-withheld record already gets from the test above this one.
+  const withEntry = (status) => ({
+    interpretation_use: {
+      standard_setting: { method: "bookmark" },
+      validation_registry: [{ category: "standard-setting", status, detail: "a synthetic entry; this category is not in the shipped schema's enum" }]
+    }
+  });
+  assert.equal(standardSettingDecision(completeRecord(), withEntry("ESTABLISHED")), true);
+  assert.equal(standardSettingDecision(completeRecord(), withEntry("FAIL")), false);
+  assert.equal(standardSettingDecision(completeRecord(), withEntry("UNESTABLISHED")), null);
 });

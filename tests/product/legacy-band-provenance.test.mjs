@@ -281,3 +281,23 @@ test("every module carrying legacy band vocabulary is disclosed by the contract'
     assert.ok(disclosed.has(path), `${path} carries band vocabulary and the contract's legacy_band_surface does not disclose it`);
   }
 });
+
+test("docs/ECD_CONTRACT.md names the same rendering modules as legacy_band_surface, not a stale list", () => {
+  // #568 round 3 NIT. This paragraph named `lib/cli.mjs` where the contract's own
+  // `legacy_band_surface.modules` names `lib/report-i18n.mjs` -- the CLI carries none of the band
+  // vocabulary itself (the test above scans for exactly that) and the band-translation table lives
+  // in `lib/report-i18n.mjs`, so the doc's inventory disagreed with the artifact it was describing.
+  // This is not the general doc-to-contract checker that is #631's job and is out of scope here; it
+  // is the same one-sentence binding "the form-variation section names the contract's current
+  // version" already uses next to this section in tests/product/ecd-shortcuts.test.mjs, aimed at
+  // the one paragraph a reader takes as "which modules render a legacy band, right now".
+  const use = loadEcdContract().interpretation_use;
+  const doc = readFileSync(new URL("../../docs/ECD_CONTRACT.md", import.meta.url), "utf8");
+  const [, section = ""] = doc.split("## What this contract does not do");
+  assert.ok(section.length > 0, "the 'what this contract does not do' section is gone");
+  const paragraph = section.split("It does not define what a profile is")[0];
+  const named = new Set([...paragraph.matchAll(/`(lib\/[a-z0-9-]+\.mjs)`/g)].map((match) => match[1]));
+  for (const path of use.legacy_band_surface.modules) {
+    assert.ok(named.has(path), `${path} is in the contract's legacy_band_surface.modules and is not named in docs/ECD_CONTRACT.md's "what this contract does not do" section`);
+  }
+});

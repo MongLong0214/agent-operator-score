@@ -251,11 +251,15 @@ That is a statement about this contract, and the interpretation argument now say
 An earlier draft assumed "no category, band, cut score, percentile or rank is emitted at any stage"
 and recorded the evidence as passing, which was a true claim about the contract published as a false
 one about the product: `lib/scorer-v1.mjs` still assigns a category to a legacy result, and
-`lib/cli.mjs`, `lib/report.mjs`, `lib/report-card.mjs` and `lib/dashboard.mjs` render it. The
-artifact carries a `legacy_band_surface` block naming all five modules, the modules excluded from it
-by name and why, and the issue that owns the removal (#568). A test scans `lib/` in both directions
-and fails if the disclosure and the source ever disagree -- checking only that every declared module
-carries a band is the easy direction, and it passed while three of those five were undeclared.
+`lib/report.mjs`, `lib/report-i18n.mjs`, `lib/report-card.mjs` and `lib/dashboard.mjs` render it --
+`lib/cli.mjs` carries none of that vocabulary itself and named the surface here only because an
+earlier draft of this paragraph had not been updated when the band-translation table moved into
+`lib/report-i18n.mjs`. The artifact carries a `legacy_band_surface` block naming all five modules,
+the modules excluded from it by name and why, and the issue that owns the removal (#568). A test
+scans `lib/` in both directions and fails if the disclosure and the source ever disagree -- checking
+only that every declared module carries a band is the easy direction, and it passed while three of
+those five were undeclared. That same test is what a stale rewrite of this paragraph could not have
+caught: it checks the artifact against the source tree, not this prose against the artifact.
 
 It does not define what a profile is. `evaluate` takes `context.profile_digest` and does not compute
 one: #559 owns the profile shape and its aggregation, and a digest of something this module invented
