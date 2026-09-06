@@ -1,6 +1,6 @@
 {
   "schema": "aos-observable-cell.v1",
-  "contract_version": "1.4.0",
+  "contract_version": "1.5.0",
   "declared_subcheck_count": 80,
   "cells": [
     {
