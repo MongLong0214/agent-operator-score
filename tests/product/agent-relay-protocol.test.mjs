@@ -8,7 +8,7 @@ import test from "node:test";
 import { createFileRelayCheckpoint, createRelayCheckpoint, readRestrictedRelayResponseFile } from "../../lib/checkpoint.mjs";
 import { sha256Bytes } from "../../lib/digest.mjs";
 import { mintOperatorEvent } from "../../lib/operator-events.mjs";
-import { createAgentRelayProtocol } from "../../lib/relay.mjs";
+import { PROTOCOL_BINDING, RELAY_PHASES, createAgentRelayProtocol } from "../../lib/relay.mjs";
 import { createRelianceTrace } from "../../lib/reliance.mjs";
 import { routeOracleDigest } from "../../lib/routing-oracle.mjs";
 import { createRun } from "../../lib/store.mjs";
@@ -454,3 +454,204 @@ test("reachable relay challenge and supplied response do not read terminal input
 const statMode = (path) => {
   return statSync(path).mode;
 };
+
+test("the lifecycle owner supersedes or cancels only an unanswered challenge; a recorded human turn refuses to be abandoned", () => {
+  const abandoned = memoryCheckpoint("relay-supersede");
+  const abandonedTrace = memoryTrace("relay-supersede");
+  const protocol = createAgentRelayProtocol({ session_id: "relay-supersede", checkpoint: abandoned.checkpoint, trace: abandonedTrace, operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET });
+  assert.throws(() => protocol.supersede(), /AOS_RELAY_NO_CHALLENGE/, "there is nothing to supersede before a challenge is prepared");
+  protocol.prepare(opportunity());
+  assert.deepEqual(protocol.supersede(), {
+    schema_id: "aos-agent-relay.v2",
+    session_id: "relay-supersede",
+    status: "BLOCKED",
+    reason: "SUPERSEDED"
+  }, "the producer returns exactly what next() will report");
+  assert.equal(abandoned.state().status, "SUPERSEDED", "the transition is durable, not a projection");
+  assert.deepEqual(protocol.next(), { schema_id: "aos-agent-relay.v2", session_id: "relay-supersede", status: "BLOCKED", reason: "SUPERSEDED" });
+  assert.throws(() => protocol.supersede(), /AOS_RELAY_CLOSE_STATE/, "a closed challenge is not closed twice");
+
+  const cancelled = memoryCheckpoint("relay-cancel");
+  const cancelProtocol = createAgentRelayProtocol({ session_id: "relay-cancel", checkpoint: cancelled.checkpoint, trace: memoryTrace("relay-cancel"), operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET });
+  cancelProtocol.prepare(opportunity());
+  cancelProtocol.next();
+  assert.equal(cancelled.state().status, "DELIVERED");
+  assert.deepEqual(cancelProtocol.cancel(), { schema_id: "aos-agent-relay.v2", session_id: "relay-cancel", status: "BLOCKED", reason: "CANCELLED" });
+  assert.throws(() => cancelProtocol.respond(response({ challenge_id: "challenge-late" })), /AOS_RELAY_RESPONSE_STATE/, "a cancelled challenge accepts no response");
+
+  // Counterfactual: the same DELIVERED status, now holding a committed Phase A turn.  The deciding
+  // input is the recorded human turn, not the lifecycle label.
+  const answered = memoryCheckpoint("relay-answered");
+  const answeredTrace = memoryTrace("relay-answered");
+  const answeredProtocol = createAgentRelayProtocol({ session_id: "relay-answered", checkpoint: answered.checkpoint, trace: answeredTrace, operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET });
+  answeredProtocol.prepare(opportunity());
+  const initial = answeredProtocol.next();
+  const postAdvice = answeredProtocol.respond(response(initial));
+  assert.equal(postAdvice.phase, "POST_ADVICE_DECISION");
+  assert.throws(() => answeredProtocol.supersede(), /AOS_RELAY_HUMAN_TURN_RETAINED/, "abandoning the opportunity would strand the recorded Phase A turn");
+  assert.throws(() => answeredProtocol.cancel(), /AOS_RELAY_HUMAN_TURN_RETAINED/);
+  assert.equal(answered.state().status, "DELIVERED", "the refused transition changed nothing");
+  assert.deepEqual(answeredTrace.entries().map((entry) => entry.kind), ["initial", "advice_reveal", "oracle"], "the refusal minted no event");
+  const running = answeredProtocol.respond(response(postAdvice, { inspected: true, final_action: "adopt" }));
+  assert.equal(running.status, "RUNNING");
+  assert.throws(() => answeredProtocol.cancel(), /AOS_RELAY_CLOSE_STATE/, "a committed decision is finished, not cancellable");
+});
+
+test("a superseded, cancelled, or finished challenge admits a replacement; retained response evidence blocks one", () => {
+  const store = memoryCheckpoint("relay-replace");
+  const trace = memoryTrace("relay-replace");
+  let instant = new Date("2026-09-05T12:00:00Z");
+  const protocol = createAgentRelayProtocol({ session_id: "relay-replace", checkpoint: store.checkpoint, trace, operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET, now: () => instant });
+
+  const first = protocol.prepare(opportunity());
+  protocol.supersede();
+  const second = protocol.prepare({ ...opportunity(), reliance_opportunity_id: "rel-agent-relay-2", operator_opportunity_id: "opp-agent-relay-2" });
+  assert.notEqual(second.challenge_id, first.challenge_id, "a replacement is a new challenge, not the abandoned one revived");
+  assert.equal(second.phase, "INITIAL_JUDGMENT");
+
+  protocol.cancel();
+  const third = protocol.prepare({ ...opportunity(), reliance_opportunity_id: "rel-agent-relay-3", operator_opportunity_id: "opp-agent-relay-3" });
+  assert.equal(store.state().status, "PREPARED");
+
+  // An unanswered challenge that expires leaves nothing a replacement could discard.
+  instant = new Date("2031-01-01T00:00:00Z");
+  assert.throws(() => protocol.next(), /AOS_RELAY_CHALLENGE_EXPIRED/);
+  assert.equal(store.state().status, "EXPIRED");
+  instant = new Date("2026-09-05T12:00:00Z");
+  const fourth = protocol.prepare({ ...opportunity(), reliance_opportunity_id: "rel-agent-relay-4", operator_opportunity_id: "opp-agent-relay-4" });
+  assert.notEqual(fourth.challenge_id, third.challenge_id);
+
+  // A Phase B challenge that expires retains the committed Phase A ledger.  The same terminal
+  // status now refuses a replacement: the deciding input is the retained turn, not EXPIRED itself.
+  const initial = protocol.next();
+  protocol.respond(response(initial));
+  instant = new Date("2031-01-01T00:00:00Z");
+  assert.throws(() => protocol.next(), /AOS_RELAY_CHALLENGE_EXPIRED/);
+  assert.equal(store.state().status, "EXPIRED");
+  assert.equal(Object.keys(store.state().response_digests).length, 1);
+  instant = new Date("2026-09-05T12:00:00Z");
+  assert.throws(() => protocol.prepare({ ...opportunity(), reliance_opportunity_id: "rel-agent-relay-5", operator_opportunity_id: "opp-agent-relay-5" }), /AOS_RELAY_HUMAN_TURN_RETAINED/,
+    "a replacement cannot discard the ledger that re-derives a recorded human turn");
+
+  // A finished opportunity admits the next question: its ordering proof was consumed into the
+  // instrument-authenticated trace by recordOutcome, so the checkpoint is no longer its only home.
+  const finished = memoryCheckpoint("relay-finish");
+  const finishedTrace = memoryTrace("relay-finish");
+  const finishedProtocol = createAgentRelayProtocol({ session_id: "relay-finish", checkpoint: finished.checkpoint, trace: finishedTrace, operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET });
+  finishedProtocol.prepare(opportunity());
+  const firstInitial = finishedProtocol.next();
+  const firstPost = finishedProtocol.respond(response(firstInitial));
+  finishedProtocol.respond(response(firstPost, { inspected: true, final_action: "adopt" }));
+  assert.throws(() => finishedProtocol.prepare(opportunity()), /AOS_RELAY_ACTIVE_CHALLENGE/, "a committed decision without its outcome is not finished");
+  const [initialEntry, , , , finalEntry] = finishedTrace.entries();
+  finishedProtocol.recordOutcome({
+    initial_correct: false,
+    initial_value_digest: initialEntry.payload.operator_event.value_digest,
+    final_correct: true,
+    final_value_digest: finalEntry.payload.operator_event.value_digest,
+    verified_outcome_evidence_ids: ["verified-outcome"]
+  });
+  const replacement = finishedProtocol.prepare({ ...opportunity(), reliance_opportunity_id: "rel-agent-relay-6", operator_opportunity_id: "opp-agent-relay-6" });
+  assert.equal(replacement.phase, "INITIAL_JUDGMENT");
+  assert.notEqual(replacement.challenge_id, firstInitial.challenge_id);
+});
+
+test("every phase the protocol digest promises is issued by the protocol itself", () => {
+  const { checkpoint } = memoryCheckpoint("relay-phases");
+  const trace = memoryTrace("relay-phases");
+  const protocol = createAgentRelayProtocol({ session_id: "relay-phases", checkpoint, trace, operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET });
+  const issued = new Set();
+  issued.add(protocol.prepare(opportunity()).phase);
+  const initial = protocol.next();
+  issued.add(initial.phase);
+  issued.add(protocol.respond(response(initial)).phase);
+  assert.deepEqual([...issued].sort(), [...RELAY_PHASES].sort(),
+    "a phase inside the protocol digest that no surface can issue is a promised transition that does not exist");
+
+  // Written around the protocol, a checkpoint claiming an unissuable phase is refused on read
+  // rather than becoming a challenge this module never learned to serve.
+  const raw = memoryCheckpoint("relay-forged-phase");
+  const forgery = createAgentRelayProtocol({ session_id: "relay-forged-phase", checkpoint: raw.checkpoint, trace: memoryTrace("relay-forged-phase"), operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET });
+  forgery.prepare(opportunity());
+  raw.checkpoint.write({ ...raw.checkpoint.read(), phase: "OTHER_OPERATOR_DECISION" });
+  assert.throws(() => forgery.next(), /AOS_RELAY_CHECKPOINT_SHAPE/, "a stored phase the protocol cannot issue does not authorize itself");
+});
+
+test("every list inside the protocol digest names only values the protocol produces", () => {
+  // `PROTOCOL_BINDING` carries three declared lists, not one: `phases`, `challenge_states`, and
+  // `status_values`. The producer-completeness property the previous test restores for phases must
+  // hold for all three, or the other two can silently regain the exact defect this PR removed --
+  // a name inside the protocol digest that nothing can issue. The lists are read out of the real
+  // binding object rather than re-imported by name, so a fourth list added later is checked too.
+  const produced = { phases: new Set(), challenge_states: new Set(), status_values: new Set() };
+  const noteStatus = (result) => { if (result && typeof result.status === "string") produced.status_values.add(result.status); };
+  const observing = (sessionId) => {
+    const memory = memoryCheckpoint(sessionId);
+    return {
+      ...memory,
+      checkpoint: {
+        ...memory.checkpoint,
+        write: (next) => {
+          produced.phases.add(next.phase);
+          produced.challenge_states.add(next.status);
+          return memory.checkpoint.write(next);
+        }
+      }
+    };
+  };
+
+  // Happy path: PREPARED -> DELIVERED -> RESPONDED -> DELIVERED -> RESPONDED -> COMMITTED, both
+  // phases, and ACTION_REQUIRED / RUNNING / COMPLETE.
+  const life = observing("relay-binding-coverage");
+  const lifeTrace = memoryTrace("relay-binding-coverage");
+  const lifeProtocol = createAgentRelayProtocol({ session_id: "relay-binding-coverage", checkpoint: life.checkpoint, trace: lifeTrace, operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET });
+  noteStatus(lifeProtocol.prepare(opportunity()));
+  const initial = lifeProtocol.next();
+  noteStatus(initial);
+  const postAdvice = lifeProtocol.respond(response(initial));
+  noteStatus(postAdvice);
+  const running = lifeProtocol.respond(response(postAdvice, { inspected: true, final_action: "adopt" }));
+  noteStatus(running);
+  const [initialEntry, , , , finalEntry] = lifeTrace.entries();
+  noteStatus(lifeProtocol.recordOutcome({
+    initial_correct: false,
+    initial_value_digest: initialEntry.payload.operator_event.value_digest,
+    final_correct: true,
+    final_value_digest: finalEntry.payload.operator_event.value_digest,
+    verified_outcome_evidence_ids: ["binding-coverage-outcome"]
+  }));
+
+  // BLOCKED: no challenge exists yet for this session.
+  const blocked = observing("relay-binding-blocked");
+  const blockedProtocol = createAgentRelayProtocol({ session_id: "relay-binding-blocked", checkpoint: blocked.checkpoint, trace: memoryTrace("relay-binding-blocked"), operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET });
+  noteStatus(blockedProtocol.next());
+
+  // EXPIRED.
+  let instant = new Date("2026-09-05T12:00:00Z");
+  const expiring = observing("relay-binding-expired");
+  const expiringProtocol = createAgentRelayProtocol({ session_id: "relay-binding-expired", checkpoint: expiring.checkpoint, trace: memoryTrace("relay-binding-expired"), operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET, now: () => instant });
+  expiringProtocol.prepare(opportunity());
+  instant = new Date("2031-01-01T00:00:00Z");
+  assert.throws(() => expiringProtocol.next(), /AOS_RELAY_CHALLENGE_EXPIRED/);
+
+  // SUPERSEDED.
+  const superseding = observing("relay-binding-superseded");
+  const supersedeProtocol = createAgentRelayProtocol({ session_id: "relay-binding-superseded", checkpoint: superseding.checkpoint, trace: memoryTrace("relay-binding-superseded"), operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET });
+  supersedeProtocol.prepare(opportunity());
+  noteStatus(supersedeProtocol.supersede());
+
+  // CANCELLED.
+  const cancelling = observing("relay-binding-cancelled");
+  const cancelProtocol = createAgentRelayProtocol({ session_id: "relay-binding-cancelled", checkpoint: cancelling.checkpoint, trace: memoryTrace("relay-binding-cancelled"), operator_secret: OPERATOR_SECRET, instrument_secret: INSTRUMENT_SECRET });
+  cancelProtocol.prepare(opportunity());
+  noteStatus(cancelProtocol.cancel());
+
+  const declaredLists = Object.entries(PROTOCOL_BINDING).filter(([, value]) => Array.isArray(value));
+  assert.ok(declaredLists.length >= 3, "the protocol digest should still carry at least its three list-valued bindings");
+  for (const [key, declared] of declaredLists) {
+    const observed = produced[key];
+    assert.ok(observed instanceof Set, `"${key}" is a list inside the protocol digest with no producer observation wired into this test`);
+    assert.deepEqual([...observed].sort(), [...declared].sort(),
+      `every name in "${key}" must have a producer, and the protocol must not produce a name outside it`);
+  }
+});
