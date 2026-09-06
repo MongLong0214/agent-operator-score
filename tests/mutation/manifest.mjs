@@ -8293,7 +8293,6 @@ export const ACCOUNTED_GUARDS = [
   "observation channel size bound",
   "observation line size bound",
   "observation schema",
-  "observed task-input tampering reaches reported metrics",
   "observed_at must be a canonical, in-schema timestamp",
   "offline does not assert close evidence",
   "offline runs do not print or report a pass",
