@@ -7834,6 +7834,15 @@ export const GUARDS = [
     to: "      if (false) {",
     test: "tests/product/execution-plan.test.mjs",
     name: "a moved plan byte without a moved contract version fails"
+  },
+  {
+    guard: "evidence bindings resolve through the plan at the recorded revision",
+    reason: "#645: a schema rename retroactively broke an already-closed, already-PASSed #588 because the live check followed today's evidence_bindings path instead of the path the plan named at record.final_sha; without this substitution, tolerance for the rename disappears and the same regression recurs the next time a governed file's name moves",
+    file: "lib/github-state.mjs",
+    from: "return currentBindings.map(([field, path]) => [field, historicalBindings[field] ?? path]);",
+    to: "return currentBindings;",
+    test: "tests/product/execution-plan.test.mjs",
+    name: "a schema rename does not retroactively break an already-closed issue's evidence"
   }
 ];
 
@@ -8330,6 +8339,7 @@ export const ACCOUNTED_GUARDS = [
   "every segment of a snapshot name has to be readable",
   "every transport spelling needs the transport approval",
   "everything published passes the one gate",
+  "evidence bindings resolve through the plan at the recorded revision",
   "evidence bound to the audited revision",
   "evidence contract cannot be switched off",
   "evidence failures decide the route's adequacy",

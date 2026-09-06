@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -853,11 +854,154 @@ test("three separately true facts are not a confirmation", async () => {
 
   // And evidence that quotes a digest of something else is not evidence about this revision.
   const withBinding = { ...owner, evidence_bindings: { d: "governance/thing.json" } };
-  const wrongDigest = async (path) =>
-    path.includes("/contents/") ? { body: { content: Buffer.from("different bytes").toString("base64"), encoding: "base64" } } : bound(path);
+  const wrongDigest = async (path) => {
+    // The binding is resolved through the plan at the recorded revision first; an empty plan
+    // resolves nothing, so the binding stays at its current path and the real check below still runs.
+    if (path.includes("v0.2.0-execution-plan.json")) {
+      return { body: { content: Buffer.from(JSON.stringify({ issues: [] })).toString("base64"), encoding: "base64" } };
+    }
+    return path.includes("/contents/") ? { body: { content: Buffer.from("different bytes").toString("base64"), encoding: "base64" } } : bound(path);
+  };
   const stale = await verifyCompletionRecord("o/r", record, { get: wrongDigest, issue: withBinding });
   assert.equal(stale.evidence_digests_match, false);
   assert.equal(stale.verified, false);
+});
+
+// --- #645: evidence is bound to what the plan said at the recorded revision, not to today's plan --
+//
+// #642 forced this: moving the plan's schema from v1 to v2 (required whenever the plan's bytes
+// move, #631) retroactively made an already-closed, already-PASSed #588 unverifiable, because the
+// live check followed today's evidence_bindings path to a name that did not exist at the commit the
+// record was about. The record was never wrong; the verifier's ability to find the file was.
+
+test("a schema rename does not retroactively break an already-closed issue's evidence", async () => {
+  const { verifyCompletionRecord } = await import("../../lib/github-state.mjs");
+  const sha256 = (bytes) => "sha256:" + createHash("sha256").update(bytes).digest("hex");
+  const schemaBytes = Buffer.from("the actual schema bytes, unchanged by the rename");
+
+  const record = {
+    issue: 588,
+    final_sha: "a".repeat(40),
+    pr: 589,
+    ci_run_ids: [1],
+    evidence: { schema_digest: sha256(schemaBytes) }
+  };
+  // Today's plan -- what a fresh read of governance/v0.2.0-execution-plan.json says right now.
+  const currentIssue = { issue: 588, owned_paths: ["lib/"], evidence_bindings: { schema_digest: "schemas/thing.v2.schema.json" } };
+  // The plan as it stood at record.final_sha, before the rename.
+  const historicalPlan = { issues: [{ issue: 588, evidence_bindings: { schema_digest: "schemas/thing.v1.schema.json" } }] };
+
+  const get = async (path) => {
+    if (path.includes("/files")) return { body: [{ filename: "lib/execution-plan.mjs" }], link: null };
+    if (path.includes("/commits/")) return { body: { sha: record.final_sha } };
+    if (path.includes("/compare/")) return { body: { status: "ahead" } };
+    if (path.includes("/pulls/")) {
+      return { body: { merged_at: "2026-09-01T00:00:00Z", base: { ref: "dev" }, head: { sha: "b".repeat(40) }, merge_commit_sha: record.final_sha, body: "Closes #588" } };
+    }
+    if (path.includes("v0.2.0-execution-plan.json")) {
+      return { body: { content: Buffer.from(JSON.stringify(historicalPlan)).toString("base64"), encoding: "base64" } };
+    }
+    if (path.includes("thing.v1.schema.json")) return { body: { content: schemaBytes.toString("base64"), encoding: "base64" } };
+    if (path.includes("thing.v2.schema.json")) {
+      const error = new Error("404");
+      error.status = 404;
+      throw error;
+    }
+    return { body: { conclusion: "success", head_sha: record.final_sha } };
+  };
+
+  const checked = await verifyCompletionRecord("o/r", record, { get, issue: currentIssue });
+  assert.equal(checked.evidence_digests_match, true, "the rename should not have made real, unchanged content unverifiable");
+  assert.equal(checked.verified, true);
+});
+
+test("evidence that never existed under any name still fails", async () => {
+  const { verifyCompletionRecord } = await import("../../lib/github-state.mjs");
+  const sha256 = (bytes) => "sha256:" + createHash("sha256").update(bytes).digest("hex");
+  const record = { issue: 588, final_sha: "a".repeat(40), pr: 589, ci_run_ids: [1], evidence: { schema_digest: sha256(Buffer.from("anything")) } };
+  const currentIssue = { issue: 588, owned_paths: ["lib/"], evidence_bindings: { schema_digest: "schemas/thing.v2.schema.json" } };
+  const historicalPlan = { issues: [{ issue: 588, evidence_bindings: { schema_digest: "schemas/thing.v1.schema.json" } }] };
+
+  const get = async (path) => {
+    if (path.includes("/files")) return { body: [{ filename: "lib/execution-plan.mjs" }], link: null };
+    if (path.includes("/commits/")) return { body: { sha: record.final_sha } };
+    if (path.includes("/compare/")) return { body: { status: "ahead" } };
+    if (path.includes("/pulls/")) {
+      return { body: { merged_at: "2026-09-01T00:00:00Z", base: { ref: "dev" }, head: { sha: "b".repeat(40) }, merge_commit_sha: record.final_sha, body: "Closes #588" } };
+    }
+    if (path.includes("v0.2.0-execution-plan.json")) {
+      return { body: { content: Buffer.from(JSON.stringify(historicalPlan)).toString("base64"), encoding: "base64" } };
+    }
+    // Neither name has ever existed -- tolerance for a rename must not become tolerance for
+    // evidence that was never real under any path.
+    if (path.includes("thing.v1.schema.json") || path.includes("thing.v2.schema.json")) {
+      const error = new Error("404");
+      error.status = 404;
+      throw error;
+    }
+    return { body: { conclusion: "success", head_sha: record.final_sha } };
+  };
+
+  const checked = await verifyCompletionRecord("o/r", record, { get, issue: currentIssue });
+  assert.equal(checked.evidence_digests_match, false, "content missing under every name it was ever bound to must not verify");
+  assert.equal(checked.verified, false);
+});
+
+test("a forged digest under a renamed path is still rejected", async () => {
+  const { verifyCompletionRecord } = await import("../../lib/github-state.mjs");
+  const sha256 = (bytes) => "sha256:" + createHash("sha256").update(bytes).digest("hex");
+  const record = { issue: 588, final_sha: "a".repeat(40), pr: 589, ci_run_ids: [1], evidence: { schema_digest: sha256(Buffer.from("the real bytes")) } };
+  const currentIssue = { issue: 588, owned_paths: ["lib/"], evidence_bindings: { schema_digest: "schemas/thing.v2.schema.json" } };
+  const historicalPlan = { issues: [{ issue: 588, evidence_bindings: { schema_digest: "schemas/thing.v1.schema.json" } }] };
+
+  const get = async (path) => {
+    if (path.includes("/files")) return { body: [{ filename: "lib/execution-plan.mjs" }], link: null };
+    if (path.includes("/commits/")) return { body: { sha: record.final_sha } };
+    if (path.includes("/compare/")) return { body: { status: "ahead" } };
+    if (path.includes("/pulls/")) {
+      return { body: { merged_at: "2026-09-01T00:00:00Z", base: { ref: "dev" }, head: { sha: "b".repeat(40) }, merge_commit_sha: record.final_sha, body: "Closes #588" } };
+    }
+    if (path.includes("v0.2.0-execution-plan.json")) {
+      return { body: { content: Buffer.from(JSON.stringify(historicalPlan)).toString("base64"), encoding: "base64" } };
+    }
+    // Resolves correctly through the rename, but the bytes there are not the bytes the record
+    // claims -- finding the right file must not excuse a wrong digest.
+    if (path.includes("thing.v1.schema.json")) return { body: { content: Buffer.from("forged bytes").toString("base64"), encoding: "base64" } };
+    return { body: { conclusion: "success", head_sha: record.final_sha } };
+  };
+
+  const checked = await verifyCompletionRecord("o/r", record, { get, issue: currentIssue });
+  assert.equal(checked.evidence_digests_match, false, "a resolved path with the wrong bytes must not verify");
+  assert.equal(checked.verified, false);
+});
+
+test("an unreadable historical plan is not a false fact", async () => {
+  const { verifyCompletionRecord } = await import("../../lib/github-state.mjs");
+  const sha256 = (bytes) => "sha256:" + createHash("sha256").update(bytes).digest("hex");
+  const record = { issue: 588, final_sha: "a".repeat(40), pr: 589, ci_run_ids: [1], evidence: { schema_digest: sha256(Buffer.from("x")) } };
+  const currentIssue = { issue: 588, owned_paths: ["lib/"], evidence_bindings: { schema_digest: "schemas/thing.v2.schema.json" } };
+
+  const get = async (path) => {
+    if (path.includes("/files")) return { body: [{ filename: "lib/execution-plan.mjs" }], link: null };
+    if (path.includes("/commits/")) return { body: { sha: record.final_sha } };
+    if (path.includes("/compare/")) return { body: { status: "ahead" } };
+    if (path.includes("/pulls/")) {
+      return { body: { merged_at: "2026-09-01T00:00:00Z", base: { ref: "dev" }, head: { sha: "b".repeat(40) }, merge_commit_sha: record.final_sha, body: "Closes #588" } };
+    }
+    if (path.includes("v0.2.0-execution-plan.json")) {
+      // Not a 404 -- an outage while reading the historical plan, not the repository saying it
+      // does not have one.
+      const error = new Error("502");
+      error.status = 502;
+      throw error;
+    }
+    return { body: { conclusion: "success", head_sha: record.final_sha } };
+  };
+
+  const checked = await verifyCompletionRecord("o/r", record, { get, issue: currentIssue });
+  assert.equal(checked.evidence_digests_match, NOT_CHECKED, "an outage reading the historical plan was recorded as the evidence being false");
+  assert.notEqual(checked.evidence_digests_match, false);
+  assert.equal(checked.verified, false);
 });
 
 test("a one-key forgery of the whole audit does not pass", () => {

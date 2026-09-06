@@ -148,6 +148,11 @@
       "note": "a decoded read in a file that also hashes — audited: the read is compared against a digest computed elsewhere (planDigest/fileDigest), never itself hashed"
     },
     {
+      "file": "tests/product/execution-plan.test.mjs",
+      "match": "const findings = files.flatMap((file) => bareTruthinessFindings(readFileSync(file, \"utf8\"), file, repositoryRoot));",
+      "note": "a decoded read in a file that also hashes (the #645 tests compute sha256 digests over literal test fixtures) — audited: this read feeds a static-analysis AST scan, never a hash"
+    },
+    {
       "file": "scripts/check-defect-classes.mjs",
       "match": "const allowlist = JSON.parse(readFileSync(ALLOWLIST_PATH, \"utf8\"));",
       "note": "a decoded read in a file that also hashes — audited: the read does not feed the hash, or is replaced on task/issue-567-work"
