@@ -131,6 +131,48 @@ test("the cycle command quotes the stored decision rather than deriving its own"
   rmSync(cwd, { recursive: true, force: true });
 });
 
+test("an issued legacy median is marked NOT COMPARABLE on the terminal, as it is on the dashboard", () => {
+  // #568 round 6 NIT. The dashboard card carries LEGACY / NOT COMPARABLE over this same stored
+  // decision while the terminal printed the identical median bare -- one number on two surfaces and
+  // only one of them refusing comparability. A legacy cycle is what an operator's store already
+  // holds, so the terminal is where they are most likely to read it.
+  const { cwd, home } = opened();
+  const stored = cycleOf(home);
+  const legacyRun = (seed, id) => ({
+    seed, run_id: id, result_schema: "aos-mvp-result.v1",
+    profile_digest: stored.profile_digest, suite_major: stored.suite_major, scorer_major: stored.scorer_major,
+    failure: null, terminal_committed: true, issued: true, final_score: 74, dimensions: { D1: 80 },
+    valid: true, invalid_reason: null, model_identity: null
+  });
+  const legacy = {
+    ...stored,
+    runs: stored.seeds.map((seed, index) => legacyRun(seed, `run-legacy-${index}`)),
+    // The stored decision is what both surfaces quote, so it carries the issued median here
+    // rather than being re-derived: an aggregate this cycle did not issue prints no number at all,
+    // and then the marker beside the number would not be witnessed.
+    decision: {
+      ...stored.decision,
+      issued: true, complete: true, valid_runs: 3, operator_score: 74,
+      dimensions: { D1: 80 }, spread: 0, mad: 0,
+      stability: "stable", local_repeat_evidence: "three runs, no movement",
+      excluded: []
+    }
+  };
+  writeFileSync(join(home, "cycle.json"), `${JSON.stringify(legacy, null, 2)}\n`);
+  const printed = spawnSync(process.execPath, [cli, "cycle"], {
+    cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: home }
+  });
+  if (/Operator Score: /u.test(printed.stdout)) {
+    assert.match(printed.stdout, /LEGACY \/ NOT COMPARABLE/u);
+  } else {
+    // The median was withheld for some other reason, so this run witnesses nothing about the
+    // marker. Say so rather than passing quietly: a test that cannot reach its subject has not
+    // covered it.
+    assert.fail(`the fixture did not produce an issued legacy median, so the marker was not witnessed: ${printed.stdout.slice(0, 400)}`);
+  }
+  rmSync(cwd, { recursive: true, force: true });
+});
+
 test("three attended runs of the new instrument are recorded, and the cycle withholds an aggregate rather than borrowing the old one", () => {
   // The locked cycle still runs three seeds and records three distinct runs. What it does not do
   // is produce a number: re-deriving the legacy scorer's score from a profile run's observations
