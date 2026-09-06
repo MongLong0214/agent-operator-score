@@ -7992,8 +7992,8 @@ export const GUARDS = [
     guard: "the cycle refuses a run the exposure ledger did not permit official scoring",
     reason: "classification that never reaches runValidity is a label, not a gate; without this clause a practice-classified replay is recorded valid and its score enters the official aggregate",
     file: "lib/cycle.mjs",
-    from: "  const classification = run.form_classification ?? null;\n  if (classification !== null && classification.official_scoring_permitted !== true) {\n    return { valid: false, reason: classification.refusal_code ?? \"AOS_FORM_NOT_OFFICIAL\" };\n  }",
-    to: "  const classification = run.form_classification ?? null;\n  if (false) {\n    return { valid: false, reason: classification.refusal_code ?? \"AOS_FORM_NOT_OFFICIAL\" };\n  }",
+    from: "  if (classification !== null && classification.official_scoring_permitted !== true) {\n    return { valid: false, reason: classification.refusal_code ?? \"AOS_FORM_NOT_OFFICIAL\", exposure };\n  }",
+    to: "  if (false) {\n    return { valid: false, reason: classification.refusal_code ?? \"AOS_FORM_NOT_OFFICIAL\", exposure };\n  }",
     test: "tests/product/form-class.test.mjs",
     name: "a cycle excludes a practice-classified administration from the official aggregate"
   },

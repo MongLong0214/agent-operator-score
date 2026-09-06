@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  EXPOSURE_VERIFICATION_STATUSES,
   INFRASTRUCTURE_FAILURES,
   aggregateCycle,
   createCycle,
+  exposureVerification,
   mayRerun,
   median,
   medianAbsoluteDeviation,
@@ -146,6 +148,45 @@ test("an excluded run is named with its reason", () => {
   const aggregate = aggregateCycle(cycle);
   assert.deepEqual(aggregate.excluded, [{ seed: "0000000000000001", reason: "AOS_INTERNAL_ERROR" }]);
   assert.equal(aggregate.valid_runs, 1);
+});
+
+test("exposureVerification names the third state a permitted run and a pre-ledger run used to share", () => {
+  // #632's collapse, a sixth time: `runValidity` returned the identical {valid: true, reason: null}
+  // for a run the exposure ledger checked and permitted and for a run it never saw at all. Three
+  // decisions, three words -- the same shape `capabilityProbeGeneration` uses for a probe record's
+  // generation -- and no run with a real classification may read as the pre-ledger case or back.
+  assert.deepEqual([...EXPOSURE_VERIFICATION_STATUSES], ["VERIFIED", "REFUSED", "UNVERIFIED"]);
+  assert.deepEqual(exposureVerification({ form_classification: null }), { decision: null, status: "UNVERIFIED" });
+  assert.deepEqual(exposureVerification({}), { decision: null, status: "UNVERIFIED" });
+  assert.deepEqual(
+    exposureVerification({ form_classification: { official_scoring_permitted: true } }),
+    { decision: true, status: "VERIFIED" }
+  );
+  assert.deepEqual(
+    exposureVerification({ form_classification: { official_scoring_permitted: false, refusal_code: "AOS_FORM_ALREADY_EXPOSED" } }),
+    { decision: false, status: "REFUSED" }
+  );
+});
+
+test("a permitted run and a pre-ledger run are both valid but not both verified, in the run record and the aggregate", () => {
+  const verified = runOf("0000000000000001", { form_classification: { official_scoring_permitted: true } });
+  const unverified = runOf("0000000000000002"); // no form_classification: the historical, pre-ledger shape
+  const third = runOf("0000000000000003", { form_classification: { official_scoring_permitted: true } });
+
+  assert.equal(runValidity(cycleOf(), verified).exposure.status, "VERIFIED");
+  assert.equal(runValidity(cycleOf(), unverified).exposure.status, "UNVERIFIED");
+
+  const cycle = withRuns([verified, unverified, third]);
+  // Named on the stored run itself, not only derivable from it -- cycle.json now says which.
+  assert.equal(cycle.runs.find((run) => run.seed === "0000000000000001").exposure_verification, "VERIFIED");
+  assert.equal(cycle.runs.find((run) => run.seed === "0000000000000002").exposure_verification, "UNVERIFIED");
+  assert.equal(cycle.runs.every((run) => run.valid), true, "all three still count toward the aggregate");
+
+  // And the printed summary: three valid runs read identically as a count, so the one the ledger
+  // never saw is named separately rather than folded into "3 valid run(s)".
+  const aggregate = aggregateCycle(cycle);
+  assert.equal(aggregate.valid_runs, 3);
+  assert.deepEqual(aggregate.valid_runs_exposure_unverified, ["0000000000000002"]);
 });
 
 test("fewer than three valid runs is no operator score", () => {

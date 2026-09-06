@@ -272,6 +272,9 @@ test("a replayed operational form crosses runs as practice, never as official ag
     assert.equal(cycleAfterReplay.runs[0].valid, false, "a previewed form was counted as official aggregate evidence");
     assert.equal(cycleAfterReplay.runs[0].invalid_reason, "AOS_FORM_ALREADY_EXPOSED");
     assert.equal(cycleAfterReplay.runs[0].form_classification.administered_class, "PRACTICE");
+    // #585. The ledger classified and refused this one -- named on the run itself, not folded into
+    // the same "not counted" shape a run the ledger never saw would also produce.
+    assert.equal(cycleAfterReplay.runs[0].exposure_verification, "REFUSED");
     assert.equal(ledgerOf().entries.length, 2);
     assert.equal(ledgerOf().entries[1].prior_exposure_count, 1);
 
@@ -284,6 +287,9 @@ test("a replayed operational form crosses runs as practice, never as official ag
     assert.equal(officialRun.form_classification.official_scoring_permitted, true);
     assert.equal(officialRun.form_classification.administered_class, "OPERATIONAL");
     assert.notEqual(officialRun.invalid_reason, "AOS_FORM_ALREADY_EXPOSED");
+    // #585. Verified, not merely valid: the ledger itself checked this exact administration and
+    // said so, which is the fact "valid: true" alone does not distinguish from a pre-ledger run.
+    assert.equal(officialRun.exposure_verification, "VERIFIED");
     const finalLedger = ledgerOf();
     assert.equal(finalLedger.entries.length, 3);
     assert.equal(finalLedger.entries[2].administered_class, "OPERATIONAL");
