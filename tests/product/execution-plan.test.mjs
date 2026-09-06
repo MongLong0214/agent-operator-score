@@ -191,14 +191,22 @@ test("an issue whose implementation blocks are satisfied can open a PR despite a
 });
 
 test("collapsing the split dependency fields back into blocked_by fails", () => {
+  // Pinned to the specific refusals, not only to `ok === false`. Any edited plan trips
+  // `plan-contract-version-stale`, so `ok === false` alone was satisfiable with the split
+  // enforcement gone -- the same shape "the evidence contract lives outside the document it
+  // checks" was rewritten to avoid.
   const doc = plan();
   const issue = entry(doc, 571);
-  issue.implementation_blocked_by = [570];
-  issue.acceptance_blocked_by = [569, 588];
   delete issue.implementation_blocked_by;
   delete issue.acceptance_blocked_by;
+  issue.blocked_by = [569, 570, 588];
 
-  assert.equal(checkPlan(doc).ok, false);
+  const report = checkPlan(doc);
+  assert.equal(report.ok, false);
+  const details = report.failures.filter((one) => one.check === "schema-invalid").map((one) => one.detail);
+  assert.ok(details.some((one) => one.includes('missing required property "implementation_blocked_by"')));
+  assert.ok(details.some((one) => one.includes('missing required property "acceptance_blocked_by"')));
+  assert.ok(details.some((one) => one.includes('unexpected property "blocked_by"')), "the v1 field came back and the schema accepted it");
 });
 
 test("a moved plan byte without a moved contract version fails", () => {
