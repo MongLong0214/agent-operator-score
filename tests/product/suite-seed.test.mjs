@@ -335,7 +335,7 @@ test("the operational form manifest binds raw task inputs to each family oracle 
   const manifest = formManifest("2a");
   assert.equal(manifest.schema_id, FORM_MANIFEST_SCHEMA);
   assert.equal(manifest.form_class, "OPERATIONAL");
-  assert.equal(manifest.equivalence_status, "UNCALIBRATED");
+  assert.equal(manifest.equivalence_status, "UNESTABLISHED");
   assert.equal(manifest.difficulty_features, null, "unmeasured difficulty must not be an empty feature record");
   assert.equal(manifest.difficulty_features_status, "NOT_OBSERVED");
   assert.deepEqual(formManifest("2a"), manifest, "the form manifest is not replayable");
@@ -346,7 +346,7 @@ test("the operational form manifest binds raw task inputs to each family oracle 
     assert.match(form.oracle_digest, /^sha256:[a-f0-9]{64}$/, `${family} oracle is not bound`);
     assert.ok(form.construct_opportunity.required_cell_ids.length > 0, `${family} declares no required construct opportunity`);
     assert.equal(form.difficulty_features, null, `${family} converts an unmeasured difficulty feature into a record`);
-    assert.equal(form.equivalence_status, "UNCALIBRATED", `${family} claims a form relation this suite has not calibrated`);
+    assert.equal(form.equivalence_status, "UNESTABLISHED", `${family} claims a form relation this suite has no linking evidence for`);
     assert.equal(form.assessment_identity, family === "FAM-5" ? "aos-fam-5-fixed-v0.2.0" : `aos-${family.toLowerCase()}-seed-${manifest.seed}`, `${family} assessment identity is not replayable`);
   }
 });
