@@ -265,3 +265,22 @@ test("an established decision is refused by name rather than published as a sile
     /AOS_STANDARD_SETTING_UNPUBLISHABLE/u
   );
 });
+
+test("an object whose every value is absent is not a considered field", () => {
+  // #568 round 5 NIT. Objects were tested for having no keys at all, so `{ note: null }` was
+  // substantive while `[null]` was not: the same absence read two ways depending on the container
+  // it arrived in. A consequence review recorded as an object of nulls names no more than an empty
+  // one does, and it must reach AOS_STANDARD_SETTING_INCOMPLETE rather than the registry refusal
+  // that comes after completeness.
+  for (const empty of [{ note: null }, { a: null, b: undefined }, { a: { b: [null] } }, { a: "   " }]) {
+    const record = { ...completeRecord(), consequence_review: empty };
+    assert.deepEqual(missingStandardSettingFields(record), ["consequence_review"], JSON.stringify(empty));
+    assert.throws(
+      () => build({ standard_setting: record }),
+      /AOS_STANDARD_SETTING_INCOMPLETE.*consequence_review/u,
+      JSON.stringify(empty)
+    );
+  }
+  // Still substantive: a container with anything real in it.
+  assert.deepEqual(missingStandardSettingFields({ ...completeRecord(), consequence_review: { note: "reviewed" } }), []);
+});

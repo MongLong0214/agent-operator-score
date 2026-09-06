@@ -8091,8 +8091,8 @@ export const GUARDS = [
     guard: 'an id-only scorer record says its version is unrecorded',
     reason: "a record with an id and no version rendered as a bare id, which is exactly what a complete `id version` record looks like -- a reader could not tell a captured id from a captured id-and-version, and this is the one place that distinction is made for every surface that quotes it",
     file: 'lib/result-schema.mjs',
-    from: '  return typeof version === "string" && version.length > 0 ? `${id} ${version}` : `${id} (version unrecorded)`;',
-    to: '  return `${id}${typeof version === "string" && version.length > 0 ? ` ${version}` : ""}`;',
+    from: '  return typeof version === "string" && version.trim().length > 0 ? `${id} ${version}` : `${id} (version unrecorded)`;',
+    to: '  return `${id}${typeof version === "string" && version.trim().length > 0 ? ` ${version}` : ""}`;',
     test: 'tests/product/legacy-band-provenance.test.mjs',
     name: 'a scorer id recorded without a version says so, rather than reading as a complete record'
   },
@@ -8266,6 +8266,33 @@ export const GUARDS = [
     to: "  if (false) {",
     test: "tests/product/standard-setting-gate.test.mjs",
     name: "an established decision is refused by name rather than published as a silent null"
+  },
+  {
+    guard: "only a legacy result may testify about a legacy scorer",
+    reason: "#568 round 5 BLOCKER. assertUniformResultSchema decides the cycle is legacy from cycle.json's run records, never from the files they point at, so a result file of any other shape carrying a scorer field captioned the aggregate on its own say-so -- a stored artifact vouching for itself",
+    file: "lib/dashboard.mjs",
+    from: "      return isLegacyResult(result) ? result : null;",
+    to: "      return result;",
+    test: "tests/product/dashboard.test.mjs",
+    name: "a counted run whose result file is not a legacy result cannot caption the aggregate"
+  },
+  {
+    guard: "a whitespace-only scorer version is not a recorded version",
+    reason: "#568 round 5 NIT. `.length > 0` counted a whitespace-only string as recorded, so a record carrying \"   \" rendered as a bare id -- the ambiguity between a complete record and a missing version that this helper exists to remove",
+    file: "lib/result-schema.mjs",
+    from: "  if (typeof id !== \"string\" || id.trim().length === 0) return \"unrecorded legacy scorer\";",
+    to: "  if (typeof id !== \"string\" || id.length === 0) return \"unrecorded legacy scorer\";",
+    test: "tests/product/legacy-band-provenance.test.mjs",
+    name: "a scorer id recorded without a version says so, rather than reading as a complete record"
+  },
+  {
+    guard: "an object whose every value is absent is not a considered field",
+    reason: "#568 round 5 NIT. Objects were tested only for having no keys at all, so `{ note: null }` was substantive while `[null]` was not: the same absence read two ways depending on which container it arrived in",
+    file: "lib/standard-setting.mjs",
+    from: "  return values.length === 0 || values.every((item) => item === null || item === undefined || isEmptyValue(item));",
+    to: "  return values.length === 0;",
+    test: "tests/product/standard-setting-gate.test.mjs",
+    name: "an object whose every value is absent is not a considered field"
   }
 ];
 
@@ -8594,6 +8621,7 @@ export const ACCOUNTED_GUARDS = [
   "a violation decides before the floor does",
   "a weight is a reciprocal or it is not a weight",
   "a weight is a share of an equal-weight mean",
+  "a whitespace-only scorer version is not a recorded version",
   "a whitespace-only string is not a considered field",
   "a withheld corpus does not pass",
   "a withheld identity caps the canonical claim",
@@ -8656,6 +8684,7 @@ export const ACCOUNTED_GUARDS = [
   "an issue number is a number before it is a pattern",
   "an issue owns a surface",
   "an issued legacy number needs a declared STRICT level",
+  "an object whose every value is absent is not a considered field",
   "an observation run carries a provenance record too",
   "an observation that could not run still leaves its record",
   "an observation's markers are read, not only its exit code",
@@ -8860,6 +8889,7 @@ export const ACCOUNTED_GUARDS = [
   "one fixture id, one item",
   "one snapshot entry per issue",
   "oneOf means exactly one",
+  "only a legacy result may testify about a legacy scorer",
   "only the configured runtime corroborates its own binding",
   "only the configured runtime's transcript tree is read",
   "only the declared runtime files are staged",

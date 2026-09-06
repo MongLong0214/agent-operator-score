@@ -177,6 +177,11 @@ test("a scorer id recorded without a version says so, rather than reading as a c
   assert.equal(legacyScorerName({ scorer: { id: "aos-scorer.v1", version: "1.0.0" } }), "aos-scorer.v1 1.0.0");
   assert.equal(legacyScorerName({ scorer: {} }), "unrecorded legacy scorer");
   assert.equal(legacyScorerName(null), "unrecorded legacy scorer");
+  // #568 round 5 NIT. `.length > 0` counted a whitespace-only version as recorded, so `"   "`
+  // rendered as a bare id -- the very ambiguity the line above exists to remove, reachable with a
+  // string that looks empty to every reader but `===`.
+  assert.equal(legacyScorerName({ scorer: { id: "aos-scorer.v1", version: "   " } }), "aos-scorer.v1 (version unrecorded)");
+  assert.equal(legacyScorerName({ scorer: { id: "   ", version: "1.0.0" } }), "unrecorded legacy scorer");
 });
 
 test("a legacy cycle aggregate names the stored scorer that produced its runs, not the current build", async () => {

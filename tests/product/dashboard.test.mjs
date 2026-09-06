@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { LOOPBACK, hostAllowed, mintToken, startDashboard, tokenMatches } from "../../lib/dashboard.mjs";
 import { METRICS, METRIC_IDS, observationOf } from "../../lib/metrics.mjs";
 import { scoreRun as scoreRunUnbounded } from "../../lib/scorer-v1.mjs";
-import { createRun, initHome, writeResult } from "../../lib/store.mjs";
+import { createRun, initHome, runPaths, writeResult } from "../../lib/store.mjs";
 import { writeJson } from "../../lib/core.mjs";
 import { summariseCycle } from "../../lib/cycle.mjs";
 import { renderHtml, renderMarkdown } from "../../lib/report.mjs";
@@ -584,6 +584,44 @@ test("the legacy caption withholds a name rather than borrowing one from an excl
     const body = await (await get(dashboard.port, `/?t=${dashboard.token}`)).text();
     assert.match(body, /LEGACY \/ NOT COMPARABLE · unrecorded legacy scorer · a legacy scorer aggregate/);
     assert.equal(/scorer-excluded 1\.0\.0 · a legacy scorer aggregate/.test(body), false, "the cycle caption named the excluded run's scorer though the counted run's own file was never readable");
+  } finally {
+    await dashboard.close();
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("a counted run whose result file is not a legacy result cannot caption the aggregate", async () => {
+  // #568 round 5 BLOCKER. `assertUniformResultSchema` decides "this cycle is legacy" from the run
+  // records in cycle.json, never from the files they point at, while the caption read whatever JSON
+  // was on disk. A result file of any other shape carrying a `scorer` field was therefore captioned
+  // as this aggregate's provenance on its own say-so -- a stored artifact vouching for itself. It
+  // now counts as no result, which is what a missing file already counted as.
+  const home = mkdtempSync(join(tmpdir(), "aos-dash-scorer-forged-"));
+  initHome(home);
+  // Exactly ONE counted run, and its file is the forged one. With a second, honest counted run in
+  // the cycle the forged name would merely DISAGREE with it and the disagreement branch would
+  // withhold the caption for a reason that has nothing to do with the schema -- the test would pass
+  // with the schema check deleted, which is what a first draft of it did.
+  const { runId: forgedRunId } = createRun(home, { mode: "TEST" });
+  // Not a legacy result by any field this build reads -- it only claims a scorer.
+  writeJson(runPaths(home, forgedRunId).result, { schema_id: "not-a-real-schema.v9", scorer: { id: "scorer-forged", version: "9.9.9" } });
+
+  writeJson(join(home, "cycle.json"), {
+    schema_id: "aos-cycle.v1",
+    cycle_id: "cycle-forged",
+    profile_digest: "d".repeat(64),
+    suite_major: 1,
+    scorer_major: 1,
+    seeds: ["s1", "s2"],
+    runs: [
+      { seed: "s1", run_id: forgedRunId, valid: true, invalid_reason: null, final_score: 80, dimensions: { D1: 80 } }
+    ]
+  });
+  const dashboard = await startDashboard({ home });
+  try {
+    const body = await (await get(dashboard.port, `/?t=${dashboard.token}`)).text();
+    assert.equal(/scorer-forged/.test(body), false, "a file that is not a legacy result captioned the aggregate on its own say-so");
+    assert.match(body, /LEGACY \/ NOT COMPARABLE · unrecorded legacy scorer · a legacy scorer aggregate/);
   } finally {
     await dashboard.close();
     rmSync(home, { recursive: true, force: true });
