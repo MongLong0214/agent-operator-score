@@ -816,18 +816,80 @@
     {
       "number": 564,
       "title": "[P0][suite] 6개 family의 operational form을 construct opportunity·oracle 기준으로 의미 있게 변형한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:measurement",
         "priority:P0",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 564,
+        "pr": 638,
+        "final_sha": "7afd2c976b1444148eab8862d54812144050afc8",
+        "merge_commit_sha": "bbf972e6a3f425b14abc641197bb7d627b12afe9",
+        "ci_run_ids": [
+          34006562346,
+          34007844262
+        ],
+        "verdict": "PASS_WITH_KNOWN_RESIDUE",
+        "evidence": {
+          "suite_form_digests": "The shipped `aos forms --json` at the merged head reports schema aos-form-variation-contract.v2, contract_version 0.2.0, sample_size 20, minimum_unique_task_forms 2, maximum_cosmetic_only_differences 0, and one fixed assessment identity aos-fam-5-fixed-v0.2.0 for FAM-5. Per-family implemented/declared decision axes: FAM-1 1/6 PASS, FAM-2 4/5 PASS, FAM-3 1/7 PASS, FAM-4 5/5 PASS, FAM-5 0/7 FIXED_FORM, FAM-6 2/7 PASS. Declared 37, implemented 13, unimplemented 24. Meaningful variation required 5 satisfied 5; task/oracle/evidence binding required 6 satisfied 6, FAM-5 included. historical_axis_accounting_status PRESERVED, with basis 'Original six-family variation contract before the v0.2.0 fixed-form amendment' and fam5_unimplemented_decision_axis_count 7. Round 1 derived the 37 independently from FROZEN_FAMILY_CONTRACT_AXES clause-for-clause against the issue rather than from the manifest's own declaration, and reproduced the completeness witness dying both when a frozen axis is omitted and when two are merged.",
+          "form_equivalence_status": "UNCALIBRATED. No equivalence between forms is claimed and none could be established here: difficulty is already UNESTABLISHED in the ECD contract, so UNCALIBRATED hides nothing this work could have shown. The boundary was verified in both directions by round 1. Cross-seed forgery fails closed: replacing a prepared seed-1 FAM-1 task with seed-2 bytes and answering seed 1's oracle withholds M01-M04 while the tampering stays recorded in a non-scoring observed_result, and an incomplete binding withholds at least as hard as a mismatched one.",
+          "mutation": "833/833 guards load-bearing, `npm run test:mutation` unqualified on darwin at the final head, with the one linux-owned deferral ('raw filename bytes') unchanged and still describing this code. The blocker that reframed this PR was a mutation-visible one: withholding had been implemented in gradeScenario while the twenty published observations came from observeRun, which took no binding argument at all, so a seed-2 task under seed 1's oracle still issued M01 PASS 1 and graded.metrics was read at exactly one site in the tree. Withholding now reaches issuance and every earlier closure was re-checked against the issuance path rather than against gradeScenario."
+        },
+        "review": {
+          "protocol": "sol-simplify-review-v1",
+          "note": "round 1 was RESTARTED: the branch was rebased to follow a moved dev, so the sealed round-1 head became unreachable. Re-sealing would have attached an inventory written against a vanished head to different code.",
+          "inventory_sha256": "d1e564a7d235bb6ea3604c22a7bd707a9031b39534f480f8e0d61274569148c9",
+          "round1_head_sha": "5d8a696cb5a2527ca9e48207db9119583e71b5f7",
+          "round1": {
+            "verdict": "BLOCK",
+            "items": 53,
+            "pass": 36,
+            "blocker": 4,
+            "nit": 9
+          },
+          "round2": {
+            "verdict": "PASS WITH NITS",
+            "commands": 79,
+            "regressions": 0,
+            "protocol_escapes": 0
+          },
+          "executors": "implementer, round-1 reviewer and round-2 reviewer were three different executors"
+        },
+        "not_established": [
+          "meaningful variation for FAM-5: it has no place for a seeded axis, since verdict.hidden already requires every subcheck. Confirmed on the ISSUANCE path in #641 across all 16 (probe, fault) configurations x 3 implementations — 48 issued observations, three distinct rows, no seeded fault moving M14, M15, M16 or M17",
+          "the ORIGINAL six-family variation obligation. These 13 axes ship under the AMENDED contract landed by #641 / PR #643 (ECD 1.5.0, form-variation contract v0.2.0), which narrows variation to five families while keeping task/oracle/evidence binding at six. This issue is not closed as fulfilment of the contract as originally written; 13/37 and FAM-5's seven-axis gap are preserved in the shipped report as historical accounting"
+        ],
+        "known_residue": [
+          "FAM-5 has no implemented seeded decision axis (0 of 7 declared). It ships as a fixed assessment form under the v0.2.0 amendment landed by #641 / PR #643, and re-running it under another seed never counts as another form or as additional variation. Confirmed inert on the ISSUANCE path across all 16 (probe, fault) configurations x 3 implementations: 48 issued observations, three distinct rows, no seeded fault moving M14, M15, M16 or M17.",
+          "24 of the 37 axes the original frozen family contracts declare are not implemented: FAM-1 5, FAM-2 1, FAM-3 6, FAM-5 7, FAM-6 5. Each is accounted for in the shipped manifest with an explicit NOT_IMPLEMENTED disposition and a reason; none is silently absent from the count. The report carries historical_axis_accounting_status PRESERVED so the shortfall against the original contract stays visible rather than being erased by the amendment.",
+          "aos forms reads its obligations from the contract rather than pinning them, so the reporting surface is not the enforcing surface. checkEcdContract is, and it errs closed: a contract with FAM-5 removed from the binding list is refused by shippedEcdContract(), which both aos assess and aos verify --run call.",
+          "verify:execution-plan:live and verify:real-runtime-strict were UNVERIFIABLE at review time. The real-runtime STRICT lane reports NOT_OBSERVED because the provider refused to serve under a usage limit, which is the third value that lane exists to distinguish and is not a pass."
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
       "closing_references": [
         "#564",
         "#575",
@@ -841,7 +903,9 @@
         "#583",
         "#567",
         "#584",
-        "#585"
+        "#585",
+        "#641",
+        "#643"
       ]
     },
     {
@@ -1036,7 +1100,7 @@
         "area:measurement",
         "priority:P1",
         "release:v0.2.0",
-        "status:blocked"
+        "status:ready"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
@@ -1582,19 +1646,90 @@
     {
       "number": 584,
       "title": "[P0][psychometrics] facet·uncertainty·generalizability gate와 calibration scaffold를 구현한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:measurement",
         "priority:P0",
         "release:v0.2.0",
-        "status:blocked"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
-      "closing_references": []
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 584,
+        "pr": 644,
+        "final_sha": "c5e647f76ae12e36d25d6d0c2579b3b51faefa5b",
+        "merge_commit_sha": "472fd729cf1d9cc20c5a236c50aeb22cc92953c2",
+        "ci_run_ids": [
+          34024758167,
+          34025209308
+        ],
+        "verdict": "PASS_WITH_KNOWN_RESIDUE",
+        "evidence": {
+          "facet_record_digest": "Every scored observation carries a facet record bound to the contract it was produced under, verified by running the shipped binary rather than by reading the code: a live `aos assess` produced aos-result.v4 with `observations total/scored: 20 15` and `scored without facet_record: 0`, each record's `model_profile_digest` equal to the run's `profile_digest` and `facet_contract_digest` equal to `contract.digests.combined`. `difficulty_version` now reaches the shipped artifact as `sha256:30d748ee…`, byte-equal to the run record's `suite_manifest.form_manifest.form_contract_digest`, and `task_form_id` is a real form identity rather than the family label. Round 1 had found both absent: `difficulty_version` was passed as bare hex and dropped by a `^sha256:` test, so two live runs printed `distinct difficulty_version: [\"NO-RECORD\"]`, and the guard that was supposed to catch it was a no-op on the shipping artifact. Round 2 applied both mutations by hand in a copy of the worktree and watched `a scored result carries the boundary it was produced under` go from ok to `not ok … 15 !== 0`, reading the payload off the published result.json.",
+          "uncertainty_status": "Verification re-derives the decision from the evidence rather than reading a stored verdict: `buildResult` no longer receives `uncertainty` or `generalizability_status`, and `validateUncertainty` throws AOS_UNCERTAINTY_EVIDENCE on a supplied one. `aos verify --run` on a live v4 record reports 10 PASS including `result-schema 4.0.0 vs 4.0.0` and recompute, exit 0. Null intervals and INSUFFICIENT_DATA where prerequisites fail are the required output and were accepted as such, not treated as findings. verify:uncertainty-contract 8/8.",
+          "generalizability_default": "UNESTABLISHED, with GENERALIZABILITY_SUPPORTED structurally unreachable without empirical calibration: verify:generalizability-withholding 3/3, verify:calibration-scaffold 3/3, verify:no-fake-population-statistics 3/3, `variance_components: null`, and a population-free scaffold — which is what the issue asked for. Three perfect uncalibrated forms do not raise the claim stage.",
+          "mutation": "849/849 guards load-bearing, `npm run test:mutation` unqualified on darwin at the final head, with the one linux-owned deferral unchanged. Round 1 recomputed all committed fingerprints from repo bytes and reproduced every one. The count is 844 from this branch plus the five #643 added; the merged-tree figure was produced by re-running the measurement rather than by hand-merging two ledgers, because a merged ledger would publish numbers no run produced."
+        },
+        "review": {
+          "protocol": "sol-simplify-review-v1",
+          "inventory_sha256": "56364c7b75565399281ab304cb88c6e6156c5202183248347aa9974760e7dc4e",
+          "round1_head_sha": "e755fefc19670ae8bba93d7608e14672e2b66576",
+          "round1": {
+            "verdict": "HOLD",
+            "items": 59,
+            "pass": 49,
+            "fail": 5,
+            "noted": 5,
+            "blocker": 2,
+            "nit": 7
+          },
+          "round2": {
+            "verdict": "PASS",
+            "regressions": 0,
+            "protocol_escapes": 0
+          },
+          "executor_note": "round 2's usual external reviewer was out of quota, so the same protocol ran with a Claude executor. Every host-side check — seal presence, inventory integrity, base and ancestry binding, live response path — ran unchanged. A model outage swaps the executor; it does not justify a different protocol.",
+          "head_delta": "round 2 read 8d51b23; the merged head is c5e647f, which adds a merge of a moved dev and a re-measured ledger. 8d51b23 remains an ancestor so the seal binding holds, but that delta did not go through the gate."
+        },
+        "closes_also": [
+          632
+        ],
+        "known_residue": [
+          "#632's five collapse sites are migrated onto lib/decision.mjs and no consumer bypasses it — round 1 checked specifically for a bypass and found none, and `every(Boolean)` over a tri-state no longer exists in lib/, bin/ or scripts/. Three consumers restate `=== true` / `=== NOT_CHECKED` literally across a serialisation boundary rather than importing the helper; all are guarded and all guards were killed. Recorded as a nit, not a defect.",
+          "`occasion_id` is an honestly declared null: the run reports `occasions MISSING` and `unidentified_facets [\"operator\",\"occasion\"]`. `sequence_position` is now null when the occasion was never observed, which required moving the result schema from v3/3.0.0 to v4/4.0.0 — the schema forbade withholding, so the schema changed rather than a value being invented. A v3 record on a v4 build reports NOT-CHECKED, named rather than accused.",
+          "`uncertainty.form_count` moved 5 to 1 because task_form_id is now the run-level operational form. Descriptive only, feeds no decision, and `run.forms_completed` still lists all six families; at the round-1 head the field merely duplicated family_id.",
+          "verify:real-runtime-strict remains UNVERIFIABLE here: the codex lane reports `NOT_OBSERVED: the provider refused to serve (usage limit)`. That is the third value the lane exists to distinguish and is not a pass. verify:execution-plan:live also fails, for a reason unrelated to this issue — #588's evidence is bound to the current plan's paths rather than to the plan as of its own commit, filed as #645 and being fixed on #642's branch."
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#584",
+        "#643",
+        "#632",
+        "#588",
+        "#645",
+        "#642",
+        "#638"
+      ]
     },
     {
       "number": 585,
@@ -1605,7 +1740,7 @@
         "area:measurement",
         "priority:P1",
         "release:v0.2.0",
-        "status:blocked"
+        "status:ready"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
