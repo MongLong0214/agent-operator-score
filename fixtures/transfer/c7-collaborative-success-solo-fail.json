@@ -1,0 +1,16 @@
+{
+  "description": "Phase A collaborative success followed by Phase B held-out failure: the pair the C7 gate exists for. Phase A is recorded and contributes nothing to the transfer decision.",
+  "phase_a": {
+    "collaborative_success": true,
+    "agent_available": true,
+    "transcript_available": true,
+    "task_id": "fam3-orchestration-scenario"
+  },
+  "phase_b": {
+    "agent_available": false,
+    "transcript_available": false,
+    "tasks": [
+      { "task_id": "held-out-related-orchestration", "relatedness": "near", "passed": false, "independent_verification_observed": false, "delayed": false }
+    ]
+  }
+}

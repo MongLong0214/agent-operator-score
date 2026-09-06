@@ -438,3 +438,69 @@ test("raw improvement is never marked as skill gain: replay suggests memorisatio
   const foreign = { ...linking, left_form_contract_digest: `sha256:${"c3".repeat(32)}`, right_form_contract_digest: `sha256:${"d4".repeat(32)}` };
   assert.equal(scoreChangeClaim({ earlier, later: { form_contract_digest: digestB, score: 90 }, linking: foreign }).interpretable_change, null);
 });
+
+// ---------------------------------------------------------------------------------------------
+// C7 learning and transfer scaffold (#585)
+
+test("the transfer protocol is versioned, phase B is held out, and C7 never enters the core composite", async () => {
+  const { TRANSFER_PROTOCOL, assessTransfer } = await import("../../lib/form-class.mjs");
+  assert.equal(TRANSFER_PROTOCOL.schema_id, "aos-transfer-protocol.v1");
+  assert.equal(TRANSFER_PROTOCOL.version, "1.0.0");
+  assert.equal(TRANSFER_PROTOCOL.separate_from_core_composite, true);
+  const phaseB = TRANSFER_PROTOCOL.phases.find((phase) => phase.phase_id === "B");
+  assert.equal(phaseB.agent_available, false);
+  assert.equal(phaseB.transcript_available, false);
+  assert.equal(TRANSFER_PROTOCOL.phases.find((phase) => phase.phase_id === "A").contributes_to_transfer_decision, false);
+  assert.deepEqual([...TRANSFER_PROTOCOL.outputs], ["near_transfer", "far_transfer", "retention_transfer", "independent_verification_behavior"]);
+  // No longitudinal study exists: every output is null and the status says UNESTABLISHED. That is
+  // the release-permitted honest answer, not a placeholder for a number.
+  const unmeasured = assessTransfer({});
+  assert.equal(unmeasured.schema_id, "aos-transfer-report.v1");
+  for (const output of TRANSFER_PROTOCOL.outputs) assert.equal(unmeasured[output], null, `${output} invented a value with no phase B evidence`);
+  assert.equal(unmeasured.status, "UNESTABLISHED");
+  assert.equal(unmeasured.included_in_core_composite, false);
+  assert.equal(unmeasured.core_composite_contribution, null);
+  // A phase B that still had the agent or the transcript is not a held-out phase B at all.
+  assert.throws(() => assessTransfer({ phase_b: { agent_available: true, transcript_available: false, tasks: [] } }), /AOS_TRANSFER_PHASE_B_NOT_HELD_OUT/);
+  assert.throws(() => assessTransfer({ phase_b: { agent_available: false, transcript_available: true, tasks: [] } }), /AOS_TRANSFER_PHASE_B_NOT_HELD_OUT/);
+});
+
+test("collaborative success with solo transfer failure stays a C7 fact and touches no core outcome", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { assessTransfer } = await import("../../lib/form-class.mjs");
+  const fixture = JSON.parse(readFileSync(new URL("../../fixtures/transfer/c7-collaborative-success-solo-fail.json", import.meta.url), "utf8"));
+  const report = assessTransfer(fixture);
+  assert.equal(report.phase_a.collaborative_success, true, "phase A is recorded");
+  assert.equal(report.near_transfer, false, "the held-out related task failed and the report says so");
+  assert.equal(report.far_transfer, null, "no far task was administered; null, not failure");
+  assert.equal(report.retention_transfer, null);
+  assert.equal(report.independent_verification_behavior, false);
+  assert.equal(report.status, "OBSERVED");
+  assert.equal(report.included_in_core_composite, false);
+  assert.equal(report.core_composite_contribution, null);
+  assert.equal(Object.isFrozen(report), true);
+  // The counterfactual: phase A alone, however successful, moves nothing.
+  const phaseAOnly = assessTransfer({ phase_a: fixture.phase_a });
+  assert.equal(phaseAOnly.near_transfer, null, "collaborative success is not independent transfer");
+  assert.equal(phaseAOnly.status, "UNESTABLISHED");
+});
+
+test("held-out passes establish transfer per relatedness, and delayed tasks answer retention", async () => {
+  const { assessTransfer } = await import("../../lib/form-class.mjs");
+  const report = assessTransfer({
+    phase_b: {
+      agent_available: false,
+      transcript_available: false,
+      tasks: [
+        { task_id: "near-1", relatedness: "near", passed: true, independent_verification_observed: true, delayed: false },
+        { task_id: "far-1", relatedness: "far", passed: true, independent_verification_observed: true, delayed: true }
+      ]
+    }
+  });
+  assert.equal(report.near_transfer, true);
+  assert.equal(report.far_transfer, true);
+  assert.equal(report.retention_transfer, true);
+  assert.equal(report.independent_verification_behavior, true);
+  assert.equal(report.uncertainty.status, "SINGLE_OCCASION", "one held-out occasion is not a longitudinal study and the report says so");
+  assert.equal(report.included_in_core_composite, false);
+});
