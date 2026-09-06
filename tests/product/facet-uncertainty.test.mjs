@@ -7,6 +7,7 @@ import { describeO4Shortcuts, bindFacetRecords, deriveMeasurementClaims } from "
 import { comparability, contractDigests, evaluate, subcheckMapping } from "../../lib/ecd-contract.mjs";
 import { observeRun } from "../../lib/observe.mjs";
 import { buildResult, projectResult } from "../../lib/result-schema.mjs";
+import { FAMILIES } from "../../lib/suite.mjs";
 import { contractWithAPopulatedIndex, identified, observationsWith } from "./ecd-fixtures.mjs";
 
 // VERIFIER_ACCEPTANCE A7/A8/A9 and R10-R17.  These use the same evidence-to-issuance path as the
@@ -176,6 +177,7 @@ test("the operational default label is never described as a psychometric minimum
   assert.match(label, /operational default/u);
   assert.match(label, /not a psychometric minimum/u);
   assert.equal(label.startsWith("psychometric minimum"), false);
+  assert.equal(result.calibration.d_study.operational_default_form_count, FAMILIES.length);
   assert.equal(canonicalJson(result.calibration.d_study.recommendation), "null\n");
 });
 
