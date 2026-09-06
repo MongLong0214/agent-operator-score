@@ -143,6 +143,11 @@
       "note": "a decoded read in a file that also hashes — audited: the read does not feed the hash, or is replaced on task/issue-567-work"
     },
     {
+      "file": "lib/execution-plan.mjs",
+      "match": "export const loadPlanContractLedger = (url = CONTRACT_LEDGER_URL) => JSON.parse(readFileSync(url, \"utf8\"));",
+      "note": "a decoded read in a file that also hashes — audited: the read is compared against a digest computed elsewhere (planDigest/fileDigest), never itself hashed"
+    },
+    {
       "file": "scripts/check-defect-classes.mjs",
       "match": "const allowlist = JSON.parse(readFileSync(ALLOWLIST_PATH, \"utf8\"));",
       "note": "a decoded read in a file that also hashes — audited: the read does not feed the hash, or is replaced on task/issue-567-work"
