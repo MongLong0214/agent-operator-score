@@ -7713,6 +7713,42 @@ export const GUARDS = [
     name: "reachable relay challenge and supplied response do not read terminal input"
   },
   {
+    guard: "relay supersede or cancel refuses a recorded human turn",
+    reason: "supersede and cancel exist to close an unanswered question; without the retention check a lifecycle owner could abandon an opportunity whose Phase A turn is already committed, stranding the ledger that re-derives a person's answer",
+    file: "lib/relay.mjs",
+    from: '    assertion(Object.keys(state.response_digests).length === 0, "AOS_RELAY_HUMAN_TURN_RETAINED", "the opportunity already holds a recorded human turn; abandoning its challenge would strand that evidence");',
+    to: '    assertion(true, "AOS_RELAY_HUMAN_TURN_RETAINED", "unreachable");',
+    test: "tests/product/agent-relay-protocol.test.mjs",
+    name: "the lifecycle owner supersedes or cancels only an unanswered challenge; a recorded human turn refuses to be abandoned"
+  },
+  {
+    guard: "a replacement challenge cannot discard a retained human turn",
+    reason: "prepare over a closed checkpoint is what makes supersede real, but a closed state can still hold the committed Phase A ledger; replacing it without this check silently destroys the one checkpoint record that re-derives a recorded response",
+    file: "lib/relay.mjs",
+    from: '        assertion(finished || Object.keys(existing.response_digests).length === 0, "AOS_RELAY_HUMAN_TURN_RETAINED", "the closed challenge retains a recorded human turn; a replacement cannot discard the ledger that re-derives it");',
+    to: '        assertion(true, "AOS_RELAY_HUMAN_TURN_RETAINED", "unreachable");',
+    test: "tests/product/agent-relay-protocol.test.mjs",
+    name: "a superseded, cancelled, or finished challenge admits a replacement; retained response evidence blocks one"
+  },
+  {
+    guard: "a declared relay phase names a producible challenge",
+    reason: "the phase list lives inside the protocol digest, so a name no surface can issue makes the contract promise a transition that does not exist -- the exact defect that kept OTHER_OPERATOR_DECISION declared through two review rounds",
+    file: "lib/relay.mjs",
+    from: 'export const RELAY_PHASES = Object.freeze(["INITIAL_JUDGMENT", "POST_ADVICE_DECISION"]);',
+    to: 'export const RELAY_PHASES = Object.freeze(["INITIAL_JUDGMENT", "POST_ADVICE_DECISION", "OTHER_OPERATOR_DECISION"]);',
+    test: "tests/product/agent-relay-protocol.test.mjs",
+    name: "every phase the protocol digest promises is issued by the protocol itself"
+  },
+  {
+    guard: "a declared relay checkpoint state names a producible challenge",
+    reason: "challenge_states sits inside the same protocol digest as the phase list and is equally a promise about producible transitions; before this PR SUPERSEDED and CANCELLED were declared here with no producer at all, and only a check that watches all of the digest's lists -- not only phases -- would notice a future name regressing the same way",
+    file: "lib/checkpoint.mjs",
+    from: 'export const RELAY_CHECKPOINT_STATES = Object.freeze([\n  "PREPARED", "DELIVERED", "RESPONDED", "COMMITTED", "EXPIRED", "SUPERSEDED", "CANCELLED"\n]);',
+    to: 'export const RELAY_CHECKPOINT_STATES = Object.freeze([\n  "PREPARED", "DELIVERED", "RESPONDED", "COMMITTED", "EXPIRED", "SUPERSEDED", "CANCELLED", "GHOST_STATE"\n]);',
+    test: "tests/product/agent-relay-protocol.test.mjs",
+    name: "every list inside the protocol digest names only values the protocol produces"
+  },
+  {
     guard: "reliance provenance has a new schema identity",
     reason: "the v4 source alone did not show a reader whether a turn was direct HIGH evidence or relay-attested MEDIUM evidence; the complete authority projection must remain a distinct v5 generation",
     file: "reliance-events/aos-reliance-event.v5.schema.json",
@@ -8152,6 +8188,8 @@ export const ACCOUNTED_GUARDS = [
   "a decision binds to the construct it is evidence about",
   "a decision names the dimension it belongs to",
   "a declared capability source is not scorable",
+  "a declared relay checkpoint state names a producible challenge",
+  "a declared relay phase names a producible challenge",
   "a declared route is published as digests",
   "a declared schedule never certifies collision safety",
   "a deletion names the commit the audit judged",
@@ -8230,6 +8268,7 @@ export const ACCOUNTED_GUARDS = [
   "a reliance append reuses its verified prefix",
   "a reliance rate waits for its opportunity floor",
   "a reliance trace is built on a journal",
+  "a replacement challenge cannot discard a retained human turn",
   "a required artifact or handoff is checked against the ledger",
   "a required metric with an unanswered subcheck is not present",
   "a reroute is a routing decision",
@@ -8624,6 +8663,7 @@ export const ACCOUNTED_GUARDS = [
   "relay response receipt precedes trace commit",
   "relay response-store refusal is not a contradiction",
   "relay source is observed by producer",
+  "relay supersede or cancel refuses a recorded human turn",
   "relay supplied responses never prompt a terminal",
   "reliance provenance has a new schema identity",
   "resolver ownership",
