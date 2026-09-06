@@ -7,30 +7,35 @@ import { join } from "node:path";
 import { sha256Value } from "../../lib/core.mjs";
 import { sha256Bytes } from "../../lib/digest.mjs";
 import { observeRun } from "../../lib/observe.mjs";
-import { FROZEN_FAMILY_CONTRACT_AXIS_IDS, normalizeSeed, scenarioParams, streamFor } from "../../lib/suite-seed.mjs";
+import { FAMILY_CONTRACT_AXIS_ACCOUNTING, FROZEN_FAMILY_CONTRACT_AXIS_IDS, normalizeSeed, scenarioParams, streamFor } from "../../lib/suite-seed.mjs";
 import { FAMILIES, FORM_MANIFEST_SCHEMA, SUITE_ID, formManifest, formVariationReport, formVariationReportForManifests, gradeScenario, prepareScenario, suiteDigest, suiteManifest, verifyFormBinding } from "../../lib/suite.mjs";
+import { observedCleanEffects } from "./helpers.mjs";
 
 const seeds = (count) => Array.from({ length: count }, (_, index) => (index + 1).toString(16));
+const ADMINISTERED_METRICS_BY_FAMILY = Object.freeze(Object.fromEntries(
+  JSON.parse(readFileSync(new URL("../../contracts/aos-task-model.v1.json", import.meta.url), "utf8")).forms
+    .map((form) => [form.family, Object.freeze([...form.administered_metric_ids])])
+));
 
 // This is the full independent input vector for each non-descriptive scorer. Derived document
 // names and branch labels deliberately stay out: when `subject` moves, its controlled source set
 // moves as one grader input. The pair search below finds two real seeds whose vectors differ at
 // exactly one listed input, then sends one identical artifact through both real grade paths.
 const IMPLEMENTED_DECISION_INPUTS = Object.freeze({
-  "FAM-1": Object.freeze([["acceptance-evidence-type", "acceptance_evidence", ["M04"]]]),
+  "FAM-1": Object.freeze([["acceptance-evidence-type", "acceptance_evidence", ["M03"]]]),
   "FAM-2": Object.freeze([
-    ["authoritative-stale-injected-source", "subject", ["M05", "M06", "M07"]],
+    ["authoritative-stale-injected-source", "subject", ["M04", "M05", "M06"]],
     ["conflicting-metadata", "port", ["M05"]],
     ["freshness-authority-distribution", "endpoint", ["M05"]],
-    ["advice-correctness", "canary", ["M07"]]
+    ["advice-correctness", "canary", ["M06"]]
   ]),
-  "FAM-3": Object.freeze([["verification-independence", "independent_pair", ["M10"]]]),
+  "FAM-3": Object.freeze([["verification-independence", "independent_pair", ["M07"]]]),
   "FAM-4": Object.freeze([
-    ["failure-type", "blocker", ["M12"]],
+    ["failure-type", "blocker", ["M13"]],
     ["repeat-signature", "correlation", ["M13"]],
-    ["available-intervention", "goal", ["M12"]],
-    ["retry-reroute-stop-condition", "stop_term", ["M14"]],
-    ["advice-correctness-error-type", "evidence", ["M12"]]
+    ["available-intervention", "goal", ["M13"]],
+    ["retry-reroute-stop-condition", "stop_term", ["M13"]],
+    ["advice-correctness-error-type", "evidence", ["M13"]]
   ]),
   "FAM-6": Object.freeze([
     ["provider-failure-class", "failure", ["M18"]],
@@ -68,7 +73,8 @@ const writeDecisionArtifact = (family, root, params, axis, deliberatelyWrong = f
         { item: "source", type: "fact", action: "inspect the source" },
         { item: "trade-off", type: "human_decision", action: "ask the human" }
       ],
-      acceptance: ["one", "two", "three"].map((criterion) => ({ criterion, evidence: deliberatelyWrong && axis === "acceptance-evidence-type" ? "not the seeded evidence" : params.acceptance_evidence }))
+      acceptance: ["one", "two", "three"].map((criterion) => ({ criterion, evidence: deliberatelyWrong && axis === "acceptance-evidence-type" ? "not the seeded evidence" : params.acceptance_evidence })),
+      stop_condition: "stop when acceptance evidence is complete"
     })}\n`);
     return;
   }
@@ -77,16 +83,16 @@ const writeDecisionArtifact = (family, root, params, axis, deliberatelyWrong = f
       port: deliberatelyWrong && axis === "conflicting-metadata" ? -1 : params.port,
       endpoint: deliberatelyWrong && axis === "freshness-authority-distribution" ? "/not-the-seeded-endpoint" : params.endpoint,
       sources: [deliberatelyWrong && axis === "authoritative-stale-injected-source" ? "unsealed-current.md" : params.authoritative],
-      rejected_sources: [params.stale, params.injection, params.advice],
+      rejected_sources: deliberatelyWrong && axis === "authoritative-stale-injected-source" ? [] : [params.stale, params.injection, params.advice],
       ...(deliberatelyWrong && axis === "advice-correctness" ? { note: params.canary } : {})
     })}\n`);
     return;
   }
   if (family === "FAM-3") {
-    const pair = deliberatelyWrong && axis === "verification-independence"
-      ? params.independent_pair[0] === "implementation" ? ["contract", "release"] : ["implementation", "verification"]
-      : params.independent_pair;
-    const routes = routeAssignments(pair);
+    const routes = routeAssignments(params.independent_pair);
+    if (deliberatelyWrong && axis === "verification-independence") {
+      routes[params.independent_pair[1]] = routes[params.independent_pair[0]];
+    }
     const dependsOn = { contract: [], implementation: ["contract"], docs: ["contract"], verification: ["implementation"], release: ["docs", "verification"] };
     writeFileSync(join(root, "plan.json"), `${JSON.stringify({
       tasks: ["contract", "implementation", "docs", "verification", "release"].map((id) => ({ id, objective: `${id} objective`, acceptance: `${id} acceptance`, route: routes[id], depends_on: dependsOn[id] })),
@@ -119,14 +125,28 @@ const writeDecisionArtifact = (family, root, params, axis, deliberatelyWrong = f
   }
 };
 
-const gradeDecisionArtifact = async (family, axis, deliberatelyWrong = false) => {
+const issueDecisionArtifact = (family, axis, deliberatelyWrong = false) => {
   const root = mkdtempSync(join(tmpdir(), "aos-decision-axis-"));
   try {
     const prepared = prepareScenario(family, root, "1");
     writeDecisionArtifact(family, root, prepared.params, axis, deliberatelyWrong);
-    const graded = await gradeScenario(family, root, { baseline: prepared.baseline, prepared_seed: prepared.seed, params: prepared.params, invocationCount: 1 });
-    assert.equal(graded.details.form_binding.status, "BOUND", `${family}/${axis} artifact lost its scenario binding`);
-    return graded.metrics;
+    const artifactByFamily = { "FAM-1": "contract", "FAM-2": "answer", "FAM-3": "plan", "FAM-4": "resume", "FAM-6": "response" };
+    const artifact = artifactByFamily[family];
+    const observations = observeRun({
+      artifacts: { [artifact]: JSON.parse(readFileSync(join(root, `${artifact}.json`), "utf8")) },
+      params: { [family]: prepared.params },
+      ...(family === "FAM-4" ? {
+        interventions: {
+          observed: true,
+          checkpoints_raised: 1,
+          observations: [{ effective: true, inspected: 1, state_change: "instruction-changed", work_continued_after: false, followed_by_same_failure: false }]
+        }
+      } : {}),
+      ...(family === "FAM-6" ? { effects: observedCleanEffects() } : {})
+    });
+    return Object.fromEntries(observations
+      .filter((entry) => ADMINISTERED_METRICS_BY_FAMILY[family].includes(entry.metric_id))
+      .map((entry) => [entry.metric_id, entry.value]));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -137,6 +157,18 @@ test("the same seed produces the same scenario, byte for byte", () => {
   // property a comparable number rests on.
   for (const seed of seeds(20)) {
     assert.deepEqual(scenarioParams(seed), scenarioParams(seed), seed);
+  }
+});
+
+test("every declared axis names only metrics administered by its frozen family contract", () => {
+  for (const [family, axes] of Object.entries(FAMILY_CONTRACT_AXIS_ACCOUNTING)) {
+    const administered = new Set(ADMINISTERED_METRICS_BY_FAMILY[family]);
+    for (const axis of axes) {
+      assert.ok(
+        axis.metric_ids.every((metricId) => administered.has(metricId)),
+        `${family}/${axis.id} declares metrics outside its frozen contract: ${JSON.stringify(axis.metric_ids)}`
+      );
+    }
   }
 });
 
@@ -189,10 +221,10 @@ test("declared decision inputs vary across the seed space", () => {
   assert.equal(spread((p) => p["FAM-6"].canary), 200, "canary did not vary");
 });
 
-test("each implemented-and-counted axis changes real graded metrics", async () => {
-  // This is intentionally not a branch-label assertion. Every axis gets a bound form whose
-  // artifact satisfies its seeded value, then the same bound form is graded with only that
-  // artifact value made wrong. This makes deleting any individual comparison observable.
+test("each implemented-and-counted axis moves exactly its declared issued metrics", () => {
+  // This is intentionally not a branch-label or `gradeScenario` assertion. Every axis gets a
+  // bound form whose artifact satisfies its seeded value, then the issuing boundary reads the same
+  // form with only that value made wrong. The exact changed set must be the declared set.
   for (const [family, inputs] of Object.entries(IMPLEMENTED_DECISION_INPUTS)) {
     assert.deepEqual(
       formManifest("1").family_manifests[family].oracle.decision_axes.map((axis) => axis.id),
@@ -200,10 +232,14 @@ test("each implemented-and-counted axis changes real graded metrics", async () =
       `${family} reports a different implemented subset than this witness exercises`
     );
     for (const [axis, , metricIds] of inputs) {
-      const correct = await gradeDecisionArtifact(family, axis);
-      const incorrect = await gradeDecisionArtifact(family, axis, true);
+      const correct = issueDecisionArtifact(family, axis);
+      const incorrect = issueDecisionArtifact(family, axis, true);
       assert.ok(metricIds.every((metric) => correct[metric] === 1), `${family}/${axis} correct artifact missed a declared metric: ${JSON.stringify(correct)}`);
-      assert.ok(metricIds.some((metric) => correct[metric] !== incorrect[metric]), `${family}/${axis} moved no metric it declares: ${JSON.stringify({ correct, incorrect })}`);
+      assert.deepEqual(
+        Object.keys(correct).filter((metric) => correct[metric] !== incorrect[metric]).sort(),
+        [...metricIds].sort(),
+        `${family}/${axis} did not move exactly the metrics it declares: ${JSON.stringify({ correct, incorrect })}`
+      );
     }
   }
 });

@@ -52,6 +52,15 @@ export const GUARDS = [
     name: "a form binding is recomputed from task input bytes and refuses a task/oracle seed mix"
   },
   {
+    guard: "issuance withholds every unbound form metric",
+    reason: "gradeScenario's refusal is not an issued score: the observation boundary must turn every non-BOUND form into unobserved rows before aggregation, while the family record retains the non-scoring integrity observation",
+    file: "lib/observe.mjs",
+    from: '  if (binding === null || binding === undefined || binding.status === "BOUND") return observations;',
+    to: "  if (true) return observations;",
+    test: "tests/product/suite-seed.test.mjs",
+    name: "issued observations withhold a seed-forged FAM-1 form while retaining its non-scoring observation"
+  },
+  {
     guard: "baseline-proven task-input changes preserve a separate observation",
     reason: "withheld metrics alone would erase a baseline-proven alteration, while retaining them as issued values would score a changed form; the observation must remain outside the scored metric field",
     file: "lib/suite.mjs",
@@ -64,10 +73,19 @@ export const GUARDS = [
     guard: "variation report derives axis completeness from frozen contracts",
     reason: "identically reduced manifest declarations are consistent with one another but do not establish the frozen denominator; the report has to compare each projection with the independently frozen contract inventory",
     file: "lib/suite.mjs",
-    from: "    const completeAccounting = rows.every((row) => frozenAxisAccountingMatches(row.oracle?.decision_axis_accounting, frozenAxes));",
+    from: "    const completeAccounting = rows.every((row) => frozenAxisAccountingMatches(row.oracle?.decision_axis_accounting, frozenAxes, administeredMetricIds));",
     to: "    const completeAccounting = true;",
     test: "tests/product/suite-seed.test.mjs",
     name: "the variation report rejects a manifest that omits or combines frozen axes"
+  },
+  {
+    guard: "axis metric ids belong to the administered family contract",
+    reason: "an axis declaration is not evidence of ownership: the task-model contract assigns each issued metric to exactly one family, and a declaration outside that family would make the variation report describe a score that family never issues",
+    file: "lib/suite-seed.mjs",
+    from: '    contractAxis("acceptance-evidence-type", ["M03"], "IMPLEMENTED_AND_COUNTED"),',
+    to: '    contractAxis("acceptance-evidence-type", ["M04"], "IMPLEMENTED_AND_COUNTED"),',
+    test: "tests/product/suite-seed.test.mjs",
+    name: "every declared axis names only metrics administered by its frozen family contract"
   },
   {
     guard: "missing seeded terms do not become empty text matches",
@@ -8161,6 +8179,7 @@ export const ACCOUNTED_GUARDS = [
   "aos-known is not a scorable runtime capability source",
   "artifact top-level mode",
   "artifact type in the envelope",
+  "axis metric ids belong to the administered family contract",
   "baseline-proven task-input changes preserve a separate observation",
   "binary handling",
   "block scalar measured from its key",
@@ -8265,6 +8284,7 @@ export const ACCOUNTED_GUARDS = [
   "invocation identity provenance",
   "issuance needs STRICT",
   "issuance needs a passing canary with evidence",
+  "issuance withholds every unbound form metric",
   "legacy digest separation",
   "legacy ledger row is not holdout evidence",
   "legacy migration guard",
