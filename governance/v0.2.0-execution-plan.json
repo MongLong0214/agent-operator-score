@@ -751,7 +751,7 @@
     {
       "issue": 568,
       "kind": "implementation",
-      "status": "blocked",
+      "status": "ready",
       "batch": 5,
       "implementation_blocked_by": [
         559,
@@ -1330,7 +1330,7 @@
     {
       "issue": 584,
       "kind": "implementation",
-      "status": "ready",
+      "status": "done",
       "batch": 4,
       "implementation_blocked_by": [
         559,
@@ -1357,7 +1357,10 @@
         "facet-uncertainty"
       ],
       "owned_paths": [
-        "lib/facets.mjs"
+        "lib/decision.mjs",
+        "lib/facet-calibration.mjs",
+        "lib/cli.mjs",
+        "lib/observe.mjs"
       ],
       "evidence_bindings": {},
       "allowed_parallel_with": [],
@@ -1373,7 +1376,7 @@
     {
       "issue": 585,
       "kind": "implementation",
-      "status": "blocked",
+      "status": "ready",
       "batch": 5,
       "implementation_blocked_by": [
         564,
