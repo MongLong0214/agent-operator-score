@@ -37,6 +37,16 @@ const asLive = (snapshot) => ({ ...snapshot, source: "live" });
 
 const verified = () => ({ ...Object.fromEntries(REQUIRED_CONFIRMATIONS.map((key) => [key, true])), verified: true });
 
+const passingCloseEvidence = (issue) => ({
+  schema: "aos-issue-completion.v1",
+  issue,
+  final_sha: "a".repeat(40),
+  pr: 1,
+  ci_run_ids: [1],
+  verdict: "PASS",
+  evidence: Object.fromEntries(EVIDENCE_CONTRACT[issue].fields.map((field) => [field, `candidate-proof-for-${field}`]))
+});
+
 const state = () =>
   JSON.parse(readFileSync(new URL("../../fixtures/execution-plan/github-state.json", import.meta.url), "utf8"));
 
@@ -138,6 +148,58 @@ test("a release-critical issue without a close-evidence contract fails", () => {
   const doc = plan();
   entry(doc, 553).close_evidence_required = false;
   assert.ok(failures(checkPlan(doc)).includes("release-critical-needs-close-evidence"));
+});
+
+test("an unsatisfied acceptance block cannot issue close evidence", () => {
+  const doc = plan();
+  const issue = entry(doc, 571);
+  issue.implementation_blocked_by = [570];
+  issue.acceptance_blocked_by = [569, 588];
+
+  const snapshot = asLive(state());
+  const live = snapshot.issues.find((one) => one.number === 571);
+  live.state = "closed";
+  live.close_evidence = { ...passingCloseEvidence(571), author_trusted: true };
+  live.close_evidence_checked = verified();
+
+  const report = auditCloseEvidence(doc, snapshot, { live: true });
+  assert.ok(report.failures.some((one) => one.check === "close-evidence-acceptance-blocked" && one.issue === 571));
+});
+
+test("an issue whose implementation blocks are satisfied can open a PR despite acceptance blocks", () => {
+  const doc = plan();
+  const issue = entry(doc, 571);
+  issue.implementation_blocked_by = [570];
+  issue.acceptance_blocked_by = [569, 588];
+
+  assert.ok(nextWork(doc).implementation_ready.includes(571));
+});
+
+test("collapsing the split dependency fields back into blocked_by fails", () => {
+  const doc = plan();
+  const issue = entry(doc, 571);
+  issue.implementation_blocked_by = [570];
+  issue.acceptance_blocked_by = [569, 588];
+  delete issue.implementation_blocked_by;
+  delete issue.acceptance_blocked_by;
+
+  assert.equal(checkPlan(doc).ok, false);
+});
+
+test("a moved plan byte without a moved contract version fails", () => {
+  const doc = plan();
+  entry(doc, 571).priority = "P2";
+
+  assert.ok(failures(checkPlan(doc)).includes("plan-contract-version-stale"));
+});
+
+test("every legacy dependency edge is classified by one split field", () => {
+  const doc = plan();
+  const issue = entry(doc, 571);
+  issue.implementation_blocked_by = [570];
+  issue.acceptance_blocked_by = [588];
+
+  assert.ok(failures(checkPlan(doc)).includes("dependency-edge-unclassified"));
 });
 
 // --- phase-ready is not READY --------------------------------------------------------------
