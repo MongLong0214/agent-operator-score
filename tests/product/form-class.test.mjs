@@ -86,6 +86,21 @@ test("a form bank record cannot declare itself linked; equivalence stays unestab
   assert.equal(EQUIVALENCE_STATUSES.includes(record.equivalence_status), true);
 });
 
+test("a form bank record's equivalence status requires a real linking scaffold, not any object naming a status", () => {
+  // `linking: { equivalence_status: "LINKED" }` is exactly the shape a caller can construct by
+  // hand, with no `linkForms` scaffold and no empirical evidence behind it. Only an object tagged
+  // with the linking scaffold's own schema_id -- the same check `scoreChangeClaim` performs before
+  // it will quote a linking record -- may move this field off its UNESTABLISHED default.
+  const record = formBankRecord({
+    form_id: "FAM-1.form-2b",
+    form_class: "OPERATIONAL",
+    construct_opportunity_ids: ["C1.GF.01"],
+    oracle_digest: `sha256:${"b".repeat(64)}`,
+    linking: { equivalence_status: "LINKED" }
+  });
+  assert.equal(record.equivalence_status, "UNESTABLISHED");
+});
+
 test("the shipped operational form manifest speaks the form class contract's own words", () => {
   const manifest = formManifest("2a");
   assert.equal(manifest.form_class, "OPERATIONAL");

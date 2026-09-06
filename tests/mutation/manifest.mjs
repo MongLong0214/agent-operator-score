@@ -7987,6 +7987,15 @@ export const GUARDS = [
     to: "  if (false) {",
     test: "tests/product/form-class.test.mjs",
     name: "a small DIF sample never turns a comparison on, and detected DIF refuses it"
+  },
+  {
+    guard: "a form bank record's equivalence status requires a real linking scaffold, not any object naming a status",
+    reason: "equivalence_status is derived, never declared; without the schema_id tag any caller-supplied object naming a status -- linking: { equivalence_status: \"LINKED\" } needs no linkForms scaffold and no evidence -- would be quoted straight onto the record",
+    file: "lib/form-class.mjs",
+    from: "      linking.schema_id === FORM_LINKING_SCHEMA_ID &&",
+    to: "      true &&",
+    test: "tests/product/form-class.test.mjs",
+    name: "a form bank record's equivalence status requires a real linking scaffold, not any object naming a status"
   }
 
 ];
@@ -8186,6 +8195,7 @@ export const ACCOUNTED_GUARDS = [
   "a forged headline escape_attempt_result is rejected by the release gate",
   "a forged headline profile digest is rejected by the release gate",
   "a forged structural set is revalidated like the rest",
+  "a form bank record's equivalence status requires a real linking scaffold, not any object naming a status",
   "a form list naming an undeclared cell is refused before it is dereferenced",
   "a generation is named for what it actually predates",
   "a handoff is recorded only where something was handed",
