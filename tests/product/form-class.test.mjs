@@ -161,6 +161,11 @@ test("a corrupt exposure ledger refuses rather than reading as empty", async () 
   // form a second official scoring, which is exactly the gate this file exists to hold.
   assert.throws(() => openExposureLedger({ schema_id: "something-else", entries: [] }), /AOS_EXPOSURE_LEDGER_CORRUPT/);
   assert.throws(() => openExposureLedger({ schema_id: "aos-exposure-ledger.v1", entries: "not-a-list" }), /AOS_EXPOSURE_LEDGER_CORRUPT/);
+  // Calendar, not Date.parse: an instant that does not exist cannot anchor an interval.
+  const { recordExposure } = await import("../../lib/form-class.mjs");
+  assert.throws(() => recordExposure(createExposureLedger(), {
+    form_id: "f", form_contract_digest: `sha256:${"0".repeat(64)}`, declared_class: "OPERATIONAL", occurred_at: "2026-02-30T10:00:00.000Z"
+  }), /AOS_EXPOSURE_OCCURRED_AT/);
 });
 
 test("a cycle excludes a practice-classified administration from the official aggregate", async () => {
