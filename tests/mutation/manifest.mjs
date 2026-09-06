@@ -79,6 +79,33 @@ export const GUARDS = [
     name: "the variation report rejects a manifest that omits or combines frozen axes"
   },
   {
+    guard: "FAM-5 fixed identity is singular",
+    reason: "a FAM-5 seed may vary setup bytes but it is one v0.2.0 assessment identity; counting another identity would turn a fixed form into fabricated variation",
+    file: "lib/suite.mjs",
+    from: "    const fixedAssessmentIdentityMatches = fixedAssessmentIdentity === null\n      ? false\n      : assessmentIdentities.size === 1 && assessmentIdentities.has(fixedAssessmentIdentity);",
+    to: "    const fixedAssessmentIdentityMatches = true;",
+    test: "tests/product/suite-seed.test.mjs",
+    name: "FAM-5 replays as one fixed assessment identity across seeds"
+  },
+  {
+    guard: "FAM-5 fixed form retains task/oracle/evidence binding",
+    reason: "the five-family variation amendment does not exempt FAM-5 from proving which task, oracle and form contract produced its observation",
+    file: "lib/suite.mjs",
+    from: "    const bindingEvidenceComplete = rows.every((row) => [\n      row?.parameter_digest,\n      row?.task_tree_digest,\n      row?.oracle_digest,\n      row?.form_contract_digest\n    ].every((digest) => typeof digest === \"string\" && /^sha256:[a-f0-9]{64}$/.test(digest)));",
+    to: "    const bindingEvidenceComplete = true;",
+    test: "tests/product/suite-seed.test.mjs",
+    name: "FAM-5's fixed-form exemption does not relax its task/oracle/evidence binding"
+  },
+  {
+    guard: "FAM-5 fixed form status is qualified",
+    reason: "an unqualified PASS on FAM-5 says that a fixed assessment form satisfied the meaningful-variation obligation it is expressly outside",
+    file: "lib/suite.mjs",
+    from: '      status: passes ? variationRequired ? "PASS" : "FIXED_FORM" : "FAIL"',
+    to: '      status: passes ? "PASS" : "FAIL"',
+    test: "tests/product/suite-seed.test.mjs",
+    name: "FAM-5 replays as one fixed assessment identity across seeds"
+  },
+  {
     guard: "axis metric ids belong to the administered family contract",
     reason: "an axis declaration is not evidence of ownership: the task-model contract assigns each issued metric to exactly one family, and a declaration outside that family would make the variation report describe a score that family never issues",
     file: "lib/suite-seed.mjs",
@@ -1205,6 +1232,15 @@ export const GUARDS = [
     name: "an artifact at a version this module does not issue fails"
   },
   {
+    guard: "ECD form variation contract version is exact",
+    reason: "the five-family obligation and FAM-5 fixed identity are versioned contract meaning; accepting another semantic version would make a result's contract label ambiguous",
+    file: "lib/ecd-contract.mjs",
+    from: '  if (formVariation.contract_version !== "0.2.0") {',
+    to: "  if (false) {",
+    test: "tests/product/ecd-task-model.test.mjs",
+    name: "the v0.2.0 form variation contract fixes only FAM-5 while retaining six bindings"
+  },
+  {
     guard: "ECD claim stages are the three this module scores",
     reason: "minItems 3 is not three distinct stages, so three PROFILE_BOUND clones sealed and evaluate then read a definition off a stage it could not find",
     file: "lib/ecd-contract.mjs",
@@ -1356,6 +1392,15 @@ export const GUARDS = [
     to: "    if (false) {",
     test: "tests/product/ecd-task-model.test.mjs",
     name: "a form's declared opportunity count is derived from its cells, not believed"
+  },
+  {
+    guard: "ECD form variation historical accounting is fixed",
+    reason: "the five-family amendment cannot retrospectively replace the original 13/37 denominator or hide FAM-5's seven unimplemented axes",
+    file: "lib/ecd-contract.mjs",
+    from: "  if (historical.implemented_decision_axis_count !== 13 || historical.declared_decision_axis_count !== 37 || historical.fam5_unimplemented_decision_axis_count !== 7) {",
+    to: "  if (false) {",
+    test: "tests/product/ecd-task-model.test.mjs",
+    name: "the v0.2.0 form variation contract fixes only FAM-5 while retaining six bindings"
   },
   {
     guard: "ECD shared form cells are disclosed",
@@ -7847,6 +7892,8 @@ export const ACCOUNTED_GUARDS = [
   "ECD every metric is administered exactly once",
   "ECD form and cell name each other",
   "ECD form opportunity count is derived",
+  "ECD form variation contract version is exact",
+  "ECD form variation historical accounting is fixed",
   "ECD insufficient opportunities yields null",
   "ECD legacy band surface is disclosed, not asserted away",
   "ECD missing evidence keeps its own reason",
@@ -7862,6 +7909,9 @@ export const ACCOUNTED_GUARDS = [
   "ECD subcheck ownership follows the administering form",
   "EVIDENCE_ONLY names where the evidence goes",
   "EVIDENCE_ONLY records whether the migration happened",
+  "FAM-5 fixed form retains task/oracle/evidence binding",
+  "FAM-5 fixed form status is qualified",
+  "FAM-5 fixed identity is singular",
   "MERGED holds no commit that reaches neither line",
   "NOT_OBSERVED and PROVIDER_REFUSED never reach the release gate's OBSERVED scoring",
   "O4 withholds with C2.RF.01",

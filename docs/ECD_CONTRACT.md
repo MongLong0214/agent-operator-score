@@ -17,6 +17,17 @@ have produced it, and what happens when it is absent.
 | `aos-task-model.v1` | `contracts/aos-task-model.v1.json` | What each form administers, and which opportunity sources are declared but not administered |
 | `aos-interpretation-use-argument.v1` | `contracts/aos-interpretation-use-argument.v1.json` | Scoring → within-cycle generalization → extrapolation → use, with each link's status |
 
+## Form-variation contract v0.2.0
+
+The task model's `form_variation` contract is versioned at `0.2.0`, and its change moves the ECD
+contract to `1.5.0`. Meaningful variation is required for FAM-1, FAM-2, FAM-3, FAM-4, and FAM-6.
+FAM-5 has the fixed assessment identity `aos-fam-5-fixed-v0.2.0`: changing its seed does not make
+another assessment form or add meaningful variation. Its task, oracle, and evidence binding remains
+required with the other five families, and its isolated four-probe verifier and success criteria do
+not change. The report preserves the historical original-contract shortfall of 13 implemented axes
+out of 37, including FAM-5's seven unimplemented axes; it does not substitute a five-family
+denominator.
+
 ## The fields every scored cell carries
 
 `construct_id`, `axis`, `claim`, `deferred_claim`, `observable`, `task_opportunity`, `authority`,

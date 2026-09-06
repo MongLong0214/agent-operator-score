@@ -22,6 +22,45 @@ test("the administered forms are the families the suite actually runs", () => {
   assert.deepEqual(operational, [...FAMILIES]);
 });
 
+test("the v0.2.0 form variation contract fixes only FAM-5 while retaining six bindings", () => {
+  const contract = loadEcdContract();
+  const variation = contract.task_model.form_variation;
+  assert.equal(variation.contract_version, "0.2.0");
+  assert.deepEqual(variation.meaningful_variation_required_family_ids, ["FAM-1", "FAM-2", "FAM-3", "FAM-4", "FAM-6"]);
+  assert.deepEqual(variation.task_oracle_evidence_binding_required_family_ids, [...FAMILIES]);
+  assert.deepEqual(variation.fixed_assessment_identities, [{ family_id: "FAM-5", assessment_identity: "aos-fam-5-fixed-v0.2.0" }]);
+  assert.deepEqual(variation.historical_axis_accounting, {
+    basis: "Original six-family variation contract before the v0.2.0 fixed-form amendment",
+    implemented_decision_axis_count: 13,
+    declared_decision_axis_count: 37,
+    fam5_unimplemented_decision_axis_count: 7
+  });
+
+  const missingBinding = clone();
+  missingBinding.task_model.form_variation.task_oracle_evidence_binding_required_family_ids = ["FAM-1", "FAM-2", "FAM-3", "FAM-4", "FAM-6"];
+  const bindingReport = checkEcdContract(missingBinding);
+  assert.equal(bindingReport.ok, false);
+  assert.ok(checks(bindingReport).includes("form-variation-binding"), JSON.stringify(checks(bindingReport)));
+
+  const secondIdentity = clone();
+  secondIdentity.task_model.form_variation.fixed_assessment_identities.push({ family_id: "FAM-1", assessment_identity: "aos-fam-1-forged-fixed" });
+  const identityReport = checkEcdContract(secondIdentity);
+  assert.equal(identityReport.ok, false);
+  assert.ok(checks(identityReport).includes("form-variation-fixed-identity"), JSON.stringify(checks(identityReport)));
+
+  const wrongVersion = clone();
+  wrongVersion.task_model.form_variation.contract_version = "0.2.1";
+  const versionReport = checkEcdContract(wrongVersion);
+  assert.equal(versionReport.ok, false);
+  assert.ok(checks(versionReport).includes("form-variation-version"), JSON.stringify(checks(versionReport)));
+
+  const shrunkHistory = clone();
+  shrunkHistory.task_model.form_variation.historical_axis_accounting.declared_decision_axis_count = 30;
+  const historyReport = checkEcdContract(shrunkHistory);
+  assert.equal(historyReport.ok, false);
+  assert.ok(checks(historyReport).includes("form-variation-historical-accounting"), JSON.stringify(checks(historyReport)));
+});
+
 test("every form declares its perturbation, its oracle and what it may not reward", () => {
   for (const form of loadEcdContract().task_model.forms) {
     assert.ok(form.required_perturbation.length >= 10, form.form_id);
