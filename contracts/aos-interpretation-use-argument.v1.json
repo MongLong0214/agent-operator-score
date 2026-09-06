@@ -1,6 +1,6 @@
 {
   "schema": "aos-interpretation-use-argument.v1",
-  "contract_version": "1.5.0",
+  "contract_version": "1.6.0",
   "claim_stages": [
     {
       "stage_id": "RUN_DIAGNOSTIC",
@@ -225,8 +225,8 @@
         },
         {
           "evidence_id": "form-exposure-ledger",
-          "status": "UNESTABLISHED",
-          "detail": "The task model requires an exposure ledger; this contract does not implement one."
+          "status": "PASS",
+          "detail": "#585 implements the exposure ledger the task model requires: openExposureLedger/recordExposure/classifyAdministration in lib/form-class.mjs record every graded administration and reclassify a form the ledger has already seen as PRACTICE, refused official scoring. Its testimony is scoped to one AOS home -- an administration from before the ledger existed, or recorded under a different home, is outside what it can see."
         },
         {
           "evidence_id": "uncertainty-visible",
@@ -242,8 +242,8 @@
         },
         {
           "rebuttal_id": "practice-or-memorisation",
-          "status": "OPEN",
-          "detail": "Sequence and occasion are declared facets but no exposure ledger enforces single administration."
+          "status": "PARTIALLY_MITIGATED",
+          "detail": "Sequence and occasion are declared facets, and #585's exposure ledger now enforces single official administration per exact form contract digest within one AOS home: a replay classifies PRACTICE and is excluded from the official aggregate, and score/duration_ms travel onto the ledger so memorization_indicator and speed_only_improvement can be computed from a form administered more than once. Open: the ledger's testimony is scoped to one AOS home, so the same form administered again from a different home, or before the ledger existed, is outside what it can see."
         },
         {
           "rebuttal_id": "materially-unequal-form-difficulty",
