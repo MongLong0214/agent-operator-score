@@ -4,7 +4,7 @@ import test from "node:test";
 import { evaluate } from "../../lib/ecd-contract.mjs";
 import { buildResult } from "../../lib/result-schema.mjs";
 import {
-  STANDARD_SETTING_FIELDS, STANDARD_SETTING_SCHEMA_ID, standardSettingDecision
+  STANDARD_SETTING_FIELDS, STANDARD_SETTING_SCHEMA_ID, missingStandardSettingFields, standardSettingDecision
 } from "../../lib/standard-setting.mjs";
 import { contractWithAPopulatedIndex, identified, observationsWith } from "./ecd-fixtures.mjs";
 
@@ -25,18 +25,27 @@ const build = (extra = {}) => buildResult({
   ...extra
 });
 
-/** The record shape the issue's contract names, complete in every required field. */
+/**
+ * The record shape the issue's contract names, complete in every required field.
+ *
+ * `cut_scores`, `fairness_invariance_evidence_ids` and `consequence_review` are non-empty here on
+ * purpose (#568 round 2): `missingStandardSettingFields` now treats an empty array the same as a
+ * missing key for the fields the file's own rationale names as "the study's own account of
+ * itself", so a fixture using `[]` for them would no longer be a complete record and every test
+ * below that expects `completeRecord()` to pass completeness -- and only fail the registry check
+ * that comes after it -- would be exercising the wrong refusal.
+ */
 const completeRecord = () => ({
   schema_id: STANDARD_SETTING_SCHEMA_ID,
   intended_decision: "local self-diagnosis threshold",
   method: "bookmark",
   panel_or_dataset_digest: `sha256:${"0".repeat(64)}`,
-  cut_scores: [],
+  cut_scores: [{ threshold: 75, band: "STRONG" }],
   classification_consistency: null,
   classification_accuracy: null,
-  fairness_invariance_evidence_ids: [],
+  fairness_invariance_evidence_ids: ["ev-fairness-1"],
   uncertainty_near_cut: null,
-  consequence_review: [],
+  consequence_review: ["no adverse impact found in the sampled subgroups"],
   version: "1.0.0"
 });
 
@@ -118,4 +127,36 @@ test("a record whose ten required fields are all present and null is refused, no
   const record = { schema_id: STANDARD_SETTING_SCHEMA_ID };
   for (const field of STANDARD_SETTING_FIELDS) record[field] = null;
   assert.throws(() => build({ standard_setting: record }), /AOS_STANDARD_SETTING_INCOMPLETE/u);
+});
+
+test("an empty string, array or object is not a considered field, for every field but the three honest ones", () => {
+  // #568 round 2. `missingStandardSettingFields` used to check only `=== null || === undefined`,
+  // so a record with `cut_scores: []`, `intended_decision: ""` or `consequence_review: {}` reported
+  // zero missing fields -- a key with nothing behind it, read as complete. Each of these is a
+  // non-honest field (`cut_scores`, `fairness_invariance_evidence_ids`, `consequence_review`, and
+  // the four plain-value fields) and each empty value now closes it by itself.
+  for (const [field, empty] of [
+    ["intended_decision", ""],
+    ["method", ""],
+    ["panel_or_dataset_digest", ""],
+    ["cut_scores", []],
+    ["fairness_invariance_evidence_ids", []],
+    ["consequence_review", {}],
+    ["version", ""]
+  ]) {
+    const record = { ...completeRecord(), [field]: empty };
+    assert.deepEqual(missingStandardSettingFields(record), [field], field);
+    assert.throws(() => build({ standard_setting: record }), new RegExp(`AOS_STANDARD_SETTING_INCOMPLETE.*${field}`, "u"), field);
+  }
+});
+
+test("an empty value is still honest for the three fields an unrun estimate may leave null", () => {
+  // The distinction this gate already drew stays: these three fields may be an honest `null`
+  // because a study can consider classification consistency, classification accuracy or an
+  // uncertainty-near-cut analysis and choose not to compute one. Closing the empty-value gap for
+  // every other field must not turn that considered null into a missing field.
+  for (const field of ["classification_consistency", "classification_accuracy", "uncertainty_near_cut"]) {
+    const record = { ...completeRecord(), [field]: null };
+    assert.deepEqual(missingStandardSettingFields(record), []);
+  }
 });

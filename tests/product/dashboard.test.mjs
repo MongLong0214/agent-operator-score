@@ -418,3 +418,84 @@ test("markup in a stored record never becomes markup in the dashboard", async ()
     rmSync(home, { recursive: true, force: true });
   }
 });
+
+test("a cycle with no recorded result schema is not described as a legacy aggregate", async () => {
+  // #568 round 2 BLOCKER. `assertUniformResultSchema` returns `null` when no run in the cycle
+  // recorded a result schema at all -- an empty cycle is exactly that shape -- and the dashboard's
+  // `schema !== null && schema !== "aos-mvp-result.v1"` guard let `null` fall through to the same
+  // branch as a confirmed legacy schema, which then printed "a legacy scorer aggregate, rendered as
+  // stored" unconditionally. Nothing here was ever observed to be a legacy aggregate; an absence is
+  // not a value, and a cycle nobody ran anything against must not be captioned as one kind of
+  // scorer's output over another's.
+  const home = mkdtempSync(join(tmpdir(), "aos-dash-unknown-schema-"));
+  initHome(home);
+  writeJson(join(home, "cycle.json"), {
+    schema_id: "aos-cycle.v1",
+    cycle_id: "cycle-empty",
+    profile_digest: "d".repeat(64),
+    suite_major: 1,
+    scorer_major: 1,
+    seeds: [],
+    runs: []
+  });
+  const dashboard = await startDashboard({ home });
+  try {
+    const body = await (await get(dashboard.port, `/?t=${dashboard.token}`)).text();
+    assert.match(body, /cycle-empty/);
+    assert.equal(/LEGACY \/ NOT COMPARABLE/.test(body), false, "an unknown schema was rendered as a legacy aggregate");
+    assert.equal(/legacy scorer aggregate/.test(body), false, "an unknown schema was rendered as a legacy aggregate");
+    assert.match(body, /cycle aggregation withheld/);
+    assert.match(body, /recorded no result schema/);
+  } finally {
+    await dashboard.close();
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("the legacy aggregate is captioned by a run the median counted, not one it excluded", async () => {
+  // #568 round 2 NIT. `legacyCycleScorerName` used to read whichever run's result file it found
+  // readable first in array order, with no regard for `valid` -- so a run the median excluded (a
+  // superseded seed, an infrastructure retry) could caption an aggregate it took no part in. The
+  // excluded run is listed first and carries a different scorer id than the counted run, so reading
+  // array order instead of `valid` would print the wrong one.
+  const home = mkdtempSync(join(tmpdir(), "aos-dash-scorer-"));
+  initHome(home);
+  const legacyResult = (runId, scorerId) => ({
+    run_id: runId, status: "SCORED",
+    score: { final: 80, raw: 80, band: "STRONG" },
+    dimensions: { D1: 80, D2: 80, D3: 80, D4: 80, D5: 80, D6: 80 },
+    coverage: { observed: 6, total: 6 },
+    caps: [], blockers: [], metrics: [], limitations: [],
+    scorer: { id: scorerId, version: "1.0.0" }
+  });
+  const { runId: excludedRunId } = createRun(home, { mode: "TEST" });
+  writeResult(home, excludedRunId, legacyResult(excludedRunId, "scorer-excluded"), "md", "<h1>r</h1>");
+  const { runId: countedRunId } = createRun(home, { mode: "TEST" });
+  writeResult(home, countedRunId, legacyResult(countedRunId, "scorer-counted"), "md", "<h1>r</h1>");
+
+  writeJson(join(home, "cycle.json"), {
+    schema_id: "aos-cycle.v1",
+    cycle_id: "cycle-scorer",
+    profile_digest: "d".repeat(64),
+    suite_major: 1,
+    scorer_major: 1,
+    seeds: ["s1", "s2"],
+    runs: [
+      { seed: "s1", run_id: excludedRunId, valid: false, invalid_reason: "NOT_ISSUED", final_score: null, dimensions: {} },
+      { seed: "s2", run_id: countedRunId, valid: true, invalid_reason: null, final_score: 80, dimensions: { D1: 80 } }
+    ]
+  });
+  const dashboard = await startDashboard({ home });
+  try {
+    const body = await (await get(dashboard.port, `/?t=${dashboard.token}`)).text();
+    // The per-run "Legacy results" table below names every run's own scorer, including the
+    // excluded one, on purpose -- that table is about what each run individually claims, not what
+    // the cycle's aggregate is. The assertion is scoped to the cycle card's own caption line, which
+    // is the one string this fix changes.
+    assert.match(body, /scorer-counted 1\.0\.0 · a legacy scorer aggregate/);
+    assert.equal(/scorer-excluded 1\.0\.0 · a legacy scorer aggregate/.test(body), false, "the cycle caption named the excluded run's scorer");
+  } finally {
+    await dashboard.close();
+    rmSync(home, { recursive: true, force: true });
+  }
+});

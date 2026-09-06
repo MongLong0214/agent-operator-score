@@ -8070,6 +8070,24 @@ export const GUARDS = [
     name: 'a legacy cycle aggregate names the stored scorer that produced its runs, not the current build'
   },
   {
+    guard: 'a cycle with no recorded result schema is withheld, not asserted legacy',
+    reason: '#568 round 2 BLOCKER. assertUniformResultSchema returns null when no run in the cycle recorded a result schema at all -- an absence, not a value -- and folding that null case back into the legacy branch let the dashboard print "a legacy scorer aggregate, rendered as stored" over a cycle nothing ever observed to be legacy',
+    file: 'lib/dashboard.mjs',
+    from: '  if (schema === null) {',
+    to: '  if (false) {',
+    test: 'tests/product/dashboard.test.mjs',
+    name: 'a cycle with no recorded result schema is not described as a legacy aggregate'
+  },
+  {
+    guard: 'the legacy scorer caption prefers a run the median counted',
+    reason: "#568 round 2 NIT. legacyCycleScorerName used to read whichever run's result file came first in array order with no regard for `valid`, so a run the median excluded -- a superseded seed, an infrastructure retry -- could caption an aggregate it took no part in",
+    file: 'lib/dashboard.mjs',
+    from: '    if (run?.valid !== true) continue;',
+    to: '    if (false) continue;',
+    test: 'tests/product/dashboard.test.mjs',
+    name: 'the legacy aggregate is captioned by a run the median counted, not one it excluded'
+  },
+  {
     guard: 'an id-only scorer record says its version is unrecorded',
     reason: "a record with an id and no version rendered as a bare id, which is exactly what a complete `id version` record looks like -- a reader could not tell a captured id from a captured id-and-version, and this is the one place that distinction is made for every surface that quotes it",
     file: 'lib/result-schema.mjs',
@@ -8091,10 +8109,19 @@ export const GUARDS = [
     guard: 'a present-but-null required field is not read as filled',
     reason: '`Object.hasOwn` alone answers key presence, not whether the study said anything -- with the null check gone, a record whose ten required fields are all present and all null reports zero missing fields and reaches the registry check as though a study had actually produced it',
     file: 'lib/standard-setting.mjs',
-    from: '    return record[field] === null || record[field] === undefined;',
-    to: '    return false;',
+    from: '    if (value === null || value === undefined) return !FIELDS_WHERE_NULL_IS_HONEST.has(field);',
+    to: '    if (value === null || value === undefined) return false;',
     test: 'tests/product/standard-setting-gate.test.mjs',
     name: 'a record whose ten required fields are all present and null is refused, not read as complete'
+  },
+  {
+    guard: 'an empty string, array or object is not read as a considered field',
+    reason: '#568 round 2. `missingStandardSettingFields` used to check only `=== null || === undefined`, so a record with `cut_scores: []` or `intended_decision: ""` reported zero missing fields -- a key with nothing behind it, read as complete. With the emptiness check gone, that gap reopens for every non-honest field',
+    file: 'lib/standard-setting.mjs',
+    from: '    return isEmptyValue(value);',
+    to: '    return false;',
+    test: 'tests/product/standard-setting-gate.test.mjs',
+    name: 'an empty string, array or object is not a considered field, for every field but the three honest ones'
   },
   {
     guard: 'standardSettingDecision refuses a mismatched schema id on its own',
@@ -8338,6 +8365,7 @@ export const ACCOUNTED_GUARDS = [
   "a cycle of profiles withholds its aggregate by name",
   "a cycle reads the executable its runs saw",
   "a cycle whose model is unknown says so",
+  "a cycle with no recorded result schema is withheld, not asserted legacy",
   "a date-shaped substring is not a snapshot on its own",
   "a decision binds to the construct it is evidence about",
   "a decision names the dimension it belongs to",
@@ -8530,6 +8558,7 @@ export const ACCOUNTED_GUARDS = [
   "an effect event's denial has to be proved",
   "an empty completion says why nothing was eligible",
   "an empty isolation lane is not a chosen one",
+  "an empty string, array or object is not read as a considered field",
   "an entry records its reference scan and tag containment",
   "an equal rank is a tie and not a winner",
   "an event's capability digest is recomputed and compared",
@@ -8959,6 +8988,7 @@ export const ACCOUNTED_GUARDS = [
   "the lane is bound into the cohort",
   "the lane's identity comes from the runtime that authenticated",
   "the ledger's owner replaces the declaration",
+  "the legacy scorer caption prefers a run the median counted",
   "the manifest projects every contract axis with its disposition",
   "the matrix decides the process axis with the run's own helper",
   "the matrix reads what the teardown could not remove",

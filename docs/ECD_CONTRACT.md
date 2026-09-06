@@ -19,8 +19,11 @@ have produced it, and what happens when it is absent.
 
 ## Form-variation contract v0.2.0
 
-The task model's `form_variation` contract is versioned at `0.2.0`, and its change moves the ECD
-contract to `1.5.0`. Meaningful variation is required for FAM-1, FAM-2, FAM-3, FAM-4, and FAM-6.
+The task model's `form_variation` contract is versioned at `0.2.0`; its own change moved the ECD
+contract to `1.5.0` when this section was written. A later, unrelated change -- #568 round 1,
+recorded in the version history atop `lib/ecd-contract.mjs` -- moved every artifact again, so
+`1.5.0` is not this contract's current version; `1.6.0` (`ECD_CONTRACT_VERSION`) is. Meaningful
+variation is required for FAM-1, FAM-2, FAM-3, FAM-4, and FAM-6.
 FAM-5 has the fixed assessment identity `aos-fam-5-fixed-v0.2.0`: changing its seed does not make
 another assessment form or add meaningful variation. Its task, oracle, and evidence binding remains
 required with the other five families, and its isolated four-probe verifier and success criteria do
