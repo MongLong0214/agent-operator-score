@@ -778,6 +778,19 @@ test("a scored result carries the boundary it was produced under, by name and ne
       expected_contract: issued.contract.digests.combined,
       observation: facetMismatches[0] ?? null
     }));
+    // Form identity is issued from the verified seeded manifest, not the family shorthand used
+    // to route grading.  The form contract is likewise the actual administered form's version;
+    // a later seed must not collapse into the same task facet.
+    const scored = issued.observations.filter((observation) => observation.value !== null && observation.value !== undefined);
+    const formMismatches = scored.filter((observation) =>
+      observation.facet_record?.task_form_id !== stored.suite_manifest.form_manifest.form_id ||
+      observation.facet_record?.difficulty_version !== stored.suite_manifest.form_manifest.form_contract_digest
+    );
+    assert.equal(formMismatches.length, 0, JSON.stringify({
+      expected_form_id: stored.suite_manifest.form_manifest.form_id,
+      expected_difficulty_version: stored.suite_manifest.form_manifest.form_contract_digest,
+      observation: formMismatches[0] ?? null
+    }));
     // And no value of any kind reached either file -- the published result least of all.
     const serialized = JSON.stringify(stored) + JSON.stringify(issued);
     assert.equal(serialized.includes("ghp_notarealtokenusedonlyforthistest4"), false, "a credential value reached the result");

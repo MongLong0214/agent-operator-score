@@ -7801,12 +7801,12 @@ export const GUARDS = [
   },
   {
     guard: "easier tasks retain their difficulty facet",
-    reason: "removing task difficulty would turn a same-operator easier task into evidence about the person rather than a separately identified administration",
-    file: "lib/facet-calibration.mjs",
-    from: "      difficulty_version: version,",
-    to: "      difficulty_version: null,",
-    test: "tests/product/facet-uncertainty.test.mjs",
-    name: "same operator plus an easier task remains a separately identified task record"
+    reason: "the shipped assessment must publish the verified seeded form contract rather than a family label or an unbound fallback; otherwise an easier task can read as evidence about the person",
+    file: "lib/cli.mjs",
+    from: "            form_contract_digest: manifest.form_manifest.form_contract_digest",
+    to: "            form_contract_digest: null",
+    test: "tests/product/adapter-env-policy.test.mjs",
+    name: "a scored result carries the boundary it was produced under, by name and never by value"
   },
   {
     guard: "stronger models retain their model facet",
