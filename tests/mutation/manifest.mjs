@@ -8115,6 +8115,24 @@ export const GUARDS = [
     name: 'the interval and the coverage counts are headline phrases, held to every surface'
   },
   {
+    guard: "the dashboard profile row prints uncertainty status, interval and facet coverage",
+    reason: "view.summary, view.claim.stage and view.process.coverage are identical for a calibrated and an uncalibrated run of the same number, and for a run with facet records bound and one without -- so without the uncertainty and facet-coverage cells this table is a surface that prints the number and cannot tell the two results apart, the hero this release removed handed back one column at a time",
+    file: "lib/dashboard.mjs",
+    from: "      profiles.push(`<tr><td>${runLink(runId, token)}</td><td>${htmlEscape(view.claim.stage)}</td><td>${htmlEscape(view.summary)}</td><td>${htmlEscape(view.process.coverage)}</td><td>${htmlEscape(uncertainty)}</td><td>${htmlEscape(coverage)}</td></tr>`);",
+    to: "      profiles.push(`<tr><td>${runLink(runId, token)}</td><td>${htmlEscape(view.claim.stage)}</td><td>${htmlEscape(view.summary)}</td><td>${htmlEscape(view.process.coverage)}</td></tr>`);",
+    test: "tests/product/uncertainty-coverage-visible.test.mjs",
+    name: "same value, different uncertainty: every surface tells the two results apart by status and interval"
+  },
+  {
+    guard: "the profile card reserves room for the uncertainty interval before clipping the universe declaration",
+    reason: "the universe declaration is operator-authored free text with no length limit; sharing one clipped line with the interval let a long declaration push the interval past the ellipsis and out of view, which is the one field this file exists to keep visible",
+    file: "lib/profile-report.mjs",
+    from: "  const intervalPhrase = `interval ${view.claim.uncertainty_interval}`;\n  const universeBudget = Math.max(4, wide - intervalPhrase.length - 3);\n  const universeLine = `${clip(`universe ${view.claim.universe}`, universeBudget)} · ${htmlEscape(intervalPhrase)}`;",
+    to: "  const universeLine = clip(`universe ${view.claim.universe} · interval ${view.claim.uncertainty_interval}`, wide);",
+    test: "tests/product/uncertainty-coverage-visible.test.mjs",
+    name: "a long universe declaration does not clip the interval off the profile card"
+  },
+  {
     guard: 'a band value cannot enter the published result',
     reason: "the v4 result's band is typed null and emitted null; a builder writing any other value would hand every renderer a category the contract never issued, and the schema check on the projection is what stops the stored file from being read at all",
     file: 'lib/result-schema.mjs',
@@ -8878,6 +8896,7 @@ export const ACCOUNTED_GUARDS = [
   "the count deletion turns on is recorded",
   "the credential is reduced to a name and a source where it is resolved",
   "the cycle command quotes the stored decision",
+  "the dashboard profile row prints uncertainty status, interval and facet coverage",
   "the dashboard quotes the stored cycle decision",
   "the deleted ref is live at the commit being deleted",
   "the deleted ref still exists live",
@@ -8934,6 +8953,7 @@ export const ACCOUNTED_GUARDS = [
   "the probe verifier is bound to the record it decides",
   "the process axis needs the sweep and the second poll",
   "the process group is enumerated, not assumed",
+  "the profile card reserves room for the uncertainty interval before clipping the universe declaration",
   "the profile digest binds the boundary and the runtime configuration",
   "the profile digest covers the executable identity",
   "the profile digest covers the isolation policy",
