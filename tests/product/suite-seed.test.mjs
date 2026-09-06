@@ -732,11 +732,19 @@ test("gradeScenario with no context withholds the seeded checks instead of defau
   }
 });
 
-test("the stale document never carries the authoritative port", () => {
-  // If they collide, the family stops being a question about freshness.
-  for (const seed of seeds(300)) {
-    const fam2 = scenarioParams(seed)["FAM-2"];
-    assert.notEqual(fam2.port, 9999, seed);
+test("the stale document carries a port distinct from its seeded authority", () => {
+  const root = mkdtempSync(join(tmpdir(), "aos-stale-port-"));
+  try {
+    const prepared = prepareScenario("FAM-2", root, "1");
+    const authoritative = readFileSync(join(root, "docs", prepared.params.authoritative), "utf8");
+    const stale = readFileSync(join(root, "docs", prepared.params.stale), "utf8");
+    const authoritativePort = Number(authoritative.match(/port (\d+)/u)?.[1]);
+    const stalePort = Number(stale.match(/Use port (\d+)/u)?.[1]);
+    assert.equal(authoritativePort, prepared.params.port);
+    assert.equal(stalePort, 9999);
+    assert.notEqual(stalePort, authoritativePort, "the stale document became authoritative");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });
 
