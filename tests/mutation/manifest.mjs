@@ -8469,8 +8469,8 @@ export const GUARDS = [
     guard: "the exposure ledger's read-modify-write is held under an exclusive lock",
     reason: "aos assess reads, classifies and rewrites the whole ledger file on every administration; two processes racing that unlocked whole-file update can each write back a ledger missing the other's administration",
     file: "lib/store.mjs",
-    from: "export function withExposureLedgerLock(home, body) {\n  return withLock(join(paths(home).root, \"exposure-ledger.lock\"), (holder) => `AOS_EXPOSURE_LEDGER_LOCKED held by pid ${holder}`, body);\n}",
-    to: "export function withExposureLedgerLock(home, body) {\n  return body();\n}",
+    from: "export function withExposureLedgerLock(home, body) {\n  return withLock(\n    join(paths(home).root, \"exposure-ledger.lock\"),",
+    to: "export function withExposureLedgerLock(home, body) {\n  if (true) return body();\n  return withLock(\n    join(paths(home).root, \"exposure-ledger.lock\"),",
     test: "tests/product/home.test.mjs",
     name: "two writers cannot hold the exposure ledger lock"
   },
@@ -8743,6 +8743,15 @@ export const GUARDS = [
     to: "  // reservation from prior exposure -- via the one shared predicate, not a second copy of the rule.\n  const priorAdministered = prior;",
     test: "tests/product/form-class.test.mjs",
     name: "#585 BLOCKER item 3: an abandoned reservation does not durably inflate the next reservation's own prior_exposure_count"
+  },
+  {
+    guard: "a run lock this process cannot adjudicate is broken, not refused",
+    reason: "round 2. Failing closed is right for the exposure ledger, where counting an administration twice beats refusing to count it; it is wrong for a run's writer lock, where refusing forever makes the run permanently unwritable and the operator's only repair is deleting a file nobody told them about",
+    file: "lib/store.mjs",
+    from: "    null,\n    body\n  );",
+    to: "    (lockPath, why) => `AOS_EXPOSURE_LOCK_UNAVAILABLE ${lockPath} (${why})`,\n    body\n  );",
+    test: "tests/product/home.test.mjs",
+    name: "a run lock in the pre-#585 format is broken, not refused under the ledger's answer"
   }
 ];
 
@@ -9023,6 +9032,7 @@ export const ACCOUNTED_GUARDS = [
   "a row is held to the cells its contract declared",
   "a row is read as a whole",
   "a run is official only when every invocation is",
+  "a run lock this process cannot adjudicate is broken, not refused",
   "a run that failed still records what it was bound to",
   "a run the cycle cannot identify closes it",
   "a run under a different profile digest is not a run in this cycle",

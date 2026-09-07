@@ -123,6 +123,24 @@ test("a lock whose owner is gone is broken, not honoured", () => {
   } finally { rmSync(home, { recursive: true, force: true }); }
 });
 
+test("a run lock in the pre-#585 format is broken, not refused under the ledger's answer", () => {
+  // Found by round 2. Failing closed on a lock this process cannot adjudicate is right for the
+  // exposure ledger, where counting an administration twice is worse than refusing to count it at
+  // all. It is wrong for a run's writer lock, which protects an append log: refusing forever makes
+  // the run permanently unwritable, and the operator's only repair is deleting a file nobody told
+  // them about -- the exact failure the comment on `withRunLock` has always named. The fail-closed
+  // policy was applied to both locks and under the ledger's own error name, so a bare-pid lock
+  // left by any pre-#585 build, or one written before a reboot, wedged that run.
+  const home = scratch();
+  try {
+    const { runId } = createRun(home, { mode: "TEST" });
+    // The pre-#585 shape: a bare pid, no host, no boot instant. Unadjudicable by construction.
+    writeFileSync(join(runPaths(home, runId).root, "run.lock"), "4000000000", "utf8");
+    assert.equal(withRunLock(home, runId, () => "recovered"), "recovered",
+      "a run lock in the older format was refused instead of broken, leaving the run unwritable");
+  } finally { rmSync(home, { recursive: true, force: true }); }
+});
+
 test("a stale lock written seconds earlier on this boot is still adjudicable", () => {
   // Measured defect, found by review of the fix above. Flooring the wall clock and the uptime
   // separately made the boot identity alternate between two adjacent seconds depending on their
