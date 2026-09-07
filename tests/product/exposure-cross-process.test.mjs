@@ -426,7 +426,7 @@ const existsResult = (home, runId) => {
   }
 };
 
-test("25.3: a hard crash after the reservation commit, before content reveal, cannot be read as fresh by a later attempt", async () => {
+test("25.3: a hard crash after the reservation commit, before content reveal, leaves the form usable and takes no official slot", async () => {
   await crashAndRestart("reserve");
 });
 

@@ -97,7 +97,8 @@ test("two writers cannot hold one run", () => {
 const thisBootLock = (pid) => ({
   schema_id: "aos-resource-lock.v1",
   pid,
-  boot: `${osHostname()}:${Math.floor(Date.now() / 1000) - Math.floor(osUptime())}`,
+  host: osHostname(),
+  boot_instant: Date.now() / 1000 - osUptime(),
   nonce: "0".repeat(24),
   created_at: new Date().toISOString()
 });
@@ -120,6 +121,39 @@ test("a lock whose owner is gone is broken, not honoured", () => {
     writeFileSync(join(runPaths(home, runId).root, "run.lock"), JSON.stringify(thisBootLock(4000000000)), "utf8");
     assert.equal(withRunLock(home, runId, () => "recovered"), "recovered");
   } finally { rmSync(home, { recursive: true, force: true }); }
+});
+
+test("a stale lock written seconds earlier on this boot is still adjudicable", () => {
+  // Measured defect, found by review of the fix above. Flooring the wall clock and the uptime
+  // separately made the boot identity alternate between two adjacent seconds depending on their
+  // fractional parts -- two distinct values inside three seconds of one process. A lock written
+  // under one of them read as belonging to a different boot, so a genuinely same-boot stale lock
+  // became unadjudicable and the ledger stayed wedged until somebody deleted the file by hand: a
+  // fail-closed that fires on nothing, which is worse than the guess it replaced because it looks
+  // like a safety property working.
+  //
+  // What matters is cross-process: the lock this process must adjudicate was written by ANOTHER
+  // process, seconds earlier, whose own reading of the boot instant differs slightly from ours.
+  // Equality rejected those; the record now carries the instant and is compared with a tolerance.
+  const home = scratch();
+  try {
+    initHome(home);
+    const lockPath = join(home, "exposure-ledger.lock");
+    // A dead pid, this host, and a boot instant a couple of seconds off ours -- exactly the drift
+    // two processes on one boot produce, and exactly what used to read as a different boot.
+    writeFileSync(lockPath, JSON.stringify({
+      schema_id: "aos-resource-lock.v1",
+      pid: 4000000000,
+      host: osHostname(),
+      boot_instant: (Date.now() / 1000 - osUptime()) - 2,
+      nonce: "0".repeat(24),
+      created_at: new Date().toISOString()
+    }), "utf8");
+    assert.equal(withExposureLedgerLock(home, () => "recovered"), "recovered",
+      "a stale lock from this boot, written a couple of seconds earlier, was refused as unadjudicable and wedged the ledger");
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
 });
 
 test("a lock whose recorded owner is gone is not reclaimed on pid liveness alone", () => {

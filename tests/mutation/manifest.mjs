@@ -8478,7 +8478,7 @@ export const GUARDS = [
     guard: "an unadjudicable lock is refused rather than reclaimed",
     reason: "#585 governance directive 15.4. Reclaiming on isAlive(pid) alone is a guess in both directions: a recycled pid reads as a live owner, and a dead pid reads as safe to break even when the owner died mid-transaction and left the ledger half-written. Only a lock this boot wrote can be adjudicated; anything else is refused",
     file: "lib/store.mjs",
-    from: "    if (held === null || typeof held.boot !== \"string\" || held.boot !== bootId()) {",
+    from: "    if (held === null || held.host !== bootHost() || !sameBoot(held.boot_instant)) {",
     to: "    if (false) {",
     test: "tests/product/home.test.mjs",
     name: "a lock whose recorded owner is gone is not reclaimed on pid liveness alone"
@@ -8582,6 +8582,7 @@ export const GUARDS = [
     test: "tests/product/form-class.test.mjs",
     name: "truncating the tail of the exposure ledger is refused even if the revision counter is patched to match"
   }
+
 ];
 
 /**

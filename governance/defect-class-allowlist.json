@@ -401,7 +401,7 @@
     },
     {
       "file": "tests/product/exposure-cross-process.test.mjs",
-      "match": "25.3: a hard crash after the reservation commit, before content reveal, cannot be read as fresh by a later attempt",
+      "match": "25.3: a hard crash after the reservation commit, before content reveal, leaves the form usable and takes no official slot",
       "note": "both crash-injection cases share one assertion-heavy crashAndRestart() helper so the reserve/reveal bodies stay identical apart from which ledger transition kills the process; the body has no bare assert because the helper owns every check"
     },
     {
