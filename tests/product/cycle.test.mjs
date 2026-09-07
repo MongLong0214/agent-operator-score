@@ -17,13 +17,26 @@ import {
 } from "../../lib/cycle.mjs";
 import { ADMINISTRATION_CLASSIFICATION_SCHEMA_ID } from "../../lib/form-class.mjs";
 
+// #585 item 2. `exposureVerification` now requires a classification to name the run, administration
+// and form it sits on, checked against the run record itself -- see "a classification naming a
+// different run..." below. `runIdFor`/`formDigestFor` are the one derivation both `runOf` and
+// `classification` use, so a fixture built from the same seed on both sides genuinely binds, the
+// way `assess` binds them in production by naming the same `runId` on the run record and on the
+// classification it attaches (`lib/cli.mjs`'s `boundClassification`).
+const runIdFor = (seed) => `run-${seed}`;
+const formDigestFor = (seed) => `form-digest-${seed}`;
+
 // A minimal but genuinely tagged classification, the shape `classifyAdministration` actually
 // returns. `exposureVerification` refuses to authorize VERIFIED from an untagged object -- see
 // "a stored classification must be tagged..." below -- so every fixture that means to be a real,
-// ledger-checked classification uses this rather than a bare `{official_scoring_permitted}`.
-const classification = (permitted, overrides = {}) => ({
+// ledger-checked classification uses this rather than a bare `{official_scoring_permitted}`, and
+// binds to the seed's own run_id/form_contract_digest rather than leaving them absent.
+const classification = (seed, permitted, overrides = {}) => ({
   schema_id: ADMINISTRATION_CLASSIFICATION_SCHEMA_ID,
   official_scoring_permitted: permitted,
+  run_id: runIdFor(seed),
+  administration_id: runIdFor(seed),
+  form_contract_digest: formDigestFor(seed),
   ...overrides
 });
 
@@ -32,6 +45,8 @@ const cycleOf = (seeds = ["1", "2", "3"]) =>
 
 const runOf = (seed, over = {}) => ({
   seed,
+  run_id: runIdFor(seed),
+  form_contract_digest: formDigestFor(seed),
   profile_digest: "sha256:profile",
   suite_major: 1,
   scorer_major: 1,
@@ -184,12 +199,13 @@ test("exposureVerification names the third state a permitted run and a pre-ledge
   assert.deepEqual([...EXPOSURE_VERIFICATION_STATUSES], ["VERIFIED", "REFUSED", "UNVERIFIED"]);
   assert.deepEqual(exposureVerification({ form_classification: null }), { decision: null, status: "UNVERIFIED" });
   assert.deepEqual(exposureVerification({}), { decision: null, status: "UNVERIFIED" });
+  const seed = "0000000000000001";
   assert.deepEqual(
-    exposureVerification({ form_classification: classification(true) }),
+    exposureVerification({ ...runOf(seed), form_classification: classification(seed, true) }),
     { decision: true, status: "VERIFIED" }
   );
   assert.deepEqual(
-    exposureVerification({ form_classification: classification(false, { refusal_code: "AOS_FORM_ALREADY_EXPOSED" }) }),
+    exposureVerification({ ...runOf(seed), form_classification: classification(seed, false, { refusal_code: "AOS_FORM_ALREADY_EXPOSED" }) }),
     { decision: false, status: "REFUSED" }
   );
 });
@@ -216,7 +232,7 @@ test("a v0.2 result whose exposure the ledger never verified is refused from the
   assert.equal(verdict.reason, "AOS_EXPOSURE_UNVERIFIED_FOR_PROFILE_BOUND");
 
   // And a v0.2 run the ledger did verify still counts.
-  const profileVerified = runOf(seed, { result_schema: "aos-result.v4", form_classification: classification(true) });
+  const profileVerified = runOf(seed, { result_schema: "aos-result.v4", form_classification: classification(seed, true) });
   assert.equal(runValidity(cycleOf(), profileVerified).valid, true, "a verified v0.2 run was refused");
 });
 
@@ -229,15 +245,51 @@ test("a stored classification must be tagged the way classifyAdministration actu
   assert.deepEqual(exposureVerification({ form_classification: { official_scoring_permitted: true } }), { decision: null, status: "UNVERIFIED" });
   // The right schema tag with the wrong type on the field it reads is just as untrustworthy.
   assert.deepEqual(exposureVerification({ form_classification: { schema_id: ADMINISTRATION_CLASSIFICATION_SCHEMA_ID, official_scoring_permitted: "true" } }), { decision: null, status: "UNVERIFIED" });
-  // The genuine tag with a real boolean is what actually authorizes VERIFIED or REFUSED.
-  assert.deepEqual(exposureVerification({ form_classification: classification(true) }), { decision: true, status: "VERIFIED" });
-  assert.deepEqual(exposureVerification({ form_classification: classification(false) }), { decision: false, status: "REFUSED" });
+  // The genuine tag with a real boolean, bound to the run it sits on, is what actually authorizes
+  // VERIFIED or REFUSED.
+  const seed = "0000000000000001";
+  assert.deepEqual(exposureVerification({ ...runOf(seed), form_classification: classification(seed, true) }), { decision: true, status: "VERIFIED" });
+  assert.deepEqual(exposureVerification({ ...runOf(seed), form_classification: classification(seed, false) }), { decision: false, status: "REFUSED" });
+});
+
+test("a classification naming a different run, administration or form does not verify this one", () => {
+  // #585 item 2. A schema tag and a real boolean are necessary but used to be treated as
+  // SUFFICIENT to authorize VERIFIED -- exactly what a classification copied from another run's
+  // `cycle.json` entry, or written by hand with only those two fields, also carries. None of the
+  // three cases below is caught by the schema/type check above; each is refused only because the
+  // identity it names does not match the run record it sits on.
+  const seed = "0000000000000001";
+  const run = runOf(seed);
+
+  // The exact shape a copied classification takes: genuinely tagged, a real boolean, but naming
+  // another administration's run entirely.
+  const copiedFromAnotherRun = {
+    ...classification(seed, true),
+    run_id: runIdFor("0000000000000002"),
+    administration_id: runIdFor("0000000000000002")
+  };
+  assert.deepEqual(exposureVerification({ ...run, form_classification: copiedFromAnotherRun }), { decision: null, status: "UNVERIFIED" });
+
+  // Bound to the right run, but naming a different form -- a classification decided over a form
+  // this run's own record never administered.
+  const wrongForm = { ...classification(seed, true), form_contract_digest: formDigestFor("somewhere-else") };
+  assert.deepEqual(exposureVerification({ ...run, form_classification: wrongForm }), { decision: null, status: "UNVERIFIED" });
+
+  // The shape this repository actually shipped before this fix: a real schema tag and a real
+  // boolean, and nothing at all naming which run it was ever a classification of. This is the
+  // untagged-imitation test above's twin with the tag genuine -- the tag was never what was
+  // missing.
+  const noBindingAtAll = { schema_id: ADMINISTRATION_CLASSIFICATION_SCHEMA_ID, official_scoring_permitted: true };
+  assert.deepEqual(exposureVerification({ ...run, form_classification: noBindingAtAll }), { decision: null, status: "UNVERIFIED" });
+
+  // And the genuine, fully bound classification for this exact run still verifies.
+  assert.deepEqual(exposureVerification({ ...run, form_classification: classification(seed, true) }), { decision: true, status: "VERIFIED" });
 });
 
 test("a permitted run and a pre-ledger run are both valid but not both verified, in the run record and the aggregate", () => {
-  const verified = runOf("0000000000000001", { form_classification: classification(true) });
+  const verified = runOf("0000000000000001", { form_classification: classification("0000000000000001", true) });
   const unverified = runOf("0000000000000002"); // no form_classification: the historical, pre-ledger shape
-  const third = runOf("0000000000000003", { form_classification: classification(true) });
+  const third = runOf("0000000000000003", { form_classification: classification("0000000000000003", true) });
 
   assert.equal(runValidity(cycleOf(), verified).exposure.status, "VERIFIED");
   assert.equal(runValidity(cycleOf(), unverified).exposure.status, "UNVERIFIED");

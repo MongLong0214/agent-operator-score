@@ -21,9 +21,11 @@ have produced it, and what happens when it is absent.
 
 The task model's `form_variation` contract is versioned at `0.2.0`; its own change moved the ECD
 contract to `1.5.0` when this section was written. Later, unrelated changes -- #568's legacy-surface
-disclosure and #585's exposure-ledger evidence, both recorded in the version history atop
-`lib/ecd-contract.mjs` -- moved every artifact again, so `1.5.0` is not this contract's current
-version; `1.7.0` (`ECD_CONTRACT_VERSION`) is. Meaningful
+disclosure, #585's exposure-ledger evidence, and #585 item 5's rename of every form's
+`scored_once_per_cycle` to `scored_once_per_aos_home` (matching the scope the exposure ledger
+actually enforces, which the interpretation-use argument already named), all recorded in the version
+history atop `lib/ecd-contract.mjs` -- moved every artifact again, so `1.5.0` is not this contract's
+current version; `1.8.0` (`ECD_CONTRACT_VERSION`) is. Meaningful
 variation is required for FAM-1, FAM-2, FAM-3, FAM-4, and FAM-6.
 FAM-5 has the fixed assessment identity `aos-fam-5-fixed-v0.2.0`: changing its seed does not make
 another assessment form or add meaningful variation. Its task, oracle, and evidence binding remains

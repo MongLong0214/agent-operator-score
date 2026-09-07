@@ -152,6 +152,12 @@ test("the shipped operational form manifest speaks the form class contract's own
     const row = manifest.family_manifests[family];
     assert.equal(EQUIVALENCE_STATUSES.includes(row.equivalence_status), true, `${family} claims a form relation outside the #585 vocabulary`);
     assert.equal(row.equivalence_status, "UNESTABLISHED", `${family} claims a form relation this suite has no linking evidence for`);
+    // #585 item 5. `familyFormManifest` derives this from the task-model contract's own
+    // `scored_once_per_aos_home` field, not from a constant -- so a contract whose forms stopped
+    // declaring themselves scored-once (or a reader still keyed on the old `scored_once_per_cycle`
+    // name after the contract moved to `scored_once_per_aos_home`) reads `undefined` from a form
+    // that no longer has that property and reports every family NOT_OBSERVED instead of scored-once.
+    assert.equal(row.exposure_policy, "scored-once", `${family} does not carry the task-model contract's own scored_once_per_aos_home declaration`);
   }
 });
 
@@ -548,6 +554,21 @@ test("a replayed operational form crosses runs as practice, never as official ag
     assert.equal(ledgerOf().entries.length, 2);
     assert.equal(ledgerOf().entries[1].prior_exposure_count, 1);
 
+    // #585 item 3. A PRACTICE terminal used to sit beside an unchanged result: `buildResult` had
+    // already computed whatever the graded run measured before the ledger classification above
+    // ever ran, and nothing withheld the composite or the two profile surfaces afterward, so a
+    // PRACTICE terminal shipped next to a result still claiming an issued operational estimate.
+    // Read straight off disk -- the exact artifact an operator opens -- rather than off anything
+    // this test computed itself.
+    const replayedResult = JSON.parse(readFileSync(runPaths(home, cycleAfterReplay.runs[0].run_id).result, "utf8"));
+    assert.equal(replayedResult.aos_composite.issued, false, "a PRACTICE administration must not ship an issued composite");
+    assert.equal(replayedResult.aos_composite.value, null);
+    assert.match(replayedResult.aos_composite.withheld_reason, /AOS_FORM_ALREADY_EXPOSED/u, "the withheld reason must be the ledger's own refusal, not whatever buildResult computed before classification ran");
+    assert.equal(replayedResult.operator_process_profile.issued, false, "a PRACTICE administration must not ship an issued operator-process profile");
+    assert.equal(replayedResult.operator_process_profile.index, null);
+    assert.equal(replayedResult.system_outcome_profile.issued, false, "a PRACTICE administration must not ship an issued system-outcome profile");
+    assert.equal(replayedResult.system_outcome_profile.index, null);
+
     // The next locked seed is a first exposure: an operational administration, scored once, and
     // its facet records carry the occasion and sequence position the ledger assigned.
     const official = spawn(["cycle", "run", "--plan", plan, "--checkpoints"]);
@@ -577,6 +598,76 @@ test("a replayed operational form crosses runs as practice, never as official ag
     assert.equal(typeof finalLedger.entries[2].duration_ms, "number");
     assert.equal(finalLedger.entries[2].duration_ms >= 0, true);
   } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("a cycle run's published sequence_position is the ledger's own committed reservation, not the stale unlocked snapshot cycle run read", async () => {
+  // #585 item 4. `cycle run` used to read `exposureLedger.entries.length` for its own unlocked
+  // snapshot and hand that number down as `options.administration.sequence_position`, trusted
+  // as-is by the facet evidence `assess` later publishes. A concurrent administration reserving
+  // between that read and `assess`'s own locked `reserveExposure` call makes the snapshot stale --
+  // this hook reproduces exactly that window without needing a second real process.
+  const { existsSync, mkdtempSync, readFileSync, writeFileSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { addAgent, assessAtATerminal, makePlan, run } = await import("./helpers.mjs");
+  const { runPaths, withExposureLedgerLock } = await import("../../lib/store.mjs");
+  const { openExposureLedger, reserveExposure } = await import("../../lib/form-class.mjs");
+  const { exposureLedgerTestHooks } = await import("../../lib/cli.mjs");
+
+  const cwd = mkdtempSync(join(tmpdir(), "aos-sequence-race-"));
+  const home = join(cwd, ".aos");
+  const ledgerFile = join(home, "exposure-ledger.json");
+  try {
+    run(cwd, ["init"]);
+    addAgent(cwd, "solo");
+    const plan = makePlan(cwd, { default: "solo" });
+    run(cwd, ["cycle", "start", "--seed", "0000000000000041", "--seed", "0000000000000042", "--seed", "0000000000000043"]);
+
+    // Fires once, synchronously, in this same process, right after `cycle run` takes its own
+    // unlocked snapshot -- before `assess` performs its own locked reservation. Committed here,
+    // under the real lock, exactly the way a second real `aos` process would. This is this home's
+    // very first administration, so the ledger file does not exist on disk yet -- exactly the
+    // absence `openExposureLedger(undefined)` reads as a fresh, empty ledger.
+    exposureLedgerTestHooks.afterCycleRunSnapshot = () => {
+      exposureLedgerTestHooks.afterCycleRunSnapshot = null;
+      withExposureLedgerLock(home, () => {
+        const before = openExposureLedger(existsSync(ledgerFile) ? JSON.parse(readFileSync(ledgerFile, "utf8")) : undefined);
+        const reserved = reserveExposure(before, {
+          form_id: "aos-concurrent-administration",
+          form_contract_digest: `sha256:${"c".repeat(64)}`,
+          declared_class: "OPERATIONAL",
+          administration_id: "concurrent-admin-1",
+          run_id: "concurrent-admin-1",
+          occurred_at: new Date().toISOString()
+        });
+        writeFileSync(ledgerFile, JSON.stringify(reserved.ledger));
+      });
+    };
+
+    await assessAtATerminal(cwd, ["cycle", "run", "--plan", plan], { env: {} });
+
+    const finalLedger = JSON.parse(readFileSync(ledgerFile, "utf8"));
+    const cycle = JSON.parse(readFileSync(join(home, "cycle.json"), "utf8"));
+    const runId = cycle.runs[0].run_id;
+    const ownEntry = finalLedger.entries.find((entry) => entry.administration_id === runId);
+    assert.notEqual(ownEntry, undefined, "this run's own reservation is missing from the ledger");
+    // The concurrent entry took position 1 (the ledger was empty when the hook fired), so this
+    // run's own reservation -- made afterward, under the lock -- must be position 2: the position
+    // reserveExposure actually committed, never the position 1 the pre-race snapshot predicted.
+    assert.equal(ownEntry.sequence_position, 2, "the concurrent reservation did not land where this test needs it to, so it proves nothing");
+
+    const result = JSON.parse(readFileSync(runPaths(home, runId).result, "utf8"));
+    const positions = new Set(result.observations
+      .map((observation) => observation.facet_record?.sequence_position)
+      .filter((value) => value !== null && value !== undefined));
+    // Before the fix this read `options.administration.sequence_position` -- the stale snapshot --
+    // and every scored observation would have published 1 instead of the 2 the ledger's own row
+    // for this exact run actually holds.
+    assert.deepEqual([...positions], [2], "the published sequence_position must be the ledger's own committed reservation, not the stale snapshot cycle run read before the race");
+  } finally {
+    exposureLedgerTestHooks.afterCycleRunSnapshot = null;
     rmSync(cwd, { recursive: true, force: true });
   }
 });
@@ -1424,9 +1515,14 @@ test("the reserved exposure entry exists on disk before prepareScenario reveals 
   assert.ok(revealEntry, "no entry for this administration existed on disk at the reveal transition");
   assert.equal(revealEntry.state, "REVEALED");
   assert.equal(revealEntry.content_revealed, true);
-  // The actual observation for I3: FAM-1's scenario file already exists by the time the reveal
-  // transition is written, and it is the same one entry the reservation created.
-  assert.equal(observed.reveal.fam1TaskFileExists, true, "the reveal transition was recorded before the scenario it reveals actually existed");
+  // #585 round 4, governing directive 16: FAM-1's scenario file must NOT exist yet at the moment
+  // the reveal transition becomes durable. Round 2 committed REVEALED right after prepareScenario
+  // ran, so this observation used to be true and this assertion asserted that ordering; that was
+  // the defect item 1 describes -- a kill between prepareScenario's write and the reveal commit
+  // left content on disk under a row `isAbandonedReservation` still read as fresh and reusable.
+  // Marking revealed first can only ever cost one spent form on an unlucky kill in between, which
+  // is the trade the directive accepts, so the file must still be absent here.
+  assert.equal(observed.reveal.fam1TaskFileExists, false, "prepareScenario had already materialized FAM-1's scenario before the reveal transition became durable");
   assert.equal(revealEntry.administration_id, reserveEntry.administration_id);
   assert.equal(observed.reveal.ledger.entries.length, observed.reserve.ledger.entries.length, "the reveal transition appended a second entry instead of updating the reservation");
 });

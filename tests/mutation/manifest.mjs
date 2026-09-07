@@ -79,6 +79,15 @@ export const GUARDS = [
     name: "the variation report rejects a manifest that omits or combines frozen axes"
   },
   {
+    guard: "a family manifest's exposure policy is read off the task-model contract's own scored_once_per_aos_home field",
+    reason: "#585 item 5. The task model moved from scored_once_per_cycle to scored_once_per_aos_home to match the scope the exposure ledger actually enforces; a reader still keyed on the retired name reads undefined off every form and reports every family NOT_OBSERVED instead of scored-once, which is the exact contract/implementation disagreement item 5 exists to close",
+    file: "lib/suite.mjs",
+    from: "    exposure_policy: form.scored_once_per_aos_home ? \"scored-once\" : \"NOT_OBSERVED\",",
+    to: "    exposure_policy: form.scored_once_per_cycle ? \"scored-once\" : \"NOT_OBSERVED\",",
+    test: "tests/product/form-class.test.mjs",
+    name: "the shipped operational form manifest speaks the form class contract's own words"
+  },
+  {
     guard: "FAM-5 fixed identity is singular",
     reason: "a FAM-5 seed may vary setup bytes but it is one v0.2.0 assessment identity; counting another identity would turn a fixed form into fabricated variation",
     file: "lib/suite.mjs",
@@ -8046,7 +8055,7 @@ export const GUARDS = [
     guard: "the cycle run carries the ledger's classification onto the recorded run",
     reason: "runValidity can only refuse what it is handed; a cycle command that drops the classification on the floor records the replay as a historical run with no classification, which stays valid",
     file: "lib/cli.mjs",
-    from: "        form_classification: formClassification\n      });",
+    from: "        form_classification: boundClassification\n      });",
     to: "        form_classification: null\n      });",
     test: "tests/product/form-class.test.mjs",
     name: "a replayed operational form crosses runs as practice, never as official aggregate evidence"
@@ -8412,6 +8421,24 @@ export const GUARDS = [
     name: "a replayed seed is committed PRACTICE, not ISSUED -- classified before the terminal, not after it"
   },
   {
+    guard: "a PRACTICE terminal ships a result whose composite and profiles are withheld, not the ones buildResult computed before classification ran",
+    reason: "#585 item 3. buildResult has no way to know a run will be classified PRACTICE -- that depends on every prior entry in the exposure ledger and is decided only after grading -- so the terminal used to change while the persisted and rendered result kept its issued profile and composite fields unchanged, shipping a public artefact that still claimed an operational estimate beside a terminal saying it may not be scored",
+    file: "lib/cli.mjs",
+    from: "    const publishedResult = status === \"PRACTICE\"\n      ? withholdPublishedClaim(result, [\"operator_process_profile\", \"system_outcome_profile\", \"aos_composite\"], practiceReason)\n      : result;",
+    to: "    const publishedResult = result;",
+    test: "tests/product/form-class.test.mjs",
+    name: "a replayed operational form crosses runs as practice, never as official aggregate evidence"
+  },
+  {
+    guard: "the published sequence_position is the ledger's own committed reservation, not cycle run's unlocked snapshot",
+    reason: "#585 item 4. cycle run read exposureLedger.entries.length for its own unlocked snapshot before assess performed its own locked reservation, and handed that stale number down as the published fact; a concurrent administration reserving in between makes it stale or a duplicate of another run's position while reserveExposure commits a different one",
+    file: "lib/cli.mjs",
+    from: "        sequence_position: typeof options.administration === \"object\" && options.administration !== null && Number.isInteger(reservedExposureEntry?.sequence_position)\n          ? reservedExposureEntry.sequence_position\n          : null,",
+    to: "        sequence_position: Number.isInteger(options.administration?.sequence_position) ? options.administration.sequence_position : null,",
+    test: "tests/product/form-class.test.mjs",
+    name: "a cycle run's published sequence_position is the ledger's own committed reservation, not the stale unlocked snapshot cycle run read"
+  },
+  {
     guard: "a stored classification must carry its own schema tag before it can authorize VERIFIED",
     reason: "form_classification lives on cycle.json, a plain file; an untagged object naming only official_scoring_permitted: true used to authorize VERIFIED on its own say-so, the same stored-artifact-approves-itself defect this repository keeps producing",
     file: "lib/cycle.mjs",
@@ -8419,6 +8446,15 @@ export const GUARDS = [
     to: "",
     test: "tests/product/cycle.test.mjs",
     name: "a stored classification must be tagged the way classifyAdministration actually tags one, or it is unverified"
+  },
+  {
+    guard: "a stored classification must bind to the run, administration and form it sits on before it can authorize VERIFIED",
+    reason: "#585 item 2. The schema tag and boolean type check only ask whether the object has the shape classifyAdministration produces, never whether it is a classification OF THIS RUN -- a classification copied from another run's cycle.json entry, or written by hand with just those two fields, passed both and authorized VERIFIED on nothing but its own say-so",
+    file: "lib/cycle.mjs",
+    from: "  if (!bound) return Object.freeze({ decision: null, status: \"UNVERIFIED\" });",
+    to: "  if (false) return Object.freeze({ decision: null, status: \"UNVERIFIED\" });",
+    test: "tests/product/cycle.test.mjs",
+    name: "a classification naming a different run, administration or form does not verify this one"
   },
   {
     guard: "a malformed exposure ledger entry refuses the ledger instead of vanishing from it",
@@ -8487,8 +8523,8 @@ export const GUARDS = [
     guard: "the exposure ledger is reserved before the suite's first prepareScenario reveals anything",
     reason: "#585 round 2 governing directive I2: without this write a crash between reveal and the finalize write at the bottom of assess leaves no durable trace that the form was ever shown, so the next attempt at the same seed reads as a fresh operational administration instead of the exposure it actually is",
     file: "lib/cli.mjs",
-    from: "      writeJson(exposureLedgerPath(home), reserveExposure(beforeReservation, {",
-    to: "      if (false) writeJson(exposureLedgerPath(home), reserveExposure(beforeReservation, {",
+    from: "      writeJson(exposureLedgerPath(home), reservation.ledger);",
+    to: "      if (false) writeJson(exposureLedgerPath(home), reservation.ledger);",
     test: "tests/product/form-class.test.mjs",
     name: "the reserved exposure entry exists on disk before prepareScenario reveals any scenario content"
   },
@@ -8498,6 +8534,15 @@ export const GUARDS = [
     file: "lib/cli.mjs",
     from: "          writeJson(exposureLedgerPath(home), markRevealed(beforeReveal, { administration_id: runId }).ledger);",
     to: "          if (false) writeJson(exposureLedgerPath(home), markRevealed(beforeReveal, { administration_id: runId }).ledger);",
+    test: "tests/product/form-class.test.mjs",
+    name: "the reserved exposure entry exists on disk before prepareScenario reveals any scenario content"
+  },
+  {
+    guard: "prepareScenario materializes content only after REVEALED is durable, never before",
+    reason: "#585 round 4, governing directive 16: the round-2 fix committed REVEALED right after prepareScenario ran, so a kill between prepareScenario writing the scenario into the workspace and that commit left a RESERVED / content_revealed:false row on disk while the task itself was already readable -- isAbandonedReservation treats that exact row as fresh and reusable, so the reservation fix and the abandonment fix composed into the hole each was meant to close. Reveal must be committed first, so materializing before it is a defect and not a harmless reordering",
+    file: "lib/cli.mjs",
+    from: "      const workspace = join(paths.workspaces, family);\n      if (!contentRevealed) {\n        // #585 round 4, governing directive 16: `content_revealed=true` must be durable BEFORE\n        // `prepareScenario` below writes anything into the agent-visible workspace, not after. The\n        // round-2 fix committed this transition right after `prepareScenario` ran, which closed\n        // \"never marked at all\" but reopened a narrower window: a kill between that write and this\n        // commit leaves a RESERVED / content_revealed:false row on disk while the task itself is\n        // already on disk where an agent can read it, and `isAbandonedReservation` treats that exact\n        // row as fresh and reusable -- the reservation fix and the abandonment fix composing into a\n        // hole neither was meant to leave open. Committing here, before content exists, can only\n        // ever cost one spent form on a crash in the now-narrower window between this write and\n        // `prepareScenario` actually running; directive 16 accepts that cost explicitly.\n        withExposureLedgerLock(home, () => {\n          const beforeReveal = openExposureLedger(readExposureLedgerFile(home));\n          writeJson(exposureLedgerPath(home), markRevealed(beforeReveal, { administration_id: runId }).ledger);\n        });\n        exposureLedgerTestHooks.afterReveal?.({ home, runId, workspace });\n        contentRevealed = true;\n      }\n      const prepared = prepareScenario(family, workspace, seedValue);",
+    to: "      const workspace = join(paths.workspaces, family);\n      const prepared = prepareScenario(family, workspace, seedValue);\n      if (!contentRevealed) {\n        // #585 round 4, governing directive 16: `content_revealed=true` must be durable BEFORE\n        // `prepareScenario` below writes anything into the agent-visible workspace, not after. The\n        // round-2 fix committed this transition right after `prepareScenario` ran, which closed\n        // \"never marked at all\" but reopened a narrower window: a kill between that write and this\n        // commit leaves a RESERVED / content_revealed:false row on disk while the task itself is\n        // already on disk where an agent can read it, and `isAbandonedReservation` treats that exact\n        // row as fresh and reusable -- the reservation fix and the abandonment fix composing into a\n        // hole neither was meant to leave open. Committing here, before content exists, can only\n        // ever cost one spent form on a crash in the now-narrower window between this write and\n        // `prepareScenario` actually running; directive 16 accepts that cost explicitly.\n        withExposureLedgerLock(home, () => {\n          const beforeReveal = openExposureLedger(readExposureLedgerFile(home));\n          writeJson(exposureLedgerPath(home), markRevealed(beforeReveal, { administration_id: runId }).ledger);\n        });\n        exposureLedgerTestHooks.afterReveal?.({ home, runId, workspace });\n        contentRevealed = true;\n      }\n",
     test: "tests/product/form-class.test.mjs",
     name: "the reserved exposure entry exists on disk before prepareScenario reveals any scenario content"
   },
@@ -8783,6 +8828,7 @@ export const ACCOUNTED_GUARDS = [
   "a 404 permission response is a denial, not an unavailable answer",
   "a NOT_YET deletion log cites no boundary observations",
   "a NOT_YET deletion log may not list deletions",
+  "a PRACTICE terminal ships a result whose composite and profiles are withheld, not the ones buildResult computed before classification ran",
   "a SUPERSEDED accounting is compared against the commits the collector derived",
   "a URL carrying userinfo is a credential",
   "a backend refusal loses the path it named",
@@ -8860,6 +8906,7 @@ export const ACCOUNTED_GUARDS = [
   "a facet is not normalised into a digest",
   "a failed check is named rather than blamed on the contract",
   "a failed observation's error is redacted",
+  "a family manifest's exposure policy is read off the task-model contract's own scored_once_per_aos_home field",
   "a family that never settled is a missing answer",
   "a family with no known naming rules is not exact",
   "a filesystem location is one however it is spelled",
@@ -8964,6 +9011,7 @@ export const ACCOUNTED_GUARDS = [
   "a status the record asserts about itself is not evidence",
   "a status this build does not know is refused",
   "a status with no digest under it is the weakest one",
+  "a stored classification must bind to the run, administration and form it sits on before it can authorize VERIFIED",
   "a stored classification must carry its own schema tag before it can authorize VERIFIED",
   "a stored operator trace is re-checked at the read",
   "a stored result may not elevate its own claim",
@@ -9314,6 +9362,7 @@ export const ACCOUNTED_GUARDS = [
   "positive-observation cap guard",
   "practice occasions retain their occasion facet",
   "practiceAnalysis excludes an abandoned reservation from same-form exposure",
+  "prepareScenario materializes content only after REVEALED is durable, never before",
   "pristine error classification",
   "probe process independence",
   "probe result authentication",
@@ -9545,6 +9594,7 @@ export const ACCOUNTED_GUARDS = [
   "the proposal comes from an admitted operator decision",
   "the published contract names an entry point that exists",
   "the published result carries the boundary it ran under",
+  "the published sequence_position is the ledger's own committed reservation, not cycle run's unlocked snapshot",
   "the pull request history is read to the end",
   "the reader checks the state it was handed",
   "the rebuild is handed the reliance the result was built from",

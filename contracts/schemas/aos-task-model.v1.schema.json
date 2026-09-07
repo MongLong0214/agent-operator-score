@@ -89,7 +89,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "form_id", "family", "title", "class", "administered_metric_ids", "scored_once_per_cycle",
+        "form_id", "family", "title", "class", "administered_metric_ids", "scored_once_per_aos_home",
         "construct_opportunity_cell_ids", "shared_opportunity_cell_ids",
         "required_cell_ids", "optional_cell_ids",
         "required_perturbation", "required_oracle", "facets", "shortcut_prohibitions", "declared_opportunity_count"
@@ -103,7 +103,7 @@
           "description": "The metrics lib/observe.mjs attributes to this family. Every metric belongs to exactly one form, which is what makes subcheck-to-form ownership a partition rather than an approximation.",
           "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^M[0-9]{2}$" }
         },
-        "scored_once_per_cycle": { "type": "boolean" },
+        "scored_once_per_aos_home": { "type": "boolean" },
         "construct_opportunity_cell_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^C[1-7]\\.[A-Z]{2}\\.[0-9]{2}$" } },
         "shared_opportunity_cell_ids": {
           "description": "The cells this form administers that another form also administers. Declared so that the six counts are not read as a partition of the eighty subchecks: they sum to eighty-four.",

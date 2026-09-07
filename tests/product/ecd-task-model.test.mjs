@@ -67,7 +67,7 @@ test("every form declares its perturbation, its oracle and what it may not rewar
     assert.ok(form.required_oracle.length >= 10, form.form_id);
     assert.ok(form.shortcut_prohibitions.length > 0, form.form_id);
     assert.ok(form.construct_opportunity_cell_ids.length > 0, form.form_id);
-    assert.equal(form.scored_once_per_cycle, true, form.form_id);
+    assert.equal(form.scored_once_per_aos_home, true, form.form_id);
   }
 });
 
