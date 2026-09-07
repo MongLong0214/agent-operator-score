@@ -33,6 +33,24 @@ const assessed = ({ adapter = null } = {}) => {
   return { cwd, runId, boundary, recordPath, resultPath: join(cwd, ".aos", "runs", runId, "result.json") };
 };
 
+// #585 BLOCKER item 1. A second administration of the exact same seed against the exact same plan
+// hits the exposure ledger's scored-once policy and comes back PRACTICE: the run this test hands
+// back is the one whose published surfaces `assess` withheld with `withholdPublishedClaim` AFTER
+// `buildResult` produced them, which is the shape whose own recomputation used to disagree with it.
+const assessedPractice = () => {
+  const cwd = mkdtempSync(join(tmpdir(), "aos-verify-run-practice-"));
+  run(cwd, ["init"]);
+  addAgent(cwd, "solo");
+  const plan = makePlan(cwd, { default: "solo" });
+  run(cwd, ["assess", "--plan", plan, "--seed", "5"], 3);
+  run(cwd, ["assess", "--plan", plan, "--seed", "5"], 3);
+  const runId = newestRunId(cwd);
+  const runDirectory = join(cwd, ".aos", "runs", runId);
+  const terminal = JSON.parse(readFileSync(join(runDirectory, "terminal.json"), "utf8"));
+  assert.equal(terminal.status, "PRACTICE", `the second administration of one seed did not classify as PRACTICE: ${JSON.stringify(terminal)}`);
+  return { cwd, runId, recordPath: join(runDirectory, "record.json"), resultPath: join(runDirectory, "result.json") };
+};
+
 const assessedWithProbe = (profile = "probe-cut-off") => {
   const cwd = mkdtempSync(join(tmpdir(), "aos-verify-run-probe-"));
   initBare(cwd);
@@ -407,6 +425,29 @@ test("a stored result is recomputed from its own record", () => {
   try {
     const verified = run(cwd, ["verify", "--run", runId]);
     assert.match(verified.stdout, /PASS\trecompute/);
+    assert.equal(/FAIL/.test(verified.stdout), false, verified.stdout);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("#585 BLOCKER item 1: a PRACTICE result withheld by the exposure ledger passes its own verifier", () => {
+  // `withholdPublishedClaim` patches `operator_process_profile`, `system_outcome_profile` and
+  // `aos_composite` onto the built result AFTER `buildResult` produced them, but the exposure
+  // classification that decided the withholding was never an input `evaluate`/`buildResult` saw. A
+  // from-scratch rebuild -- exactly what `aos verify --run` does -- reproduced the un-withheld
+  // surfaces and disagreed with the artifact this command had just written, so every PRACTICE run
+  // failed its own verification. This is the fix's own regression test, not an incidental one.
+  const { cwd, runId, recordPath, resultPath } = assessedPractice();
+  try {
+    const record = JSON.parse(readFileSync(recordPath, "utf8"));
+    assert.equal(typeof record.practice_withholding?.reason, "string", "the run's own working record does not carry the reason it was withheld");
+    const stored = JSON.parse(readFileSync(resultPath, "utf8"));
+    assert.equal(stored.aos_composite.issued, false, "a PRACTICE result should have withheld its composite");
+    assert.equal(stored.aos_composite.withheld_reason, record.practice_withholding.reason, "the stored withheld reason and the run's own record disagree");
+
+    const verified = run(cwd, ["verify", "--run", runId]);
+    assert.match(verified.stdout, /PASS\trecompute/, verified.stdout);
     assert.equal(/FAIL/.test(verified.stdout), false, verified.stdout);
   } finally {
     rmSync(cwd, { recursive: true, force: true });

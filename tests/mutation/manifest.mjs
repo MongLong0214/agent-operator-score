@@ -8107,10 +8107,10 @@ export const GUARDS = [
   },
   {
     guard: "a form bank record's equivalence status requires a real linking scaffold, not any object naming a status",
-    reason: "equivalence_status is derived, never declared; without the schema_id tag any caller-supplied object naming a status -- linking: { equivalence_status: \"LINKED\" } needs no linkForms scaffold and no evidence -- would be quoted straight onto the record. #585: this check now lives in the shared `isRealLinkingScaffold` predicate `formBankRecord` and `scoreChangeClaim` both read, which is why the `from` string moved with it, at its new indentation, rather than the object-literal spot it used to occupy inline",
+    reason: "equivalence_status is derived, never declared; without the schema_id tag any caller-supplied object naming a status -- linking: { equivalence_status: \"LINKED\" } needs no linkForms scaffold and no evidence -- would be quoted straight onto the record. #585: this check now lives in the shared `isRealLinkingScaffold` predicate `formBankRecord` and `scoreChangeClaim` both read, which is why the `from` string moved with it, at its new indentation, rather than the object-literal spot it used to occupy inline. #585 BLOCKER item 2 rewrote the predicate from a boolean-AND chain into early-return guard clauses, which is why the `from` string is now the first `if` rather than the chain's opening two lines",
     file: "lib/form-class.mjs",
-    from: "  linking !== null && typeof linking === \"object\" &&\n  linking.schema_id === FORM_LINKING_SCHEMA_ID &&",
-    to: "  linking !== null && typeof linking === \"object\" &&\n  true &&",
+    from: "  if (linking === null || typeof linking !== \"object\" || linking.schema_id !== FORM_LINKING_SCHEMA_ID) return false;",
+    to: "  if (linking === null || typeof linking !== \"object\") return false;",
     test: "tests/product/form-class.test.mjs",
     name: "a form bank record's equivalence status requires a real linking scaffold, not any object naming a status"
   },
@@ -8485,19 +8485,19 @@ export const GUARDS = [
   },
   {
     guard: "linkForms enforces the anchor minimum the method interface declares, not a second literal",
-    reason: "the method declares minimum_anchor_count: 3 but the guard checked only for zero anchors, so one anchor read as a complete set and reached LINKED, removing the claim-stage ceiling on evidence the method never certified as enough. #585: the floor now counts distinct anchors (`distinctAnchorCount`), not the raw array, which is why the `from` string names that variable instead of `anchorIds.length` -- see the next guard for the duplicate-anchor defect that made this necessary",
+    reason: "the method declares minimum_anchor_count: 3 but the guard checked only for zero anchors, so one anchor read as a complete set and reached LINKED, removing the claim-stage ceiling on evidence the method never certified as enough. #585: the floor now counts distinct anchors (`distinctAnchorCount`), not the raw array, which is why the `from` string names that variable instead of `anchorIds.length` -- see the next guard for the duplicate-anchor defect that made this necessary. #585 NIT item 4 moved the floor's source from the fixed `LINKING_METHOD_INTERFACE` to `(methodContract ?? LINKING_METHOD_INTERFACE)` -- the same fallback the drift threshold already used -- so the `from` string carries that too",
     file: "lib/form-class.mjs",
-    from: "if (!Array.isArray(anchorIds) || distinctAnchorCount < LINKING_METHOD_INTERFACE.minimum_anchor_count) missing.push(\"anchor_opportunity_ids\");",
+    from: "if (!Array.isArray(anchorIds) || distinctAnchorCount < (methodContract ?? LINKING_METHOD_INTERFACE).minimum_anchor_count) missing.push(\"anchor_opportunity_ids\");",
     to: "if (!Array.isArray(anchorIds) || distinctAnchorCount === 0) missing.push(\"anchor_opportunity_ids\");",
     test: "tests/product/form-class.test.mjs",
     name: "fewer anchors than the method declares never links, whatever the samples and deltas say"
   },
   {
     guard: "a form bank record's equivalence status requires a real decision and a real relation to it",
-    reason: "the schema_id tag alone is a string any caller can write into a plain object; a forged linking object naming the right schema and an equivalence_status, with no decision, no empirical inputs and no relation to this form, was accepted as though it were a real linkForms scaffold. #585: the decision/inputs_missing clauses now live in the shared `isRealLinkingScaffold` predicate rather than inline in formBankRecord's own object literal, so the `from` string moved into that predicate's body with it",
+    reason: "the schema_id tag alone is a string any caller can write into a plain object; a forged linking object naming the right schema and an equivalence_status, with no decision, no empirical inputs and no relation to this form, was accepted as though it were a real linkForms scaffold. #585: the decision/inputs_missing clauses now live in the shared `isRealLinkingScaffold` predicate rather than inline in formBankRecord's own object literal, so the `from` string moved into that predicate's body with it. #585 BLOCKER item 2 rewrote the predicate into early-return guard clauses, one per check, which is why the `from` string is now three `if` statements rather than a boolean-AND chain",
     file: "lib/form-class.mjs",
-    from: "  linking.schema_id === FORM_LINKING_SCHEMA_ID &&\n  typeof linking.equivalence_decision === \"boolean\" &&\n  Array.isArray(linking.inputs_missing) && linking.inputs_missing.length === 0 &&\n  EQUIVALENCE_STATUSES.includes(linking.equivalence_status);",
-    to: "  linking.schema_id === FORM_LINKING_SCHEMA_ID &&\n  EQUIVALENCE_STATUSES.includes(linking.equivalence_status);",
+    from: "  if (typeof linking.equivalence_decision !== \"boolean\") return false;\n  if (!Array.isArray(linking.inputs_missing) || linking.inputs_missing.length > 0) return false;\n  if (!EQUIVALENCE_STATUSES.includes(linking.equivalence_status)) return false;",
+    to: "  if (!EQUIVALENCE_STATUSES.includes(linking.equivalence_status)) return false;",
     test: "tests/product/form-class.test.mjs",
     name: "a form bank record's equivalence status ignores a correctly-tagged scaffold with no decision, no inputs or no relation to it"
   },
@@ -8707,6 +8707,42 @@ export const GUARDS = [
     to: "export const FORM_FAMILY_MANIFEST_SCHEMA = \"aos-form-family-manifest.v1\";",
     test: "tests/product/suite-seed.test.mjs",
     name: "the operational form manifest binds raw task inputs to each family oracle without claiming equivalence"
+  },
+  {
+    guard: "aos verify recomputes a PRACTICE result under its own recorded withholding",
+    reason: "#585 BLOCKER item 1: `withholdPublishedClaim` patched a PRACTICE run's published surfaces AFTER `buildResult` produced them, but `evaluate`/`buildResult` never took the exposure-ledger refusal as an input -- so `aos verify --run`'s from-scratch recomputation reproduced the un-withheld surfaces and every PRACTICE result failed its own verification. `assess` now records the refusal onto the run's own working record, and `verifyProfileResult` applies the identical withholding to its rebuild before comparing; deleting the record write reproduces the original defect.",
+    file: "lib/cli.mjs",
+    from: "practice_withholding: status === \"PRACTICE\" ? { reason: practiceReason } : null",
+    to: "practice_withholding: null",
+    test: "tests/product/verify-run.test.mjs",
+    name: "#585 BLOCKER item 1: a PRACTICE result withheld by the exposure ledger passes its own verifier"
+  },
+  {
+    guard: "a hand-written linking scaffold cannot fake a registered method's floors and drift evidence",
+    reason: "#585 BLOCKER item 2: the prior `isRealLinkingScaffold` checked only a schema tag, a boolean decision, an empty inputs_missing and an enum word -- every one of them a field a caller can type by hand -- so a forged object one field short of the previous forgery still reached LINKED. The predicate now also requires a method/version pair this file has a registered contract for; removing that requirement lets the same forged object from the regression test through again.",
+    file: "lib/form-class.mjs",
+    from: "  if (methodContract === undefined) return false;",
+    to: "  if (false) return false;",
+    test: "tests/product/form-class.test.mjs",
+    name: "#585 BLOCKER item 2: a forged scaffold naming the right schema, a real decision and no missing inputs is still refused"
+  },
+  {
+    guard: "reserveExposure excludes an abandoned reservation from its own prior_exposure_count",
+    reason: "#585 BLOCKER item 3, fourth site: `reserveExposure` computed `prior_exposure_count` from the unfiltered prior rows, so a RESERVED-never-revealed row was durably recorded as prior exposure on the very next reservation for the same form, forever -- disagreeing with `classifyAdministration`'s own exclusion of the identical row. Routed through the same `administeredEntries` predicate the other three sites already use.",
+    file: "lib/form-class.mjs",
+    from: "  // at reservation time and never recomputed.\n  const priorAdministered = administeredEntries(prior);",
+    to: "  // at reservation time and never recomputed.\n  const priorAdministered = prior;",
+    test: "tests/product/form-class.test.mjs",
+    name: "#585 BLOCKER item 3: an abandoned reservation does not durably inflate the next reservation's own prior_exposure_count"
+  },
+  {
+    guard: "recordExposure's bare-append path excludes an abandoned reservation from prior_exposure_count too",
+    reason: "#585 BLOCKER item 3, fifth site found while auditing every unfiltered reader of priorEntries: `recordExposure`'s direct, one-shot append path (no reservation) is a second constructor for the same `prior_exposure_count` field and carried the identical unfiltered count. Routed through the same shared `administeredEntries` predicate rather than a second copy of the rule.",
+    file: "lib/form-class.mjs",
+    from: "  // reservation from prior exposure -- via the one shared predicate, not a second copy of the rule.\n  const priorAdministered = administeredEntries(prior);",
+    to: "  // reservation from prior exposure -- via the one shared predicate, not a second copy of the rule.\n  const priorAdministered = prior;",
+    test: "tests/product/form-class.test.mjs",
+    name: "#585 BLOCKER item 3: an abandoned reservation does not durably inflate the next reservation's own prior_exposure_count"
   }
 ];
 
@@ -8919,6 +8955,7 @@ export const ACCOUNTED_GUARDS = [
   "a form list naming an undeclared cell is refused before it is dereferenced",
   "a form revealed but never terminated classifies as practice, not fresh",
   "a generation is named for what it actually predates",
+  "a hand-written linking scaffold cannot fake a registered method's floors and drift evidence",
   "a handoff is recorded only where something was handed",
   "a lane the release has not proven never reaches official support",
   "a leaked descendant blocks issuance",
@@ -9162,6 +9199,7 @@ export const ACCOUNTED_GUARDS = [
   "an untrusted reason travels without the path it names",
   "an unverified executable gets no credential lookup",
   "an unverified executable withholds the aggregate",
+  "aos verify recomputes a PRACTICE result under its own recorded withholding",
   "aos-known is not a scorable runtime capability source",
   "artifact top-level mode",
   "artifact type in the envelope",
@@ -9402,6 +9440,7 @@ export const ACCOUNTED_GUARDS = [
   "raw link target bytes",
   "realpath compare",
   "recordExposure finalizes onto the reserved entry instead of appending a second one",
+  "recordExposure's bare-append path excludes an abandoned reservation from prior_exposure_count too",
   "refusal marker in the tree digest",
   "refused size in the tree digest",
   "refused tree is not artifact identity",
@@ -9417,6 +9456,7 @@ export const ACCOUNTED_GUARDS = [
   "relay supersede or cancel refuses a recorded human turn",
   "relay supplied responses never prompt a terminal",
   "reliance provenance has a new schema identity",
+  "reserveExposure excludes an abandoned reservation from its own prior_exposure_count",
   "resolver ownership",
   "restricted readiness",
   "reviewed action allowlist",

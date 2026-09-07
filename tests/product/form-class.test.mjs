@@ -8,9 +8,35 @@ import {
   FORM_CLASS_REGISTRY,
   FORM_CLASSES,
   FORM_LINKING_SCHEMA_ID,
+  LINKING_METHOD_INTERFACE,
   formBankRecord
 } from "../../lib/form-class.mjs";
 import { formManifest } from "../../lib/suite.mjs";
+
+// #585 BLOCKER item 2. A linking object that satisfies EVERY clause `isRealLinkingScaffold` checks
+// -- a registered method and version, a method interface quoting that exact registered contract, an
+// anchor set meeting its declared floor, a drift record consistent with LINKED, and the digests the
+// evidence rests on -- except the one field a test overrides. Without a complete base, disabling any
+// single clause is unwitnessed: the object is refused by one of the OTHER clauses anyway, and the
+// mutation guard for the disabled clause survives even though it does nothing (the exact failure
+// mode the schema_id-tag test below already calls out by name).
+const completeForgedLinking = (overrides = {}) => ({
+  schema_id: FORM_LINKING_SCHEMA_ID,
+  equivalence_decision: true,
+  inputs_missing: [],
+  equivalence_status: "LINKED",
+  left_form_id: "FAM-1.form-2b",
+  right_form_id: "FAM-1.form-3c",
+  left_form_contract_digest: `sha256:${"c".repeat(64)}`,
+  right_form_contract_digest: `sha256:${"d".repeat(64)}`,
+  task_model_digest: `sha256:${"9".repeat(64)}`,
+  exposure_history: { left_prior_exposure_count: 0, right_prior_exposure_count: 0 },
+  linking_method: { method: "anchored-delta.v1", method_version: "1.0.0" },
+  method_interface: LINKING_METHOD_INTERFACE,
+  anchor_ids: ["C1.GF.01", "C1.GF.02", "C1.GF.03"],
+  drift: { thresholds: { maximum_anchor_delta: 0.1 }, status: "WITHIN_THRESHOLDS", maximum_observed_delta: 0.02 },
+  ...overrides
+});
 
 // ---------------------------------------------------------------------------------------------
 // Form classes and the machine-readable registry (#585)
@@ -101,19 +127,38 @@ test("a form bank record's equivalence status requires a real linking scaffold, 
   });
   assert.equal(record.equivalence_status, "UNESTABLISHED");
 
-  // And the schema_id tag isolated: an object that satisfies EVERY other clause -- a real boolean
-  // decision, no missing inputs, a known status, and this exact form on one side -- but carries the
-  // wrong tag. Without this case the tag check is unwitnessed: the stricter clauses added later
-  // refuse the hand-written object above on their own, so deleting the tag comparison broke nothing
-  // and its mutation guard survived. A guard whose witness is refused for another reason has not
-  // been witnessed at all.
+  // And the schema_id tag isolated: an object that satisfies EVERY other clause -- a registered
+  // method and version, a matching interface, an adequate anchor set, a consistent drift record,
+  // the evidence digests, a real boolean decision, no missing inputs, a known status, and this
+  // exact form on one side -- but carries the wrong tag. Without a COMPLETE object here the tag
+  // check is unwitnessed: the stricter clauses #585 BLOCKER item 2 added refuse an incomplete
+  // hand-written object on their own, so deleting the tag comparison broke nothing and its mutation
+  // guard survived. A guard whose witness is refused for another reason has not been witnessed at
+  // all.
   const tagOnly = formBankRecord({
     form_id: "FAM-1.form-2b",
     form_class: "OPERATIONAL",
     construct_opportunity_ids: ["C1.GF.01"],
     oracle_digest: `sha256:${"b".repeat(64)}`,
+    linking: completeForgedLinking({ schema_id: "not-the-linking-scaffold.v1" })
+  });
+  assert.equal(tagOnly.equivalence_status, "UNESTABLISHED");
+});
+
+test("#585 BLOCKER item 2: a forged scaffold naming the right schema, a real decision and no missing inputs is still refused", () => {
+  // The prior predicate checked exactly four things: the schema tag, `equivalence_decision` being
+  // a boolean, an empty `inputs_missing`, and a known `equivalence_status` word -- every one of
+  // them a field a caller can type by hand. This object supplies all four, plus the exact form on
+  // one side, and used to reach LINKED with nothing behind it: no registered method, no method
+  // interface, no anchor evidence meeting any floor, no drift record and no digest naming the
+  // linking evidence it claims to rest on. `isRealLinkingScaffold` must refuse it anyway.
+  const record = formBankRecord({
+    form_id: "FAM-1.form-2b",
+    form_class: "OPERATIONAL",
+    construct_opportunity_ids: ["C1.GF.01"],
+    oracle_digest: `sha256:${"b".repeat(64)}`,
     linking: {
-      schema_id: "not-the-linking-scaffold.v1",
+      schema_id: FORM_LINKING_SCHEMA_ID,
       equivalence_decision: true,
       inputs_missing: [],
       equivalence_status: "LINKED",
@@ -121,7 +166,22 @@ test("a form bank record's equivalence status requires a real linking scaffold, 
       right_form_id: "FAM-1.form-3c"
     }
   });
-  assert.equal(tagOnly.equivalence_status, "UNESTABLISHED");
+  assert.equal(record.equivalence_status, "UNESTABLISHED");
+
+  // The next forgery a caller would reach for once the shape above is refused: name a method and
+  // version that LOOK registered, and fill in every other surface a real `linkForms` scaffold
+  // carries -- a method interface, an anchor set meeting its own declared floor, a drift record
+  // consistent with LINKED, and the digests the evidence is supposed to rest on. Nothing here is a
+  // real calibration; the method/version pair is not one `LINKING_METHOD_REGISTRY` has a contract
+  // for, and that lookup -- not the shape of the surrounding object -- is what has to refuse it.
+  const elaborateForgery = formBankRecord({
+    form_id: "FAM-1.form-2b",
+    form_class: "OPERATIONAL",
+    construct_opportunity_ids: ["C1.GF.01"],
+    oracle_digest: `sha256:${"b".repeat(64)}`,
+    linking: completeForgedLinking({ linking_method: { method: "unregistered-forged-method.v1", method_version: "1.0.0" } })
+  });
+  assert.equal(elaborateForgery.equivalence_status, "UNESTABLISHED", "an unregistered method dressed up with a plausible interface, anchors, drift and digests still reached LINKED");
 });
 
 test("a form bank record's equivalence status ignores a correctly-tagged scaffold with no decision, no inputs or no relation to it", () => {
@@ -129,14 +189,17 @@ test("a form bank record's equivalence status ignores a correctly-tagged scaffol
   // scaffold that carries it -- but never reached a decision, never reports its inputs as
   // complete, or is not even about this form -- must be refused exactly like the untagged object
   // above, or the tag becomes the only thing standing between a caller's claim and this record's
-  // strongest field.
+  // strongest field. Each object below is otherwise COMPLETE (`completeForgedLinking`, #585
+  // BLOCKER item 2) so that only the one overridden field is what refuses it -- an incomplete
+  // object would be refused by a different, unrelated clause and leave the field under test
+  // unwitnessed, exactly the failure the schema_id-tag test above calls out by name.
   const base = { form_id: "FAM-1.form-2b", form_class: "OPERATIONAL", construct_opportunity_ids: ["C1.GF.01"], oracle_digest: `sha256:${"b".repeat(64)}` };
-  // Tagged and enum-valid, but `equivalence_decision` was never set -- no scaffold ever decided.
-  assert.equal(formBankRecord({ ...base, linking: { schema_id: FORM_LINKING_SCHEMA_ID, equivalence_status: "LINKED", inputs_missing: [], left_form_id: "FAM-1.form-2b" } }).equivalence_status, "UNESTABLISHED");
+  // Enum-valid and otherwise complete, but `equivalence_decision` was never set -- no scaffold ever decided.
+  assert.equal(formBankRecord({ ...base, linking: completeForgedLinking({ equivalence_decision: undefined }) }).equivalence_status, "UNESTABLISHED");
   // A decision, but the scaffold itself says inputs are missing -- an incomplete study quoted as final.
-  assert.equal(formBankRecord({ ...base, linking: { schema_id: FORM_LINKING_SCHEMA_ID, equivalence_status: "LINKED", equivalence_decision: true, inputs_missing: ["anchor_opportunity_ids"], left_form_id: "FAM-1.form-2b" } }).equivalence_status, "UNESTABLISHED");
+  assert.equal(formBankRecord({ ...base, linking: completeForgedLinking({ inputs_missing: ["anchor_opportunity_ids"] }) }).equivalence_status, "UNESTABLISHED");
   // A real decision about a different pair of forms entirely -- not a relation to this record.
-  assert.equal(formBankRecord({ ...base, linking: { schema_id: FORM_LINKING_SCHEMA_ID, equivalence_status: "LINKED", equivalence_decision: true, inputs_missing: [], left_form_id: "some-other-form", right_form_id: "yet-another-form" } }).equivalence_status, "UNESTABLISHED");
+  assert.equal(formBankRecord({ ...base, linking: completeForgedLinking({ left_form_id: "some-other-form", right_form_id: "yet-another-form" }) }).equivalence_status, "UNESTABLISHED");
 });
 
 test("the shipped operational form manifest speaks the form class contract's own words", () => {
@@ -1350,6 +1413,38 @@ test("a reservation abandoned before it revealed anything does not retire the fo
   });
   assert.equal(afterReveal.official_scoring_permitted, false, "a revealed form stayed available after the reveal transition");
   assert.equal(afterReveal.refusal_code, "AOS_FORM_EXPOSED_WITHOUT_TERMINAL");
+});
+
+test("#585 BLOCKER item 3: an abandoned reservation does not durably inflate the next reservation's own prior_exposure_count", async () => {
+  // `classifyAdministration` already excludes an abandoned (RESERVED, never revealed) row from
+  // prior exposure -- the test above proves the next attempt is classified OPERATIONAL, not
+  // PRACTICE. But `reserveExposure` computed its OWN `prior_exposure_count` field from the
+  // unfiltered prior rows, so the abandoned row was durably recorded as one prior exposure on the
+  // very next reservation for this exact form -- a fact baked into the ledger forever, not
+  // recomputed later, and disagreeing with the classification of the administration it sits on.
+  const { createExposureLedger, reserveExposure } = await import("../../lib/form-class.mjs");
+  const digest = `sha256:${"33".repeat(32)}`;
+  const abandoned = reserveExposure(createExposureLedger(), {
+    form_id: "aos-operational-abandoned-count", form_contract_digest: digest, declared_class: "OPERATIONAL",
+    administration_id: "admin-abandoned-count-1", run_id: "run-abandoned-count-1", occurred_at: "2026-09-06T10:00:00.000Z"
+  });
+  assert.equal(abandoned.entry.state, "RESERVED");
+  assert.equal(abandoned.entry.content_revealed, false);
+
+  const next = reserveExposure(abandoned.ledger, {
+    form_id: "aos-operational-abandoned-count", form_contract_digest: digest, declared_class: "OPERATIONAL",
+    administration_id: "admin-abandoned-count-2", run_id: "run-abandoned-count-2", occurred_at: "2026-09-06T10:00:05.000Z"
+  });
+  assert.equal(next.entry.prior_exposure_count, 0, "an abandoned reservation was counted as prior exposure on the next reservation");
+
+  // The same bug's fifth site: `recordExposure`'s direct, one-shot append path (no reservation)
+  // computed the same field from the same unfiltered rows.
+  const { recordExposure } = await import("../../lib/form-class.mjs");
+  const bareAppended = recordExposure(abandoned.ledger, {
+    form_id: "aos-operational-abandoned-count", form_contract_digest: digest, declared_class: "OPERATIONAL",
+    occurred_at: "2026-09-06T10:00:10.000Z", run_id: "run-abandoned-count-3"
+  });
+  assert.equal(bareAppended.entry.prior_exposure_count, 0, "an abandoned reservation was counted as prior exposure on a bare-appended entry");
 });
 
 test("an administration revealed but never finalized is exposure a later attempt cannot read as fresh", async () => {
