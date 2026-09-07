@@ -8773,7 +8773,7 @@ export const GUARDS = [
     // `linkForms` itself never authorizing LINKED. Every guard below through "assessTransfer never
     // authorizes..." repurposes a name this round retired its original code for, for the same
     // reason.
-    guard: "a hand-written linking scaffold cannot fake a registered method's floors and drift evidence",
+    guard: "linkForms records a caller's numbers as an unauthenticated claim, never as a decision",
     reason: "#585 (this round). Five review rounds hardened a predicate over caller-supplied linking evidence one field at a time, and each next round's forgery satisfied the new field -- no predicate over fields the caller controls can certify a study that did not happen. This is the branch every one of those forgeries, and this file's own retired `completeForgedLinking`, was built to reach: every floor met, drift within threshold. It is closed by construction now; what the caller's numbers claimed is recorded on `unauthenticated_claim` instead of authorizing `decision`/`status`.",
     file: "lib/form-class.mjs",
     from: "        unauthenticatedClaim = deepFreeze({\n          claimed_equivalence_status: \"LINKED\",\n          claimed_method: { method: method.method, method_version: method.method_version },\n          maximum_observed_delta: observedMaximumDelta,\n          reason: \"AOS_LINKING_UNAUTHENTICATED AOS has no trust root for externally-produced linking studies -- no signed study, no attested producer, no data AOS itself recorded -- so a complete, well-formed calibration is recorded as an unauthenticated claim and never converted into a LINKED verdict\"\n        });",
@@ -8782,7 +8782,7 @@ export const GUARDS = [
     name: "a complete, well-formed calibration is closed by construction: it stays UNESTABLISHED and its claim is recorded, unauthenticated; drift and disjoint anchors are unaffected"
   },
   {
-    guard: "a form bank record's equivalence status requires a real linking scaffold, not any object naming a status",
+    guard: "a form bank record's equivalence status is UNESTABLISHED by construction",
     reason: "#585 (this round). `isRealLinkingScaffold`, the predicate this field used to trust, is deleted: it grew one more required field every review round and a forgery satisfying the new field followed every time. `equivalence_status` is no longer computed from `linking` at all -- it is the literal `\"UNESTABLISHED\"` -- so there is no predicate left to defeat.",
     file: "lib/form-class.mjs",
     from: "    equivalence_status: \"UNESTABLISHED\",",
@@ -8800,7 +8800,7 @@ export const GUARDS = [
     name: "raw improvement is never marked as skill gain: replay suggests memorisation, and closed by construction no linking claim ever observes a change"
   },
   {
-    guard: "a form bank record's equivalence status requires a real decision and a real relation to it",
+    guard: "comparisonGate withholds every cross-facet comparison by construction",
     reason: "#585 (this round). `isRealLinkingScaffold` is deleted outright, so nothing in this file checks a decision or a relation to a form any more; this name is repurposed (see the comment on the first guard of this round's batch) for `comparisonGate`'s own closed branch -- the complete, well-formed DIF report every declared input present, adequate samples per group, no detected differential functioning -- reaches. AOS did not run the study, so it stays WITHHELD however completely the report is shaped; the report's own reported verdict is recorded on `unauthenticated_claim` instead of authorizing `comparison`.",
     file: "lib/form-class.mjs",
     from: "  return gateAnswer(facet, leftLevel, rightLevel, null, \"WITHHELD\",\n    [\"AOS_COMPARISON_UNAUTHENTICATED AOS has no trust root for externally-produced DIF studies -- no signed study, no attested producer, no data AOS itself recorded -- so a complete study reporting no detected differential functioning is recorded as an unauthenticated claim and never converted into a PERMITTED verdict\"],\n    deepFreeze({ claimed_comparison: \"PERMITTED\", reported_dif_detected: evidence.dif_detected }));",
@@ -9032,12 +9032,10 @@ export const ACCOUNTED_GUARDS = [
   "a forged headline escape_attempt_result is rejected by the release gate",
   "a forged headline profile digest is rejected by the release gate",
   "a forged structural set is revalidated like the rest",
-  "a form bank record's equivalence status requires a real decision and a real relation to it",
-  "a form bank record's equivalence status requires a real linking scaffold, not any object naming a status",
+  "a form bank record's equivalence status is UNESTABLISHED by construction",
   "a form list naming an undeclared cell is refused before it is dereferenced",
   "a form revealed but never terminated classifies as practice, not fresh",
   "a generation is named for what it actually predates",
-  "a hand-written linking scaffold cannot fake a registered method's floors and drift evidence",
   "a handoff is recorded only where something was handed",
   "a lane the release has not proven never reaches official support",
   "a leaked descendant blocks issuance",
@@ -9325,6 +9323,7 @@ export const ACCOUNTED_GUARDS = [
   "comparisonGate requires each DIF response to be an actual observation, not a null slot",
   "comparisonGate requires each anchor's per-anchor statistics to be an actual non-empty record",
   "comparisonGate requires the DIF report's own declared inputs, not only its verdict",
+  "comparisonGate withholds every cross-facet comparison by construction",
   "completion requires an authority to check the prerequisites against",
   "composite action discovery",
   "confidence calibration does not reward raw confidence",
@@ -9420,6 +9419,7 @@ export const ACCOUNTED_GUARDS = [
   "legacy migration guard",
   "linkForms counts distinct anchors, not raw array length, against the declared minimum",
   "linkForms enforces the anchor minimum the method interface declares, not a second literal",
+  "linkForms records a caller's numbers as an unauthenticated claim, never as a decision",
   "linkForms refuses to LINK on an unregistered method or method_version",
   "linkForms's drift threshold is read from the registered method, never a caller-supplied one",
   "linking without empirical evidence stays unestablished",
