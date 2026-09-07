@@ -431,7 +431,7 @@ test("a stored result is recomputed from its own record", () => {
   }
 });
 
-test("#585 BLOCKER item 1: a PRACTICE result withheld by the exposure ledger passes its own verifier", () => {
+test("a PRACTICE result withheld by the exposure ledger passes its own verifier", () => {
   // `withholdPublishedClaim` patches `operator_process_profile`, `system_outcome_profile` and
   // `aos_composite` onto the built result AFTER `buildResult` produced them, but the exposure
   // classification that decided the withholding was never an input `evaluate`/`buildResult` saw. A

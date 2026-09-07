@@ -123,7 +123,7 @@ test("a lock whose owner is gone is broken, not honoured", () => {
   } finally { rmSync(home, { recursive: true, force: true }); }
 });
 
-test("a run lock in the pre-#585 format is broken, not refused under the ledger's answer", () => {
+test("a run lock in the older bare-pid format is broken, not refused under the ledger's answer", () => {
   // Found by round 2. Failing closed on a lock this process cannot adjudicate is right for the
   // exposure ledger, where counting an administration twice is worse than refusing to count it at
   // all. It is wrong for a run's writer lock, which protects an append log: refusing forever makes

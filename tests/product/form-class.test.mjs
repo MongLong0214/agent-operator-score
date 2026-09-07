@@ -145,7 +145,7 @@ test("a form bank record's equivalence status requires a real linking scaffold, 
   assert.equal(tagOnly.equivalence_status, "UNESTABLISHED");
 });
 
-test("#585 BLOCKER item 2: a forged scaffold naming the right schema, a real decision and no missing inputs is still refused", () => {
+test("a forged scaffold naming the right schema, a real decision and no missing inputs is still refused", () => {
   // The prior predicate checked exactly four things: the schema tag, `equivalence_decision` being
   // a boolean, an empty `inputs_missing`, and a known `equivalence_status` word -- every one of
   // them a field a caller can type by hand. This object supplies all four, plus the exact form on
@@ -1415,7 +1415,7 @@ test("a reservation abandoned before it revealed anything does not retire the fo
   assert.equal(afterReveal.refusal_code, "AOS_FORM_EXPOSED_WITHOUT_TERMINAL");
 });
 
-test("#585 BLOCKER item 3: an abandoned reservation does not durably inflate the next reservation's own prior_exposure_count", async () => {
+test("an abandoned reservation does not durably inflate the next reservation's own prior_exposure_count", async () => {
   // `classifyAdministration` already excludes an abandoned (RESERVED, never revealed) row from
   // prior exposure -- the test above proves the next attempt is classified OPERATIONAL, not
   // PRACTICE. But `reserveExposure` computed its OWN `prior_exposure_count` field from the

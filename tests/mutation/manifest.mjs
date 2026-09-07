@@ -8715,7 +8715,7 @@ export const GUARDS = [
     from: "practice_withholding: status === \"PRACTICE\" ? { reason: practiceReason } : null",
     to: "practice_withholding: null",
     test: "tests/product/verify-run.test.mjs",
-    name: "#585 BLOCKER item 1: a PRACTICE result withheld by the exposure ledger passes its own verifier"
+    name: "a PRACTICE result withheld by the exposure ledger passes its own verifier"
   },
   {
     guard: "a hand-written linking scaffold cannot fake a registered method's floors and drift evidence",
@@ -8724,7 +8724,7 @@ export const GUARDS = [
     from: "  if (methodContract === undefined) return false;",
     to: "  if (false) return false;",
     test: "tests/product/form-class.test.mjs",
-    name: "#585 BLOCKER item 2: a forged scaffold naming the right schema, a real decision and no missing inputs is still refused"
+    name: "a forged scaffold naming the right schema, a real decision and no missing inputs is still refused"
   },
   {
     guard: "reserveExposure excludes an abandoned reservation from its own prior_exposure_count",
@@ -8733,7 +8733,7 @@ export const GUARDS = [
     from: "  // at reservation time and never recomputed.\n  const priorAdministered = administeredEntries(prior);",
     to: "  // at reservation time and never recomputed.\n  const priorAdministered = prior;",
     test: "tests/product/form-class.test.mjs",
-    name: "#585 BLOCKER item 3: an abandoned reservation does not durably inflate the next reservation's own prior_exposure_count"
+    name: "an abandoned reservation does not durably inflate the next reservation's own prior_exposure_count"
   },
   {
     guard: "recordExposure's bare-append path excludes an abandoned reservation from prior_exposure_count too",
@@ -8742,7 +8742,7 @@ export const GUARDS = [
     from: "  // reservation from prior exposure -- via the one shared predicate, not a second copy of the rule.\n  const priorAdministered = administeredEntries(prior);",
     to: "  // reservation from prior exposure -- via the one shared predicate, not a second copy of the rule.\n  const priorAdministered = prior;",
     test: "tests/product/form-class.test.mjs",
-    name: "#585 BLOCKER item 3: an abandoned reservation does not durably inflate the next reservation's own prior_exposure_count"
+    name: "an abandoned reservation does not durably inflate the next reservation's own prior_exposure_count"
   },
   {
     guard: "a run lock this process cannot adjudicate is broken, not refused",
@@ -8751,7 +8751,7 @@ export const GUARDS = [
     from: "    null,\n    body\n  );",
     to: "    (lockPath, why) => `AOS_EXPOSURE_LOCK_UNAVAILABLE ${lockPath} (${why})`,\n    body\n  );",
     test: "tests/product/home.test.mjs",
-    name: "a run lock in the pre-#585 format is broken, not refused under the ledger's answer"
+    name: "a run lock in the older bare-pid format is broken, not refused under the ledger's answer"
   }
 ];
 
