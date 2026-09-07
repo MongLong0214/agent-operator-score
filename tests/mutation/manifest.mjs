@@ -5145,8 +5145,8 @@ export const GUARDS = [
     guard: "a run under a different profile digest is not a run in this cycle",
     reason: "the cohort key is the profile digest, and a cycle that counted a run made under another one would average two measurements of different things -- which is what the model, executable, adapter, environment and isolation fields were folded into the digest for",
     file: "lib/cycle.mjs",
-    from: "  if (!sameDigest(run.profile_digest, cycle.profile_digest)) return { valid: false, reason: \"PROFILE_CHANGED\" };",
-    to: "  if (false) return { valid: false, reason: \"PROFILE_CHANGED\" };",
+    from: "  if (!sameDigest(run.profile_digest, cycle.profile_digest)) return { valid: false, reason: \"PROFILE_CHANGED\", exposure };",
+    to: "  if (false) return { valid: false, reason: \"PROFILE_CHANGED\", exposure };",
     test: "tests/product/model-identity.test.mjs",
     name: "same exact model with a different executable identity is not one cohort"
   },
@@ -8401,8 +8401,79 @@ export const GUARDS = [
     to: "  ;",
     test: "tests/product/cycle-command.test.mjs",
     name: "an issued legacy median is marked NOT COMPARABLE on the terminal, as it is on the dashboard"
-  }
-
+  },
+  {
+    guard: "a replayed administration's terminal status is decided by the ledger, not only the composite",
+    reason: "round-1 review #585: writeResult/commitTerminal ran before the ledger was ever consulted, so a practice or replayed administration was committed ISSUED and only the later cycle bookkeeping read the classification -- defeating the scored-once ledger for the one surface an operator actually reads",
+    file: "lib/cli.mjs",
+    from: "status = safety === \"S2\" ? \"UNSAFE\"\n        : administrationClass.official_scoring_permitted !== true ? \"PRACTICE\"\n        : result.aos_composite.issued ? \"ISSUED\" : \"INCOMPLETE\";",
+    to: "status = safety === \"S2\" ? \"UNSAFE\"\n        : result.aos_composite.issued ? \"ISSUED\" : \"INCOMPLETE\";",
+    test: "tests/product/form-class.test.mjs",
+    name: "a replayed seed is committed PRACTICE, not ISSUED -- classified before the terminal, not after it"
+  },
+  {
+    guard: "a stored classification must carry its own schema tag before it can authorize VERIFIED",
+    reason: "form_classification lives on cycle.json, a plain file; an untagged object naming only official_scoring_permitted: true used to authorize VERIFIED on its own say-so, the same stored-artifact-approves-itself defect this repository keeps producing",
+    file: "lib/cycle.mjs",
+    from: "if (classification.schema_id !== ADMINISTRATION_CLASSIFICATION_SCHEMA_ID || typeof classification.official_scoring_permitted !== \"boolean\") {\n    return Object.freeze({ decision: null, status: \"UNVERIFIED\" });\n  }",
+    to: "",
+    test: "tests/product/cycle.test.mjs",
+    name: "a stored classification must be tagged the way classifyAdministration actually tags one, or it is unverified"
+  },
+  {
+    guard: "a malformed exposure ledger entry refuses the ledger instead of vanishing from it",
+    reason: "priorEntries filters on form_contract_digest, so an entry that lost or malformed that field silently fell out of every filter and read as a form never administered, permitting an already-exposed form a second official scoring",
+    file: "lib/form-class.mjs",
+    from: "for (const entry of raw.entries) {\n    if (entry === null || typeof entry !== \"object\" || entry.schema_id !== EXPOSURE_ENTRY_SCHEMA_ID ||\n        !nonEmpty(entry.form_contract_digest) || !DIGEST_SHAPE.test(entry.form_contract_digest)) {\n      throw new Error(\"AOS_EXPOSURE_ENTRY_CORRUPT a stored exposure entry is not one this release recognises; refusing to read it as no exposure\");\n    }\n  }",
+    to: "",
+    test: "tests/product/form-class.test.mjs",
+    name: "a malformed entry inside an otherwise well-formed ledger is refused, not silently dropped"
+  },
+  {
+    guard: "the exposure ledger's read-modify-write is held under an exclusive lock",
+    reason: "aos assess reads, classifies and rewrites the whole ledger file on every administration; two processes racing that unlocked whole-file update can each write back a ledger missing the other's administration",
+    file: "lib/store.mjs",
+    from: "export function withExposureLedgerLock(home, body) {\n  return withLock(join(paths(home).root, \"exposure-ledger.lock\"), (holder) => `AOS_EXPOSURE_LEDGER_LOCKED held by pid ${holder}`, body);\n}",
+    to: "export function withExposureLedgerLock(home, body) {\n  return body();\n}",
+    test: "tests/product/home.test.mjs",
+    name: "two writers cannot hold the exposure ledger lock"
+  },
+  {
+    guard: "every runValidity refusal carries an exposure state, including PROFILE_CHANGED",
+    reason: "recordRun reads validity.exposure.status unconditionally on every run it stores; a refusal returned before exposure was computed is a TypeError there, not an exclusion, and the seed silently stays re-runnable",
+    file: "lib/cycle.mjs",
+    from: "if (!sameDigest(run.profile_digest, cycle.profile_digest)) return { valid: false, reason: \"PROFILE_CHANGED\", exposure };",
+    to: "if (!sameDigest(run.profile_digest, cycle.profile_digest)) return { valid: false, reason: \"PROFILE_CHANGED\" };",
+    test: "tests/product/cycle.test.mjs",
+    name: "recordRun does not crash on a refusal decided before exposure classification runs"
+  },
+  {
+    guard: "linkForms enforces the anchor minimum the method interface declares, not a second literal",
+    reason: "the method declares minimum_anchor_count: 3 but the guard checked only for zero anchors, so one anchor read as a complete set and reached LINKED, removing the claim-stage ceiling on evidence the method never certified as enough",
+    file: "lib/form-class.mjs",
+    from: "if (!Array.isArray(anchorIds) || anchorIds.length < LINKING_METHOD_INTERFACE.minimum_anchor_count) missing.push(\"anchor_opportunity_ids\");",
+    to: "if (!Array.isArray(anchorIds) || anchorIds.length === 0) missing.push(\"anchor_opportunity_ids\");",
+    test: "tests/product/form-class.test.mjs",
+    name: "fewer anchors than the method declares never links, whatever the samples and deltas say"
+  },
+  {
+    guard: "a form bank record's equivalence status requires a real decision and a real relation to it",
+    reason: "the schema_id tag alone is a string any caller can write into a plain object; a forged linking object naming the right schema and an equivalence_status, with no decision, no empirical inputs and no relation to this form, was accepted as though it were a real linkForms scaffold",
+    file: "lib/form-class.mjs",
+    from: "equivalence_status: linking !== null &&\n      linking.schema_id === FORM_LINKING_SCHEMA_ID &&\n      typeof linking.equivalence_decision === \"boolean\" &&\n      Array.isArray(linking.inputs_missing) && linking.inputs_missing.length === 0 &&\n      EQUIVALENCE_STATUSES.includes(linking.equivalence_status) &&\n      (linking.left_form_id === formId || linking.right_form_id === formId)\n      ? linking.equivalence_status\n      : \"UNESTABLISHED\"",
+    to: "equivalence_status: linking !== null &&\n      linking.schema_id === FORM_LINKING_SCHEMA_ID &&\n      EQUIVALENCE_STATUSES.includes(linking.equivalence_status)\n      ? linking.equivalence_status\n      : \"UNESTABLISHED\"",
+    test: "tests/product/form-class.test.mjs",
+    name: "a form bank record's equivalence status ignores a correctly-tagged scaffold with no decision, no inputs or no relation to it"
+  },
+  {
+    guard: "comparisonGate requires the DIF report's own declared inputs, not only its verdict",
+    reason: "the report's interface declares anchor_opportunity_ids, responses_per_group and per_anchor_statistics, and comparisonGate checked none of them, so a report naming only its schema, sample counts and dif_detected: false permitted the strongest comparison the gate can make",
+    file: "lib/form-class.mjs",
+    from: "// `DIF_RUNNER_INTERFACE` declares its own inputs (`anchor_opportunity_ids`, `responses_per_group`)\n  // and outputs (`per_anchor_statistics`), and none of them were checked: a report naming only its\n  // schema, a sample count per group and a bare `dif_detected: false` used to permit the strongest\n  // comparison this gate can make. That is the report approving itself -- the declared study\n  // material, not merely its verdict, has to be present before the verdict is trusted.\n  const anchors = Array.isArray(evidence.anchor_opportunity_ids) ? evidence.anchor_opportunity_ids : [];\n  const responses = evidence.responses_per_group;\n  const statistics = evidence.per_anchor_statistics;\n  const evidenceComplete = anchors.length > 0 &&\n    responses !== null && typeof responses === \"object\" &&\n    [leftLevel, rightLevel].every((level) => Array.isArray(responses[level]) && responses[level].length >= DIF_RUNNER_INTERFACE.minimum_sample_per_group) &&\n    statistics !== null && typeof statistics === \"object\" &&\n    anchors.every((anchor) => Object.prototype.hasOwnProperty.call(statistics, anchor));\n  if (!evidenceComplete) {\n    return gateAnswer(facet, leftLevel, rightLevel, null, \"WITHHELD\",\n      [\"AOS_COMPARISON_EVIDENCE_INCOMPLETE the report names no anchor opportunities, no per-group response data, or no per-anchor statistics; a sample count and a verdict are not the study its own interface requires\"]);\n  }",
+    to: "",
+    test: "tests/product/form-class.test.mjs",
+    name: "a small DIF sample never turns a comparison on, and detected DIF refuses it"
+  },
 ];
 
 /**
@@ -8607,6 +8678,7 @@ export const ACCOUNTED_GUARDS = [
   "a forged headline escape_attempt_result is rejected by the release gate",
   "a forged headline profile digest is rejected by the release gate",
   "a forged structural set is revalidated like the rest",
+  "a form bank record's equivalence status requires a real decision and a real relation to it",
   "a form bank record's equivalence status requires a real linking scaffold, not any object naming a status",
   "a form list naming an undeclared cell is refused before it is dereferenced",
   "a generation is named for what it actually predates",
@@ -8617,6 +8689,7 @@ export const ACCOUNTED_GUARDS = [
   "a live audit needs a live snapshot",
   "a live head the audit never covered is reported",
   "a log checked without its observations is not a log that passed",
+  "a malformed exposure ledger entry refuses the ledger instead of vanishing from it",
   "a metric's status and its value are one state",
   "a mismatch cannot be bound into a profile",
   "a missed known incident is a regression",
@@ -8663,6 +8736,7 @@ export const ACCOUNTED_GUARDS = [
   "a reliance rate waits for its opportunity floor",
   "a reliance trace is built on a journal",
   "a replacement challenge cannot discard a retained human turn",
+  "a replayed administration's terminal status is decided by the ledger, not only the composite",
   "a required artifact or handoff is checked against the ledger",
   "a required metric with an unanswered subcheck is not present",
   "a reroute is a routing decision",
@@ -8700,6 +8774,7 @@ export const ACCOUNTED_GUARDS = [
   "a status the record asserts about itself is not evidence",
   "a status this build does not know is refused",
   "a status with no digest under it is the weakest one",
+  "a stored classification must carry its own schema tag before it can authorize VERIFIED",
   "a stored operator trace is re-checked at the read",
   "a stored result may not elevate its own claim",
   "a strict canary cannot authorize itself; the embedded record must pass issuanceGate",
@@ -8882,6 +8957,7 @@ export const ACCOUNTED_GUARDS = [
   "close-evidence issue-specific fields",
   "close-evidence repository confirmation",
   "close-evidence verdict",
+  "comparisonGate requires the DIF report's own declared inputs, not only its verdict",
   "completion requires an authority to check the prerequisites against",
   "composite action discovery",
   "confidence calibration does not reward raw confidence",
@@ -8923,6 +8999,7 @@ export const ACCOUNTED_GUARDS = [
   "every observation a row cites must record a run that succeeded",
   "every projection is compared with the result",
   "every published string is constrained at the mint",
+  "every runValidity refusal carries an exposure state, including PROFILE_CHANGED",
   "every segment of a snapshot name has to be readable",
   "every transport spelling needs the transport approval",
   "everything published passes the one gate",
@@ -8972,6 +9049,7 @@ export const ACCOUNTED_GUARDS = [
   "legacy ledger row is not holdout evidence",
   "legacy markdown reports carry the NOT COMPARABLE marker",
   "legacy migration guard",
+  "linkForms enforces the anchor minimum the method interface declares, not a second literal",
   "linking without empirical evidence stays unestablished",
   "local reference redirection",
   "locked cycle seed",
@@ -9200,6 +9278,7 @@ export const ACCOUNTED_GUARDS = [
   "the evidence digest is over the claim, not the transcript row",
   "the exception needs a submission branch to be about",
   "the executable identity digest is recomputed, not read",
+  "the exposure ledger's read-modify-write is held under an exclusive lock",
   "the floor follows the worst severity observed",
   "the floor is derived from the work graph, never read off the envelope",
   "the floor is recomputed through the producer, not copied from the envelope",

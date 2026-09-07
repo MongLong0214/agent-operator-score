@@ -15,6 +15,17 @@ import {
   runValidity,
   stabilityOf
 } from "../../lib/cycle.mjs";
+import { ADMINISTRATION_CLASSIFICATION_SCHEMA_ID } from "../../lib/form-class.mjs";
+
+// A minimal but genuinely tagged classification, the shape `classifyAdministration` actually
+// returns. `exposureVerification` refuses to authorize VERIFIED from an untagged object -- see
+// "a stored classification must be tagged..." below -- so every fixture that means to be a real,
+// ledger-checked classification uses this rather than a bare `{official_scoring_permitted}`.
+const classification = (permitted, overrides = {}) => ({
+  schema_id: ADMINISTRATION_CLASSIFICATION_SCHEMA_ID,
+  official_scoring_permitted: permitted,
+  ...overrides
+});
 
 const cycleOf = (seeds = ["1", "2", "3"]) =>
   createCycle({ profileDigest: "sha256:profile", suiteMajor: 1, scorerMajor: 1, seeds });
@@ -96,7 +107,22 @@ test("a run from another profile, suite or scorer is not this cycle's run", () =
     const check = runValidity(cycle, runOf("0000000000000001", { [field]: value }));
     assert.equal(check.valid, false, field);
     assert.equal(check.reason, reason, field);
+    assert.deepEqual(check.exposure, { decision: null, status: "UNVERIFIED" }, `${field}: every runValidity refusal carries an exposure state`);
   }
+});
+
+test("recordRun does not crash on a refusal decided before exposure classification runs", () => {
+  // `runValidity` used to compute `exposure` only after the seed-membership and profile-digest
+  // checks, so a PROFILE_CHANGED (or SEED_NOT_IN_CYCLE) refusal came back with no `exposure` key
+  // at all. `recordRun` reads `validity.exposure.status` unconditionally to stamp the stored run,
+  // so that refusal was a TypeError, not a recorded exclusion -- the seed then never made it onto
+  // `cycle.runs` and stayed silently re-runnable. Every branch of `runValidity` must carry an
+  // exposure state so `recordRun` can always read it.
+  const cycle = cycleOf();
+  const recorded = recordRun(cycle, runOf("0000000000000001", { profile_digest: "sha256:other" }));
+  assert.equal(recorded.runs[0].valid, false);
+  assert.equal(recorded.runs[0].invalid_reason, "PROFILE_CHANGED");
+  assert.equal(recorded.runs[0].exposure_verification, "UNVERIFIED");
 });
 
 test("the operator score is the median of every valid run, not the best of them", () => {
@@ -159,19 +185,33 @@ test("exposureVerification names the third state a permitted run and a pre-ledge
   assert.deepEqual(exposureVerification({ form_classification: null }), { decision: null, status: "UNVERIFIED" });
   assert.deepEqual(exposureVerification({}), { decision: null, status: "UNVERIFIED" });
   assert.deepEqual(
-    exposureVerification({ form_classification: { official_scoring_permitted: true } }),
+    exposureVerification({ form_classification: classification(true) }),
     { decision: true, status: "VERIFIED" }
   );
   assert.deepEqual(
-    exposureVerification({ form_classification: { official_scoring_permitted: false, refusal_code: "AOS_FORM_ALREADY_EXPOSED" } }),
+    exposureVerification({ form_classification: classification(false, { refusal_code: "AOS_FORM_ALREADY_EXPOSED" }) }),
     { decision: false, status: "REFUSED" }
   );
 });
 
+test("a stored classification must be tagged the way classifyAdministration actually tags one, or it is unverified", () => {
+  // `form_classification` lives on `cycle.json`, a plain file. An untagged object carrying only
+  // `official_scoring_permitted: true` used to authorize VERIFIED on its own say-so -- no
+  // different from any other stored artifact approving itself. Absence and an untagged imitation
+  // are different facts (one never saw the ledger, the other claims to but cannot prove it) and
+  // this function answers both the same way: neither may authorize more than UNVERIFIED.
+  assert.deepEqual(exposureVerification({ form_classification: { official_scoring_permitted: true } }), { decision: null, status: "UNVERIFIED" });
+  // The right schema tag with the wrong type on the field it reads is just as untrustworthy.
+  assert.deepEqual(exposureVerification({ form_classification: { schema_id: ADMINISTRATION_CLASSIFICATION_SCHEMA_ID, official_scoring_permitted: "true" } }), { decision: null, status: "UNVERIFIED" });
+  // The genuine tag with a real boolean is what actually authorizes VERIFIED or REFUSED.
+  assert.deepEqual(exposureVerification({ form_classification: classification(true) }), { decision: true, status: "VERIFIED" });
+  assert.deepEqual(exposureVerification({ form_classification: classification(false) }), { decision: false, status: "REFUSED" });
+});
+
 test("a permitted run and a pre-ledger run are both valid but not both verified, in the run record and the aggregate", () => {
-  const verified = runOf("0000000000000001", { form_classification: { official_scoring_permitted: true } });
+  const verified = runOf("0000000000000001", { form_classification: classification(true) });
   const unverified = runOf("0000000000000002"); // no form_classification: the historical, pre-ledger shape
-  const third = runOf("0000000000000003", { form_classification: { official_scoring_permitted: true } });
+  const third = runOf("0000000000000003", { form_classification: classification(true) });
 
   assert.equal(runValidity(cycleOf(), verified).exposure.status, "VERIFIED");
   assert.equal(runValidity(cycleOf(), unverified).exposure.status, "UNVERIFIED");

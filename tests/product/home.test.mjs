@@ -15,6 +15,7 @@ import {
   regenerateReports,
   resolveHome,
   runPaths,
+  withExposureLedgerLock,
   withRunLock,
   writeResult
 } from "../../lib/store.mjs";
@@ -99,6 +100,29 @@ test("a lock whose owner is gone is broken, not honoured", () => {
     // A pid that cannot be running: this process would have had to fork four billion times.
     writeFileSync(join(runPaths(home, runId).root, "run.lock"), "4000000000", "utf8");
     assert.equal(withRunLock(home, runId, () => "recovered"), "recovered");
+  } finally { rmSync(home, { recursive: true, force: true }); }
+});
+
+test("two writers cannot hold the exposure ledger lock", () => {
+  // #585. `aos assess` reads, classifies and rewrites the whole exposure ledger file on every
+  // administration; two processes racing that read-modify-write can each read the same prior
+  // entries and each write back a ledger missing the other's administration. Mirrors
+  // `withRunLock`'s own guard: one process at a time may hold the ledger's lock, and a lock whose
+  // owner is gone is broken rather than honoured forever.
+  const home = scratch();
+  try {
+    initHome(home);
+    withExposureLedgerLock(home, () => {
+      assert.throws(
+        () => withExposureLedgerLock(home, () => "inner"),
+        /AOS_EXPOSURE_LEDGER_LOCKED/,
+        "a second writer was allowed to hold the exposure ledger at the same time"
+      );
+    });
+    // Released on the way out, including when the body threw.
+    assert.equal(withExposureLedgerLock(home, () => "after"), "after");
+    assert.throws(() => withExposureLedgerLock(home, () => { throw new Error("boom"); }), /boom/);
+    assert.equal(withExposureLedgerLock(home, () => "still usable"), "still usable");
   } finally { rmSync(home, { recursive: true, force: true }); }
 });
 

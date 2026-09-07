@@ -7,6 +7,7 @@ import {
   FORM_BANK_RECORD_SCHEMA_ID,
   FORM_CLASS_REGISTRY,
   FORM_CLASSES,
+  FORM_LINKING_SCHEMA_ID,
   formBankRecord
 } from "../../lib/form-class.mjs";
 import { formManifest } from "../../lib/suite.mjs";
@@ -101,6 +102,21 @@ test("a form bank record's equivalence status requires a real linking scaffold, 
   assert.equal(record.equivalence_status, "UNESTABLISHED");
 });
 
+test("a form bank record's equivalence status ignores a correctly-tagged scaffold with no decision, no inputs or no relation to it", () => {
+  // The schema_id tag alone is a string any caller can write into a plain object. A forged
+  // scaffold that carries it -- but never reached a decision, never reports its inputs as
+  // complete, or is not even about this form -- must be refused exactly like the untagged object
+  // above, or the tag becomes the only thing standing between a caller's claim and this record's
+  // strongest field.
+  const base = { form_id: "FAM-1.form-2b", form_class: "OPERATIONAL", construct_opportunity_ids: ["C1.GF.01"], oracle_digest: `sha256:${"b".repeat(64)}` };
+  // Tagged and enum-valid, but `equivalence_decision` was never set -- no scaffold ever decided.
+  assert.equal(formBankRecord({ ...base, linking: { schema_id: FORM_LINKING_SCHEMA_ID, equivalence_status: "LINKED", inputs_missing: [], left_form_id: "FAM-1.form-2b" } }).equivalence_status, "UNESTABLISHED");
+  // A decision, but the scaffold itself says inputs are missing -- an incomplete study quoted as final.
+  assert.equal(formBankRecord({ ...base, linking: { schema_id: FORM_LINKING_SCHEMA_ID, equivalence_status: "LINKED", equivalence_decision: true, inputs_missing: ["anchor_opportunity_ids"], left_form_id: "FAM-1.form-2b" } }).equivalence_status, "UNESTABLISHED");
+  // A real decision about a different pair of forms entirely -- not a relation to this record.
+  assert.equal(formBankRecord({ ...base, linking: { schema_id: FORM_LINKING_SCHEMA_ID, equivalence_status: "LINKED", equivalence_decision: true, inputs_missing: [], left_form_id: "some-other-form", right_form_id: "yet-another-form" } }).equivalence_status, "UNESTABLISHED");
+});
+
 test("the shipped operational form manifest speaks the form class contract's own words", () => {
   const manifest = formManifest("2a");
   assert.equal(manifest.form_class, "OPERATIONAL");
@@ -185,6 +201,31 @@ test("a corrupt exposure ledger refuses rather than reading as empty", async () 
   assert.throws(() => recordExposure(createExposureLedger(), {
     form_id: "f", form_contract_digest: `sha256:${"0".repeat(64)}`, declared_class: "OPERATIONAL", occurred_at: "2026-02-30T10:00:00.000Z"
   }), /AOS_EXPOSURE_OCCURRED_AT/);
+});
+
+test("a malformed entry inside an otherwise well-formed ledger is refused, not silently dropped", async () => {
+  // `priorEntries` filters on `form_contract_digest`, so an entry that lost or malformed that
+  // field would fall out of every such filter and read as a form that was never administered --
+  // permitting a form with a corrupt prior exposure as fresh. An unreadable exposure is not the
+  // absence of one, so the ledger must refuse rather than quietly read past the bad row.
+  const { openExposureLedger } = await import("../../lib/form-class.mjs");
+  const digest = `sha256:${"9".repeat(64)}`;
+  const wellFormed = {
+    schema_id: "aos-exposure-entry.v1", form_id: "f", form_contract_digest: digest, declared_class: "OPERATIONAL",
+    administered_class: "OPERATIONAL", occasion_id: null, occurred_at: "2026-09-06T10:00:00.000Z", run_id: null,
+    cycle_id: null, scored: true, score: null, duration_ms: null, sequence_position: 1, interval_ms: null,
+    prior_exposure_count: 0, prior_scored_count: 0, prior_same_form_id_count: 1
+  };
+  // A row with no `form_contract_digest` at all: exactly the shape that would vanish from
+  // `priorEntries` and let a second administration of the digest above read as a first one.
+  const { form_contract_digest: _dropped, ...missingDigest } = wellFormed;
+  assert.throws(() => openExposureLedger({ schema_id: "aos-exposure-ledger.v1", entries: [wellFormed, missingDigest] }), /AOS_EXPOSURE_ENTRY_CORRUPT/);
+  // A row with the right shape but no entry schema tag -- the same "any object naming the right
+  // fields" gap this ledger already refuses at its own top level.
+  const { schema_id: _tag, ...untagged } = wellFormed;
+  assert.throws(() => openExposureLedger({ schema_id: "aos-exposure-ledger.v1", entries: [untagged] }), /AOS_EXPOSURE_ENTRY_CORRUPT/);
+  // The well-formed row alone is read without complaint.
+  assert.equal(openExposureLedger({ schema_id: "aos-exposure-ledger.v1", entries: [wellFormed] }).entries.length, 1);
 });
 
 test("a cycle excludes a practice-classified administration from the official aggregate", async () => {
@@ -345,6 +386,43 @@ test("a corrupt exposure ledger refuses the whole assessment rather than committ
   }
 });
 
+test("a replayed seed is committed PRACTICE, not ISSUED -- classified before the terminal, not after it", async () => {
+  // #585 round-1 review: `writeResult`/`commitTerminal` used to run before the ledger was ever
+  // consulted, so a replayed administration was scored, written and committed with status ISSUED,
+  // and only the later `cycle run` bookkeeping asked the ledger's opinion. Assessing the same exact
+  // seed twice against one home administers the same form_contract_digest twice; the second
+  // administration's own terminal must say so, not merely the ledger nobody read back.
+  const { mkdtempSync, readFileSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { addAgent, makePlan, newestRunId, run } = await import("./helpers.mjs");
+  const { runPaths } = await import("../../lib/store.mjs");
+
+  const cwd = mkdtempSync(join(tmpdir(), "aos-terminal-practice-"));
+  const home = join(cwd, ".aos");
+  try {
+    run(cwd, ["init"]);
+    addAgent(cwd, "solo");
+    const plan = makePlan(cwd, { default: "solo" });
+    const terminalOf = (runId) => JSON.parse(readFileSync(runPaths(home, runId).terminal, "utf8"));
+
+    run(cwd, ["assess", "--plan", plan, "--seed", "5"], 3);
+    const first = terminalOf(newestRunId(cwd));
+    // Unchanged from before this fix: a fresh, never-before-seen form_contract_digest is still
+    // classified OPERATIONAL by the ledger, so its own composite completeness alone decides ISSUED
+    // vs. INCOMPLETE, exactly as every other test exercising this fixture already expects.
+    assert.equal(first.status, "INCOMPLETE");
+
+    // The exact same seed, same home: the second administration meets the identical
+    // form_contract_digest the first one just recorded, whatever either one scored.
+    run(cwd, ["assess", "--plan", plan, "--seed", "5"], 3);
+    const second = terminalOf(newestRunId(cwd));
+    assert.equal(second.status, "PRACTICE", "a replayed form_contract_digest must never be committed as ISSUED or read identically to a first exposure");
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
 // ---------------------------------------------------------------------------------------------
 // Alternate-form linking: equivalence, drift, retirement (#585)
 
@@ -422,6 +500,28 @@ test("adequate anchor evidence within thresholds links; beyond them it drifts; d
   const { formBankRecord: bank } = await import("../../lib/form-class.mjs");
   const record = bank({ form_id: left.form_id, form_class: "OPERATIONAL", construct_opportunity_ids: left.construct_opportunity_ids, oracle_digest: `sha256:${"c".repeat(64)}`, linking: linked });
   assert.equal(record.equivalence_status, "LINKED");
+});
+
+test("fewer anchors than the method declares never links, whatever the samples and deltas say", async () => {
+  const { linkForms, LINKING_METHOD_INTERFACE } = await import("../../lib/form-class.mjs");
+  const { left, right, empirical } = linkingFixtures();
+  // The method declares `minimum_anchor_count: 3`; two anchors is one short of it, and every other
+  // input -- adequate samples, deltas within threshold -- is otherwise complete. Checking only
+  // `=== 0` let this read as a full anchor set and reach LINKED, removing the claim-stage ceiling
+  // on evidence the method never certified as enough.
+  assert.equal(LINKING_METHOD_INTERFACE.minimum_anchor_count, 3);
+  const short = ["C1.GF.01", "C2.SC.01"];
+  assert.ok(short.length < LINKING_METHOD_INTERFACE.minimum_anchor_count);
+  const scaffold = linkForms({
+    left_form: left, right_form: right, anchor_ids: short,
+    exposure_history: { left_prior_exposure_count: 0, right_prior_exposure_count: 0 },
+    task_model_digest: `sha256:${"9".repeat(64)}`,
+    response_patterns: empirical
+  });
+  assert.equal(scaffold.equivalence_decision, null, "two anchors is not the declared floor, and a short sample is not a smaller yes");
+  assert.equal(scaffold.equivalence_status, "UNESTABLISHED");
+  assert.equal(scaffold.claim_stage_ceiling, "PROFILE_BOUND");
+  assert.ok(scaffold.inputs_missing.includes("anchor_opportunity_ids"));
 });
 
 test("the exposure ledger drives form retirement: any exposure retires a form from official use", async () => {
@@ -625,12 +725,23 @@ test("a small DIF sample never turns a comparison on, and detected DIF refuses i
   const { comparisonGate, DIF_RUNNER_INTERFACE, DIF_RUNNER_REPORT_SCHEMA_ID } = await import("../../lib/form-class.mjs");
   assert.equal(DIF_RUNNER_INTERFACE.schema_id, "aos-dif-runner-interface.v1");
   assert.equal(DIF_RUNNER_INTERFACE.version, "1.0.0");
+  // #585. The declared inputs and outputs `DIF_RUNNER_INTERFACE` lists beside `dif_detected` and
+  // the sample counts: without them a report naming only its schema and a verdict would be
+  // permitted on its own say-so, which is the fix this fixture exists to keep exercising honestly.
+  const anchorIds = ["C1.GF.01", "C2.SC.01"];
+  const responsesOf = (count) => Array.from({ length: count }, (_, index) => index);
   const evidence = (overrides = {}) => ({
     schema_id: DIF_RUNNER_REPORT_SCHEMA_ID,
     interface_version: DIF_RUNNER_INTERFACE.version,
     facet: "language",
     levels: ["ko", "en"],
     sample_per_group: { ko: DIF_RUNNER_INTERFACE.minimum_sample_per_group, en: DIF_RUNNER_INTERFACE.minimum_sample_per_group },
+    anchor_opportunity_ids: anchorIds,
+    responses_per_group: {
+      ko: responsesOf(DIF_RUNNER_INTERFACE.minimum_sample_per_group),
+      en: responsesOf(DIF_RUNNER_INTERFACE.minimum_sample_per_group)
+    },
+    per_anchor_statistics: Object.fromEntries(anchorIds.map((anchor) => [anchor, { delta: 0.01 }])),
     dif_detected: false,
     ...overrides
   });
@@ -657,4 +768,20 @@ test("a small DIF sample never turns a comparison on, and detected DIF refuses i
   const wrongRunner = comparisonGate({ facet: "language", left_level: "ko", right_level: "en", invariance_evidence: evidence({ schema_id: "somebody-elses-dif.v9" }) });
   assert.equal(wrongRunner.comparison, "WITHHELD");
   assert.equal(wrongRunner.reasons.some((reason) => reason.includes("AOS_COMPARISON_RUNNER_MISMATCH")), true);
+  // A report naming only its schema, adequate sample counts and a bare `dif_detected: false` --
+  // none of the anchor opportunities, per-group response data or per-anchor statistics its own
+  // interface declares -- is the report approving itself, and must withhold rather than permit.
+  const bare = { schema_id: DIF_RUNNER_REPORT_SCHEMA_ID, interface_version: DIF_RUNNER_INTERFACE.version, facet: "language", levels: ["ko", "en"], sample_per_group: evidence().sample_per_group, dif_detected: false };
+  const noAnchors = comparisonGate({ facet: "language", left_level: "ko", right_level: "en", invariance_evidence: bare });
+  assert.equal(noAnchors.comparison, "WITHHELD");
+  assert.equal(noAnchors.decision, null);
+  assert.equal(noAnchors.reasons.some((reason) => reason.includes("AOS_COMPARISON_EVIDENCE_INCOMPLETE")), true);
+  // Anchors named, but no response data behind them.
+  const noResponses = comparisonGate({ facet: "language", left_level: "ko", right_level: "en", invariance_evidence: evidence({ responses_per_group: null }) });
+  assert.equal(noResponses.comparison, "WITHHELD");
+  assert.equal(noResponses.reasons.some((reason) => reason.includes("AOS_COMPARISON_EVIDENCE_INCOMPLETE")), true);
+  // Response data present, but no per-anchor statistics -- the interface's own declared output.
+  const noStatistics = comparisonGate({ facet: "language", left_level: "ko", right_level: "en", invariance_evidence: evidence({ per_anchor_statistics: {} }) });
+  assert.equal(noStatistics.comparison, "WITHHELD");
+  assert.equal(noStatistics.reasons.some((reason) => reason.includes("AOS_COMPARISON_EVIDENCE_INCOMPLETE")), true);
 });

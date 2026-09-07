@@ -1090,9 +1090,12 @@ test("same exact model with a different executable identity is not one cohort", 
   // under the other, and says which field of the cycle it failed.
   const cycle = { seeds: [1], profile_digest: left.profile_digest, suite_major: 0, scorer_major: 0 };
   const run = { seed: 1, profile_digest: right.profile_digest, suite_major: 0, scorer_major: 0, terminal_committed: true, issued: true };
-  assert.deepEqual(runValidity(cycle, run), { valid: false, reason: "PROFILE_CHANGED" });
   // #585. No `form_classification` on this fixture run, so the exposure ledger never saw it --
   // named `UNVERIFIED` rather than folded into the same `valid: true` a verified run would produce.
+  // This assertion pinned the pre-#585 shape of a `PROFILE_CHANGED` refusal, which used to return
+  // before `exposure` was computed at all; `recordRun` reads `validity.exposure.status`
+  // unconditionally, and a refusal missing the field is a TypeError there, not merely an omission.
+  assert.deepEqual(runValidity(cycle, run), { valid: false, reason: "PROFILE_CHANGED", exposure: { decision: null, status: "UNVERIFIED" } });
   assert.deepEqual(runValidity(cycle, { ...run, profile_digest: left.profile_digest }), {
     valid: true, reason: null, exposure: { decision: null, status: "UNVERIFIED" }
   });
