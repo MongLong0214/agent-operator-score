@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { hostname as osHostname, tmpdir, uptime as osUptime } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -91,16 +91,62 @@ test("two writers cannot hold one run", () => {
   } finally { rmSync(home, { recursive: true, force: true }); }
 });
 
+// Mirrors `lib/store.mjs`'s own boot identity so a test can write a lock this boot demonstrably
+// owns. Kept here rather than exported from the module: a test that imports the value it is
+// checking proves only that the module agrees with itself.
+const thisBootLock = (pid) => ({
+  schema_id: "aos-resource-lock.v1",
+  pid,
+  boot: `${osHostname()}:${Math.floor(Date.now() / 1000) - Math.floor(osUptime())}`,
+  nonce: "0".repeat(24),
+  created_at: new Date().toISOString()
+});
+
 test("a lock whose owner is gone is broken, not honoured", () => {
   // A crash would otherwise make the run permanently unwritable, and the operator's only repair
   // would be deleting a file nobody told them about.
+  //
+  // The lock now records the boot it was taken under, because a dead pid on its own cannot tell a
+  // crashed owner from a recycled pid (see the ambiguity test below). The property this test has
+  // always been about is unchanged and still holds where it can be established: a lock written by
+  // THIS boot whose pid is gone is broken and entered, so a crash never leaves a run permanently
+  // unwritable. What changed is only the case this test never covered -- a lock nothing can
+  // adjudicate is refused instead of guessed at.
   const home = scratch();
   try {
     const { runId } = createRun(home, { mode: "TEST" });
-    // A pid that cannot be running: this process would have had to fork four billion times.
-    writeFileSync(join(runPaths(home, runId).root, "run.lock"), "4000000000", "utf8");
+    // A pid that cannot be running -- this process would have had to fork four billion times --
+    // recorded under this boot, so its staleness is a fact rather than an inference.
+    writeFileSync(join(runPaths(home, runId).root, "run.lock"), JSON.stringify(thisBootLock(4000000000)), "utf8");
     assert.equal(withRunLock(home, runId, () => "recovered"), "recovered");
   } finally { rmSync(home, { recursive: true, force: true }); }
+});
+
+test("a lock whose recorded owner is gone is not reclaimed on pid liveness alone", () => {
+  // #585 governance directive 15.4. Reclaiming a lock because `kill(pid, 0)` says nobody is there
+  // is a guess: pids are reused, so a live unrelated process reads as the owner still holding, and
+  // a dead pid reads as safe to break even when the owner died mid-transaction and left the ledger
+  // half-written. The lock file has to say enough about its owner to tell "this is my own stale
+  // lock" from "I cannot tell", and an ambiguous state is BLOCKED rather than reclaimed -- an
+  // ambiguous stale lock silently reclaimed is one of the named stop conditions.
+  const home = scratch();
+  try {
+    initHome(home);
+    const lockPath = join(home, "exposure-ledger.lock");
+    // A lock left by a pid that is almost certainly not alive, carrying nothing else about who
+    // wrote it: the exact shape this process cannot distinguish from a live owner whose pid was
+    // recycled. Refusing is the only honest answer.
+    writeFileSync(lockPath, "999999", "utf8");
+    assert.throws(
+      () => withExposureLedgerLock(home, () => "reclaimed"),
+      /AOS_EXPOSURE_LOCK_UNAVAILABLE|AOS_EXPOSURE_LEDGER_LOCKED/u,
+      "a lock file carrying only a dead pid was broken and entered on that basis alone"
+    );
+    // The ledger must be untouched by the refusal.
+    assert.equal(existsSync(lockPath), true, "the refusal deleted the lock it could not adjudicate");
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
 });
 
 test("two writers cannot hold the exposure ledger lock", () => {

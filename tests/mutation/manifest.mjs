@@ -8474,6 +8474,15 @@ export const GUARDS = [
     test: "tests/product/form-class.test.mjs",
     name: "a small DIF sample never turns a comparison on, and detected DIF refuses it"
   },
+  {
+    guard: "an unadjudicable lock is refused rather than reclaimed",
+    reason: "#585 governance directive 15.4. Reclaiming on isAlive(pid) alone is a guess in both directions: a recycled pid reads as a live owner, and a dead pid reads as safe to break even when the owner died mid-transaction and left the ledger half-written. Only a lock this boot wrote can be adjudicated; anything else is refused",
+    file: "lib/store.mjs",
+    from: "    if (held === null || typeof held.boot !== \"string\" || held.boot !== bootId()) {",
+    to: "    if (false) {",
+    test: "tests/product/home.test.mjs",
+    name: "a lock whose recorded owner is gone is not reclaimed on pid liveness alone"
+  }
 ];
 
 /**
@@ -8892,6 +8901,7 @@ export const ACCOUNTED_GUARDS = [
   "an overlap in the ledger is a collision whatever the schedule said",
   "an overlap the requirement does not permit is not an adequate route",
   "an owner AOS cannot judge is not delegation the operator got wrong",
+  "an unadjudicable lock is refused rather than reclaimed",
   "an unanswered checkpoint mints nothing",
   "an unanswered reliance metric stays NOT_OBSERVED",
   "an unavailable author is reported as unavailable",
