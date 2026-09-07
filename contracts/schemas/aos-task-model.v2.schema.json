@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/MongLong0214/agent-operator-score/contracts/schemas/aos-task-model.v1.schema.json",
+  "$id": "https://github.com/MongLong0214/agent-operator-score/contracts/schemas/aos-task-model.v2.schema.json",
   "title": "AOS task model",
-  "description": "What each administered form creates an opportunity for, what perturbation and oracle it must carry, and which opportunity sources are declared but not administered.",
+  "description": "What each administered form creates an opportunity for, what perturbation and oracle it must carry, and which opportunity sources are declared but not administered. v2: #585 item 6. `scored_once_per_cycle` became `scored_once_per_aos_home` (#585 item 5) without moving the schema identifier, so a pre-#585 document (missing the new required field, and carrying a field this schema now forbids under `additionalProperties: false`) and a post-#585 document both claimed to be `aos-task-model.v1` -- the required-field change was incompatible and the discriminator did not say so. v2 is that discriminator moving with the incompatibility it names.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema", "contract_version", "form_classes", "equivalence", "exposure_ledger", "form_variation", "forms", "unadministered_opportunity_sources"],
   "properties": {
-    "schema": { "const": "aos-task-model.v1" },
+    "schema": { "const": "aos-task-model.v2" },
     "contract_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
     "form_classes": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/form_class" } },
     "equivalence": {

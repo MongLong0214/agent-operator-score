@@ -56,7 +56,7 @@ const issueFam5Implementation = async (seed, source) => {
   }
 };
 const ADMINISTERED_METRICS_BY_FAMILY = Object.freeze(Object.fromEntries(
-  JSON.parse(readFileSync(new URL("../../contracts/aos-task-model.v1.json", import.meta.url), "utf8")).forms
+  JSON.parse(readFileSync(new URL("../../contracts/aos-task-model.v2.json", import.meta.url), "utf8")).forms
     .map((form) => [form.family, Object.freeze([...form.administered_metric_ids])])
 ));
 

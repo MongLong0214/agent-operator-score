@@ -1206,6 +1206,31 @@ test("an empty phase B task array is not an observation: every output stays null
   assert.equal(report.uncertainty.status, "NOT_ADMINISTERED");
 });
 
+test("a phase B task array holding only empty objects is not an observation either: status stays UNESTABLISHED", async () => {
+  // #585 (this round). `tasks: [{}]` cleared the old `tasks.length > 0` check and reported OBSERVED
+  // / SINGLE_OCCASION with all four transfer answers still null, because the array held a slot with
+  // none of the fields any output actually reads (`relatedness`, `delayed`, `passed`,
+  // `independent_verification_observed` are all `undefined` on `{}`). A slot in the array is not an
+  // administered task, whatever `tasks.length` says about it.
+  const { TRANSFER_PROTOCOL, assessTransfer } = await import("../../lib/form-class.mjs");
+  const report = assessTransfer({ phase_b: { agent_available: false, transcript_available: false, tasks: [{}, {}] } });
+  for (const output of TRANSFER_PROTOCOL.outputs) assert.equal(report[output], null, `${output} was not null with only empty phase B task objects`);
+  assert.equal(report.status, "UNESTABLISHED", "a tasks array holding only empty objects must not read as an observed occasion");
+  assert.equal(report.uncertainty.status, "NOT_ADMINISTERED");
+
+  // A single genuinely observed task among otherwise-empty slots is enough to count as administered
+  // -- the fix is about tasks with no observed answer at all, not about requiring every slot filled.
+  const mixed = assessTransfer({
+    phase_b: {
+      agent_available: false,
+      transcript_available: false,
+      tasks: [{}, { task_id: "near-1", relatedness: "near", passed: true, independent_verification_observed: true, delayed: false }]
+    }
+  });
+  assert.equal(mixed.status, "OBSERVED", "a real observed task among empty slots must still count as administered");
+  assert.equal(mixed.near_transfer, true);
+});
+
 test("collaborative success with solo transfer failure stays a C7 fact and touches no core outcome", async () => {
   const { readFileSync } = await import("node:fs");
   const { assessTransfer } = await import("../../lib/form-class.mjs");

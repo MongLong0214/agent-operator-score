@@ -5550,8 +5550,8 @@ export const GUARDS = [
     guard: "the cycle command quotes the stored decision",
     reason: "the dashboard test named both surfaces and exercised one, so the command could derive its own answer while the named guard stayed green",
     file: "lib/cli.mjs",
-    from: "  const summary = stored.decision ?? summariseCycle(stored);",
-    to: "  const summary = summariseCycle(stored);",
+    from: "  let summary = stored.decision;",
+    to: "  let summary = null;",
     test: "tests/product/cycle-command.test.mjs",
     name: "the cycle command quotes the stored decision rather than deriving its own"
   },
@@ -5568,8 +5568,8 @@ export const GUARDS = [
     guard: "the dashboard quotes the stored cycle decision",
     reason: "the dashboard rebuilt the aggregate and the model policy from the raw cycle while the cycle command rebuilt them independently, so a cycle the command refused was promoted on this surface and a stored projection could differ from the page rendered out of it",
     file: "lib/dashboard.mjs",
-    from: "  const summary = stored.decision ?? summariseCycle(stored);",
-    to: "  const summary = { ...summariseCycle(stored), issued: true };",
+    from: "    summary = summariseCycle(stored, { ledger: ledgerForSummary });",
+    to: "    summary = { ...summariseCycle(stored, { ledger: ledgerForSummary }), issued: true };",
     test: "tests/product/dashboard.test.mjs",
     name: "a cycle nothing bound a model to is not shown as an operator score"
   },
@@ -8055,8 +8055,8 @@ export const GUARDS = [
     guard: "the cycle run carries the ledger's classification onto the recorded run",
     reason: "runValidity can only refuse what it is handed; a cycle command that drops the classification on the floor records the replay as a historical run with no classification, which stays valid",
     file: "lib/cli.mjs",
-    from: "        form_classification: boundClassification\n      });",
-    to: "        form_classification: null\n      });",
+    from: "        form_classification: boundClassification\n      }, { ledger: postRunLedger });",
+    to: "        form_classification: null\n      }, { ledger: postRunLedger });",
     test: "tests/product/form-class.test.mjs",
     name: "a replayed operational form crosses runs as practice, never as official aggregate evidence"
   },
@@ -8439,22 +8439,61 @@ export const GUARDS = [
     name: "a cycle run's published sequence_position is the ledger's own committed reservation, not the stale unlocked snapshot cycle run read"
   },
   {
+    // #585 item 1 (round 2). This guard's name is retained unchanged from round 1's schema-tag
+    // check, which no longer exists in the code -- the mechanism it guards moved entirely. Renaming
+    // it would orphan the round-1 measurement already committed to tests/mutation/measured.json
+    // (this exact name, keyed to a fingerprint over the old code), and that ledger is not this
+    // fix's to rewrite. What the name still describes, truthfully: a stored classification alone --
+    // whatever shape it carries, tagged or not -- can no longer authorize VERIFIED by itself.
     guard: "a stored classification must carry its own schema tag before it can authorize VERIFIED",
-    reason: "form_classification lives on cycle.json, a plain file; an untagged object naming only official_scoring_permitted: true used to authorize VERIFIED on its own say-so, the same stored-artifact-approves-itself defect this repository keeps producing",
+    reason: "#585 item 1 (round 2). `run.form_classification` lives on cycle.json, a plain file an operator can edit by hand; a wholly hand-written, internally consistent classification -- the exact schema tag classifyAdministration stamps, a genuine boolean, a run/administration/form binding that all name this exact run -- used to authorize VERIFIED with no ledger entry ever backing it, the same stored-artifact-approves-itself defect three prior review rounds each re-created one field comparison at a time",
     file: "lib/cycle.mjs",
-    from: "if (classification.schema_id !== ADMINISTRATION_CLASSIFICATION_SCHEMA_ID || typeof classification.official_scoring_permitted !== \"boolean\") {\n    return Object.freeze({ decision: null, status: \"UNVERIFIED\" });\n  }",
+    from: "  if (entry === undefined) return Object.freeze({ decision: null, status: \"UNVERIFIED\" });",
     to: "",
     test: "tests/product/cycle.test.mjs",
-    name: "a stored classification must be tagged the way classifyAdministration actually tags one, or it is unverified"
+    name: "a hand-written cycle.json -- internally consistent, no ledger entry behind it -- does not reach VERIFIED"
   },
   {
-    guard: "a stored classification must bind to the run, administration and form it sits on before it can authorize VERIFIED",
-    reason: "#585 item 2. The schema tag and boolean type check only ask whether the object has the shape classifyAdministration produces, never whether it is a classification OF THIS RUN -- a classification copied from another run's cycle.json entry, or written by hand with just those two fields, passed both and authorized VERIFIED on nothing but its own say-so",
+    guard: "exposureVerification's VERIFIED answer is the ledger's own administered_class, not merely that some entry exists under this run's id",
+    reason: "#585 item 1 (round 2). A ledger row keyed to this run's administration id can exist and still not be an official administration -- WARMUP and PRACTICE administrations are recorded into the same ledger -- so an entry's mere presence is not the same fact as the ledger having permitted official scoring",
     file: "lib/cycle.mjs",
-    from: "  if (!bound) return Object.freeze({ decision: null, status: \"UNVERIFIED\" });",
-    to: "  if (false) return Object.freeze({ decision: null, status: \"UNVERIFIED\" });",
+    from: "  const ledgerPermitted = entry.administered_class === \"OPERATIONAL\";",
+    to: "  const ledgerPermitted = true;",
     test: "tests/product/cycle.test.mjs",
-    name: "a classification naming a different run, administration or form does not verify this one"
+    name: "exposureVerification names the third state a permitted run and a pre-ledger run used to share"
+  },
+  {
+    guard: "a ledger entry naming a different form contract than this run's own record refuses, rather than silently verifying, this run's exposure",
+    reason: "#585 item 1 (round 2). An entry keyed to this run's administration id but recorded against a different form_contract_digest is not evidence for this run's own claim -- it is a contradiction, and reading it as silence would let a run attach itself to any entry sharing its administration id regardless of which form the ledger actually saw",
+    file: "lib/cycle.mjs",
+    from: "  if (!nonEmptyString(run.form_contract_digest) || entry.form_contract_digest !== run.form_contract_digest) {",
+    to: "  if (false) {",
+    test: "tests/product/cycle.test.mjs",
+    name: "exposureVerification builds VERIFIED from a real ledger entry, made through reserveExposure and recordExposure, not by hand"
+  },
+  {
+    // #585 item 1 (round 2). This guard's name is retained unchanged from round 1's binding check,
+    // which no longer exists in the code -- see the sibling comment three entries above for why the
+    // name is kept rather than replaced. What it still describes, truthfully: a stored
+    // classification's own claim about which run/administration/form it names no longer matters,
+    // because it is checked for agreement against the ledger's own entry rather than trusted for
+    // its self-reported binding.
+    guard: "a stored classification must bind to the run, administration and form it sits on before it can authorize VERIFIED",
+    reason: "#585 item 1 (round 2). form_classification survives only as a cached convenience; a stored record that disagrees with the ledger's own committed verdict for this exact administration must never be resolved in the stored record's favour, or a forged classification value could override a ledger entry that already said otherwise",
+    file: "lib/cycle.mjs",
+    from: "  if (classification !== null && typeof classification === \"object\" &&\n      typeof classification.official_scoring_permitted === \"boolean\" &&\n      classification.official_scoring_permitted !== ledgerPermitted) {",
+    to: "  if (false) {",
+    test: "tests/product/cycle.test.mjs",
+    name: "a stored classification that disagrees with the ledger's own verdict is refused, never trusted over it"
+  },
+  {
+    guard: "assessTransfer requires an actually observed phase-B task, not merely a nonempty tasks array, before calling phase B administered",
+    reason: "#585 item 1 (round 2). tasks: [{}] cleared the old tasks.length > 0 check and reported OBSERVED / SINGLE_OCCASION with all four transfer answers still null, because the array held a slot with none of the fields any output actually reads (relatedness, delayed, passed, independent_verification_observed are all undefined on {})",
+    file: "lib/form-class.mjs",
+    from: "  const phaseBAdministered = phaseB !== null && tasks.some(isObservedTask);",
+    to: "  const phaseBAdministered = phaseB !== null && tasks.length > 0;",
+    test: "tests/product/form-class.test.mjs",
+    name: "a phase B task array holding only empty objects is not an observation either: status stays UNESTABLISHED"
   },
   {
     guard: "a malformed exposure ledger entry refuses the ledger instead of vanishing from it",
@@ -8667,7 +8706,7 @@ export const GUARDS = [
     guard: "an empty phase B task array does not read as an observed transfer occasion",
     reason: "an empty tasks array is presence of the phase B container, not evidence in it -- transferDecision already answers null for every output on an empty array, but status/uncertainty keyed off whether phase_b was non-null at all, so this exact shape reported OBSERVED with uncertainty SINGLE_OCCASION while all four transfer answers stayed null",
     file: "lib/form-class.mjs",
-    from: "  const phaseBAdministered = phaseB !== null && tasks.length > 0;",
+    from: "  const phaseBAdministered = phaseB !== null && tasks.some(isObservedTask);",
     to: "  const phaseBAdministered = phaseB !== null;",
     test: "tests/product/form-class.test.mjs",
     name: "an empty phase B task array is not an observation: every output stays null and the status stays UNESTABLISHED"
@@ -8969,6 +9008,7 @@ export const ACCOUNTED_GUARDS = [
   "a lane the release has not proven never reaches official support",
   "a leaked descendant blocks issuance",
   "a leaked descendant is an actual external action",
+  "a ledger entry naming a different form contract than this run's own record refuses, rather than silently verifying, this run's exposure",
   "a live audit needs a live snapshot",
   "a live head the audit never covered is reported",
   "a log checked without its observations is not a log that passed",
@@ -9214,6 +9254,7 @@ export const ACCOUNTED_GUARDS = [
   "artifact top-level mode",
   "artifact type in the envelope",
   "assess records every graded administration into the exposure ledger",
+  "assessTransfer requires an actually observed phase-B task, not merely a nonempty tasks array, before calling phase B administered",
   "axis metric ids belong to the administered family contract",
   "baseline-proven task-input changes preserve a separate observation",
   "binary handling",
@@ -9303,6 +9344,7 @@ export const ACCOUNTED_GUARDS = [
   "excluded issues present in the snapshot",
   "execution plan cycle detection",
   "explicit keys are keys",
+  "exposureVerification's VERIFIED answer is the ledger's own administered_class, not merely that some entry exists under this run's id",
   "facet coverage preserves evidence digests",
   "facet evidence enters through the observation issuance boundary",
   "false completion cap",

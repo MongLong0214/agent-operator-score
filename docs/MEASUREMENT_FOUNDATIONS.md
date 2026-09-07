@@ -66,7 +66,7 @@ Required contract artifacts:
 ```text
 aos-construct-map.v1
 aos-evidence-model.v1
-aos-task-model.v1
+aos-task-model.v2
 aos-interpretation-use-argument.v1
 ```
 

@@ -15,22 +15,20 @@ import {
   runValidity,
   stabilityOf
 } from "../../lib/cycle.mjs";
-import { ADMINISTRATION_CLASSIFICATION_SCHEMA_ID } from "../../lib/form-class.mjs";
+import { ADMINISTRATION_CLASSIFICATION_SCHEMA_ID, openExposureLedger, recordExposure, reserveExposure } from "../../lib/form-class.mjs";
 
-// #585 item 2. `exposureVerification` now requires a classification to name the run, administration
-// and form it sits on, checked against the run record itself -- see "a classification naming a
-// different run..." below. `runIdFor`/`formDigestFor` are the one derivation both `runOf` and
-// `classification` use, so a fixture built from the same seed on both sides genuinely binds, the
-// way `assess` binds them in production by naming the same `runId` on the run record and on the
-// classification it attaches (`lib/cli.mjs`'s `boundClassification`).
+// #585 item 1 (this round). `runIdFor`/`formDigestFor` are the one derivation every fixture below
+// uses, so a run and the ledger entry meant to back it genuinely share an identity the way `assess`
+// does in production -- naming the same `runId` on the run record, on the ledger entry
+// `reserveExposure`/`recordExposure` commit under `administration_id`, and (when one is attached at
+// all) on the cached `form_classification`.
 const runIdFor = (seed) => `run-${seed}`;
 const formDigestFor = (seed) => `form-digest-${seed}`;
 
 // A minimal but genuinely tagged classification, the shape `classifyAdministration` actually
-// returns. `exposureVerification` refuses to authorize VERIFIED from an untagged object -- see
-// "a stored classification must be tagged..." below -- so every fixture that means to be a real,
-// ledger-checked classification uses this rather than a bare `{official_scoring_permitted}`, and
-// binds to the seed's own run_id/form_contract_digest rather than leaving them absent.
+// returns. It no longer authorizes VERIFIED on its own -- see the tests below -- but `runValidity`
+// still reads its `official_scoring_permitted`/`refusal_code` to decide whether a run counts at
+// all, so fixtures that mean to exercise that path still carry one.
 const classification = (seed, permitted, overrides = {}) => ({
   schema_id: ADMINISTRATION_CLASSIFICATION_SCHEMA_ID,
   official_scoring_permitted: permitted,
@@ -39,6 +37,20 @@ const classification = (seed, permitted, overrides = {}) => ({
   form_contract_digest: formDigestFor(seed),
   ...overrides
 });
+
+// #585 item 1 (this round). The ledger entry `exposureVerification` now looks up by
+// `administration_id === run.run_id`. Only the four fields that function actually reads are given
+// values here (`administration_id`, `form_contract_digest`, `state`, `administered_class`); a
+// dedicated integration test further down builds a real one through `reserveExposure` and
+// `recordExposure` (lib/form-class.mjs) instead of by hand, to prove those functions and this one
+// actually agree on the shape.
+const ledgerEntry = (seed, { administeredClass = "OPERATIONAL", administrationId = runIdFor(seed), formContractDigest = formDigestFor(seed), state = "TERMINAL" } = {}) => ({
+  administration_id: administrationId,
+  form_contract_digest: formContractDigest,
+  state,
+  administered_class: administeredClass
+});
+const ledgerOf = (entries) => ({ entries });
 
 const cycleOf = (seeds = ["1", "2", "3"]) =>
   createCycle({ profileDigest: "sha256:profile", suiteMajor: 1, scorerMajor: 1, seeds });
@@ -58,7 +70,7 @@ const runOf = (seed, over = {}) => ({
   ...over
 });
 
-const withRuns = (runs, seeds = ["1", "2", "3"]) => runs.reduce((cycle, run) => recordRun(cycle, run), cycleOf(seeds));
+const withRuns = (runs, seeds = ["1", "2", "3"], options = {}) => runs.reduce((cycle, run) => recordRun(cycle, run, options), cycleOf(seeds));
 
 test("the seeds are fixed when the cycle is created", () => {
   // A cycle that could draw a fresh seed later is one whose owner can retry until the scenario
@@ -191,23 +203,150 @@ test("an excluded run is named with its reason", () => {
   assert.equal(aggregate.valid_runs, 1);
 });
 
+// ---------------------------------------------------------------------------------------------
+// #585 item 1 (this round). `exposureVerification` never read the exposure ledger at all: it
+// compared `run.form_classification`'s fields against other fields on that same run record --
+// `cycle.json`, a plain, operator-editable file. Three review rounds "fixed" the self-approval by
+// adding one more field comparison, and each next round defeated the new comparison by filling in
+// one more field on the same hand-written object. No amount of comparing `cycle.json` against
+// itself closes that hole, because every field on both sides of the comparison is one the operator
+// already controls. The tests below replace that whole scheme: `exposureVerification` now looks
+// up the administration in the exposure ledger -- evidence a `cycle.json` editor cannot also forge,
+// because `openExposureLedger` (lib/form-class.mjs) recomputes and checks the ledger's own
+// transition-digest chain before anything here trusts an entry from it -- and answers from what
+// the ledger's own committed entry says, never from the stored record alone.
+
 test("exposureVerification names the third state a permitted run and a pre-ledger run used to share", () => {
   // #632's collapse, a sixth time: `runValidity` returned the identical {valid: true, reason: null}
   // for a run the exposure ledger checked and permitted and for a run it never saw at all. Three
   // decisions, three words -- the same shape `capabilityProbeGeneration` uses for a probe record's
-  // generation -- and no run with a real classification may read as the pre-ledger case or back.
+  // generation -- and no run with a real ledger entry may read as the pre-ledger case or back.
   assert.deepEqual([...EXPOSURE_VERIFICATION_STATUSES], ["VERIFIED", "REFUSED", "UNVERIFIED"]);
+  // No ledger at all: a caller with no AOS home available. UNVERIFIED, never a promotion earned by
+  // what the run's own record claims about itself.
   assert.deepEqual(exposureVerification({ form_classification: null }), { decision: null, status: "UNVERIFIED" });
   assert.deepEqual(exposureVerification({}), { decision: null, status: "UNVERIFIED" });
+
   const seed = "0000000000000001";
+  const permittedLedger = ledgerOf([ledgerEntry(seed, { administeredClass: "OPERATIONAL" })]);
   assert.deepEqual(
-    exposureVerification({ ...runOf(seed), form_classification: classification(seed, true) }),
+    exposureVerification({ ...runOf(seed), form_classification: classification(seed, true) }, { ledger: permittedLedger }),
     { decision: true, status: "VERIFIED" }
   );
+  const refusedLedger = ledgerOf([ledgerEntry(seed, { administeredClass: "PRACTICE" })]);
   assert.deepEqual(
-    exposureVerification({ ...runOf(seed), form_classification: classification(seed, false, { refusal_code: "AOS_FORM_ALREADY_EXPOSED" }) }),
+    exposureVerification({ ...runOf(seed), form_classification: classification(seed, false, { refusal_code: "AOS_FORM_ALREADY_EXPOSED" }) }, { ledger: refusedLedger }),
     { decision: false, status: "REFUSED" }
   );
+  // The ledger's own administered_class is what decides REFUSED here, on its own -- no stored
+  // classification is present on this run at all, so nothing but the entry's own
+  // `administered_class` could be answering this.
+  assert.deepEqual(exposureVerification(runOf(seed), { ledger: refusedLedger }), { decision: false, status: "REFUSED" });
+});
+
+test("a hand-written cycle.json -- internally consistent, no ledger entry behind it -- does not reach VERIFIED", () => {
+  // This is the point of this task. Every field below agrees with every other field on the same
+  // object: the schema tag `classifyAdministration` actually stamps, a genuine boolean, and a
+  // run_id/administration_id/form_contract_digest binding that all name this exact run -- exactly
+  // what three prior review rounds each added and each had defeated by the next hand-written
+  // object that also carried it. What that object cannot also produce is a ledger entry: `ledger`
+  // below is a REAL exposure ledger, opened with `openExposureLedger` (lib/form-class.mjs) the same
+  // way `lib/cli.mjs` opens the one on disk, carrying one genuine administration for a different
+  // form and nothing at all under this run's own id.
+  const seed = "0000000000000001";
+  const run = {
+    ...runOf(seed),
+    form_classification: {
+      schema_id: ADMINISTRATION_CLASSIFICATION_SCHEMA_ID,
+      official_scoring_permitted: true,
+      run_id: runIdFor(seed),
+      administration_id: runIdFor(seed),
+      form_contract_digest: formDigestFor(seed),
+      administered_class: "OPERATIONAL",
+      refusal_code: null,
+      reasons: []
+    }
+  };
+  const empty = openExposureLedger(undefined);
+  const unrelatedLedger = reserveExposure(empty, {
+    form_id: "some-other-form",
+    form_contract_digest: `sha256:${"a".repeat(64)}`,
+    declared_class: "OPERATIONAL",
+    administration_id: "a-completely-different-administration",
+    occurred_at: "2026-01-01T00:00:00.000Z"
+  }).ledger;
+
+  const withNoLedgerAtAll = exposureVerification(run);
+  assert.deepEqual(withNoLedgerAtAll, { decision: null, status: "UNVERIFIED" }, "no ledger available must not promote the stored record");
+
+  const withARealButUnrelatedLedger = exposureVerification(run, { ledger: unrelatedLedger });
+  assert.deepEqual(withARealButUnrelatedLedger, { decision: null, status: "UNVERIFIED" }, "a hand-written classification with no backing ledger entry reached VERIFIED");
+  assert.notEqual(withARealButUnrelatedLedger.status, "VERIFIED");
+
+  // And `runValidity`/`recordRun` -- the only two callers that ever stamp `exposure_verification`
+  // onto a stored run -- inherit the same refusal rather than deriving their own opinion of it.
+  const cycle = cycleOf([seed, "0000000000000002", "0000000000000003"]);
+  const validity = runValidity(cycle, run, { ledger: unrelatedLedger });
+  assert.equal(validity.exposure.status, "UNVERIFIED");
+  const recorded = recordRun(cycle, run, { ledger: unrelatedLedger });
+  assert.equal(recorded.runs[0].exposure_verification, "UNVERIFIED");
+});
+
+test("exposureVerification builds VERIFIED from a real ledger entry, made through reserveExposure and recordExposure, not by hand", () => {
+  // Everything above uses a hand-rolled ledger entry naming only the four fields
+  // `exposureVerification` reads. This proves the real functions that ever write such an entry --
+  // `reserveExposure` then `recordExposure` (lib/form-class.mjs), exactly as `lib/cli.mjs`'s
+  // `assess` calls them -- produce something this function actually accepts as VERIFIED, and that a
+  // seed the ledger never saw stays UNVERIFIED even sitting right beside one it did.
+  const runId = "run-real-ledger";
+  const formContractDigest = `sha256:${"7".repeat(64)}`;
+  const reserved = reserveExposure(openExposureLedger(undefined), {
+    form_id: "FAM-1",
+    form_contract_digest: formContractDigest,
+    declared_class: "OPERATIONAL",
+    administration_id: runId,
+    occurred_at: "2026-01-01T00:00:00.000Z"
+  });
+  const finalized = recordExposure(reserved.ledger, {
+    form_id: "FAM-1",
+    form_contract_digest: formContractDigest,
+    declared_class: "OPERATIONAL",
+    administered_class: "OPERATIONAL",
+    administration_id: runId,
+    occurred_at: "2026-01-01T00:05:00.000Z",
+    run_id: runId,
+    scored: true
+  });
+
+  const run = { run_id: runId, form_contract_digest: formContractDigest };
+  assert.deepEqual(exposureVerification(run, { ledger: finalized.ledger }), { decision: true, status: "VERIFIED" });
+
+  // A different run, one the ledger never reserved or finalized anything for, stays UNVERIFIED
+  // even though it is checked against the very same ledger object.
+  const neverAdministered = { run_id: "run-never-administered", form_contract_digest: formContractDigest };
+  assert.deepEqual(exposureVerification(neverAdministered, { ledger: finalized.ledger }), { decision: null, status: "UNVERIFIED" });
+
+  // And a run naming a different form contract digest than the one the ledger actually recorded
+  // under this exact administration id is refused, not silently trusted.
+  const wrongDigest = { run_id: runId, form_contract_digest: `sha256:${"9".repeat(64)}` };
+  assert.deepEqual(exposureVerification(wrongDigest, { ledger: finalized.ledger }), { decision: false, status: "REFUSED" });
+});
+
+test("a stored classification that disagrees with the ledger's own verdict is refused, never trusted over it", () => {
+  // The stored `form_classification` survives as a cached convenience, not a second authority. A
+  // run whose own record claims `official_scoring_permitted: true` while the ledger's committed
+  // entry for that exact administration says PRACTICE is a disagreement, and the disagreement is
+  // resolved against the stored record, not in its favour.
+  const seed = "0000000000000001";
+  const ledgerSaysPractice = ledgerOf([ledgerEntry(seed, { administeredClass: "PRACTICE" })]);
+  const runClaimsPermitted = { ...runOf(seed), form_classification: classification(seed, true) };
+  assert.deepEqual(exposureVerification(runClaimsPermitted, { ledger: ledgerSaysPractice }), { decision: false, status: "REFUSED" });
+
+  // And the reverse: the ledger says OPERATIONAL, the stored record claims it was refused. Still
+  // never VERIFIED-by-disagreement in either caller's favour -- refused either way.
+  const ledgerSaysOperational = ledgerOf([ledgerEntry(seed, { administeredClass: "OPERATIONAL" })]);
+  const runClaimsRefused = { ...runOf(seed), form_classification: classification(seed, false, { refusal_code: "AOS_FORM_ALREADY_EXPOSED" }) };
+  assert.deepEqual(exposureVerification(runClaimsRefused, { ledger: ledgerSaysOperational }), { decision: false, status: "REFUSED" });
 });
 
 test("a v0.2 result whose exposure the ledger never verified is refused from the official aggregate", () => {
@@ -231,83 +370,61 @@ test("a v0.2 result whose exposure the ledger never verified is refused from the
   assert.equal(verdict.valid, false, "a v0.2 run the ledger never verified counted toward the official aggregate");
   assert.equal(verdict.reason, "AOS_EXPOSURE_UNVERIFIED_FOR_PROFILE_BOUND");
 
-  // And a v0.2 run the ledger did verify still counts.
+  // And a v0.2 run the ledger did verify still counts -- now genuinely, from a real ledger entry.
+  const ledger = ledgerOf([ledgerEntry(seed, { administeredClass: "OPERATIONAL" })]);
   const profileVerified = runOf(seed, { result_schema: "aos-result.v4", form_classification: classification(seed, true) });
-  assert.equal(runValidity(cycleOf(), profileVerified).valid, true, "a verified v0.2 run was refused");
+  assert.equal(runValidity(cycleOf(), profileVerified, { ledger }).valid, true, "a verified v0.2 run was refused");
+  assert.equal(runValidity(cycleOf(), profileVerified, { ledger }).exposure.status, "VERIFIED");
 });
 
-test("a stored classification must be tagged the way classifyAdministration actually tags one, or it is unverified", () => {
-  // `form_classification` lives on `cycle.json`, a plain file. An untagged object carrying only
-  // `official_scoring_permitted: true` used to authorize VERIFIED on its own say-so -- no
-  // different from any other stored artifact approving itself. Absence and an untagged imitation
-  // are different facts (one never saw the ledger, the other claims to but cannot prove it) and
-  // this function answers both the same way: neither may authorize more than UNVERIFIED.
-  assert.deepEqual(exposureVerification({ form_classification: { official_scoring_permitted: true } }), { decision: null, status: "UNVERIFIED" });
-  // The right schema tag with the wrong type on the field it reads is just as untrustworthy.
-  assert.deepEqual(exposureVerification({ form_classification: { schema_id: ADMINISTRATION_CLASSIFICATION_SCHEMA_ID, official_scoring_permitted: "true" } }), { decision: null, status: "UNVERIFIED" });
-  // The genuine tag with a real boolean, bound to the run it sits on, is what actually authorizes
-  // VERIFIED or REFUSED.
+test("the shape of the stored classification no longer decides VERIFIED -- the ledger entry does", () => {
+  // Before this round, an untagged object (`{official_scoring_permitted: true}`, no schema_id) or
+  // one naming a different run/administration/form was refused down to UNVERIFIED by field checks
+  // against the run record it sat on. Those checks are gone: the ledger is what decides now, so a
+  // classification's own shape -- tagged or not, bound or not, even entirely absent -- no longer
+  // matters to the answer. A genuinely matching ledger entry verifies a run with no
+  // `form_classification` at all, and an untagged or wrongly-bound classification does not save a
+  // run the ledger has no entry for.
   const seed = "0000000000000001";
-  assert.deepEqual(exposureVerification({ ...runOf(seed), form_classification: classification(seed, true) }), { decision: true, status: "VERIFIED" });
-  assert.deepEqual(exposureVerification({ ...runOf(seed), form_classification: classification(seed, false) }), { decision: false, status: "REFUSED" });
+  const permittedLedger = ledgerOf([ledgerEntry(seed, { administeredClass: "OPERATIONAL" })]);
 
-  // The schema tag, isolated. The binding checks added later refuse the untagged objects above on
-  // their own, so deleting the tag comparison changed nothing observable and its mutation guard
-  // survived a full sweep. A guard whose witness is refused for another reason has not been
-  // witnessed. This object binds correctly to its run, its administration and its form -- every
-  // later check passes -- and carries the wrong tag, so the tag comparison is the only thing left
-  // that can refuse it.
-  const boundButUntagged = { ...classification(seed, true), schema_id: "not-the-classification-schema.v1" };
-  assert.deepEqual(
-    exposureVerification({ ...runOf(seed), form_classification: boundButUntagged }),
-    { decision: null, status: "UNVERIFIED" },
-    "a correctly bound classification under the wrong schema tag authorized itself"
-  );
+  // No classification whatsoever: the ledger alone is enough.
+  assert.deepEqual(exposureVerification(runOf(seed), { ledger: permittedLedger }), { decision: true, status: "VERIFIED" });
+
+  // An untagged classification, or one copied from another run's identity, no longer refuses this
+  // by itself -- but it also does not help a run with no matching ledger entry.
+  const untagged = { official_scoring_permitted: true };
+  const copiedFromAnotherRun = { ...classification(seed, true), run_id: runIdFor("0000000000000002"), administration_id: runIdFor("0000000000000002") };
+  for (const forged of [untagged, copiedFromAnotherRun]) {
+    assert.deepEqual(
+      exposureVerification({ ...runOf(seed), form_classification: forged }, { ledger: permittedLedger }),
+      { decision: true, status: "VERIFIED" },
+      "a matching ledger entry verifies the run regardless of what its cached classification claims about itself"
+    );
+    assert.deepEqual(
+      exposureVerification({ ...runOf(seed), form_classification: forged }),
+      { decision: null, status: "UNVERIFIED" },
+      "with no ledger to check, a forged classification's shape earns nothing"
+    );
+  }
 });
 
-test("a classification naming a different run, administration or form does not verify this one", () => {
-  // #585 item 2. A schema tag and a real boolean are necessary but used to be treated as
-  // SUFFICIENT to authorize VERIFIED -- exactly what a classification copied from another run's
-  // `cycle.json` entry, or written by hand with only those two fields, also carries. None of the
-  // three cases below is caught by the schema/type check above; each is refused only because the
-  // identity it names does not match the run record it sits on.
-  const seed = "0000000000000001";
-  const run = runOf(seed);
-
-  // The exact shape a copied classification takes: genuinely tagged, a real boolean, but naming
-  // another administration's run entirely.
-  const copiedFromAnotherRun = {
-    ...classification(seed, true),
-    run_id: runIdFor("0000000000000002"),
-    administration_id: runIdFor("0000000000000002")
-  };
-  assert.deepEqual(exposureVerification({ ...run, form_classification: copiedFromAnotherRun }), { decision: null, status: "UNVERIFIED" });
-
-  // Bound to the right run, but naming a different form -- a classification decided over a form
-  // this run's own record never administered.
-  const wrongForm = { ...classification(seed, true), form_contract_digest: formDigestFor("somewhere-else") };
-  assert.deepEqual(exposureVerification({ ...run, form_classification: wrongForm }), { decision: null, status: "UNVERIFIED" });
-
-  // The shape this repository actually shipped before this fix: a real schema tag and a real
-  // boolean, and nothing at all naming which run it was ever a classification of. This is the
-  // untagged-imitation test above's twin with the tag genuine -- the tag was never what was
-  // missing.
-  const noBindingAtAll = { schema_id: ADMINISTRATION_CLASSIFICATION_SCHEMA_ID, official_scoring_permitted: true };
-  assert.deepEqual(exposureVerification({ ...run, form_classification: noBindingAtAll }), { decision: null, status: "UNVERIFIED" });
-
-  // And the genuine, fully bound classification for this exact run still verifies.
-  assert.deepEqual(exposureVerification({ ...run, form_classification: classification(seed, true) }), { decision: true, status: "VERIFIED" });
-});
-
-test("a permitted run and a pre-ledger run are both valid but not both verified, in the run record and the aggregate", () => {
+test("a permitted run and a run the ledger has no entry for are both valid but not both verified, in the run record and the aggregate", () => {
+  const ledger = ledgerOf([
+    ledgerEntry("0000000000000001", { administeredClass: "OPERATIONAL" }),
+    ledgerEntry("0000000000000003", { administeredClass: "OPERATIONAL" })
+    // Seed 2's administration id is deliberately absent: this ledger has no entry for it, the same
+    // fact a pre-ledger historical record represents, produced here by an administration this
+    // ledger's home genuinely never saw rather than by the record predating the ledger's existence.
+  ]);
   const verified = runOf("0000000000000001", { form_classification: classification("0000000000000001", true) });
-  const unverified = runOf("0000000000000002"); // no form_classification: the historical, pre-ledger shape
+  const unverified = runOf("0000000000000002"); // no ledger entry: this exact ledger never saw it
   const third = runOf("0000000000000003", { form_classification: classification("0000000000000003", true) });
 
-  assert.equal(runValidity(cycleOf(), verified).exposure.status, "VERIFIED");
-  assert.equal(runValidity(cycleOf(), unverified).exposure.status, "UNVERIFIED");
+  assert.equal(runValidity(cycleOf(), verified, { ledger }).exposure.status, "VERIFIED");
+  assert.equal(runValidity(cycleOf(), unverified, { ledger }).exposure.status, "UNVERIFIED");
 
-  const cycle = withRuns([verified, unverified, third]);
+  const cycle = withRuns([verified, unverified, third], ["1", "2", "3"], { ledger });
   // Named on the stored run itself, not only derivable from it -- cycle.json now says which.
   assert.equal(cycle.runs.find((run) => run.seed === "0000000000000001").exposure_verification, "VERIFIED");
   assert.equal(cycle.runs.find((run) => run.seed === "0000000000000002").exposure_verification, "UNVERIFIED");

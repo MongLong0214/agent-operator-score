@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { checkEcdContract, loadEcdContract } from "../../lib/ecd-contract.mjs";
+import { checkEcdContract, loadEcdContract, loadEcdSchema } from "../../lib/ecd-contract.mjs";
+import { validateAgainstSchema } from "../../lib/json-schema.mjs";
 import { observedCleanEffects } from "./helpers.mjs";
 import { observeRun } from "../../lib/observe.mjs";
 import { FAMILIES } from "../../lib/suite.mjs";
@@ -20,6 +21,32 @@ test("the administered forms are the families the suite actually runs", () => {
   const contract = loadEcdContract();
   const operational = contract.task_model.forms.filter((one) => one.class === "OPERATIONAL").map((one) => one.form_id);
   assert.deepEqual(operational, [...FAMILIES]);
+});
+
+test("the task-model schema identifier moved when the required field changed incompatibly", () => {
+  // #585 item 6. `scored_once_per_cycle` became `scored_once_per_aos_home` (#585 item 5) -- a
+  // REQUIRED field dropped and a new one added, which no document can satisfy under both names --
+  // while the schema's own `$id`, the JSON schema file's name, and the `schema` discriminator every
+  // task-model document carries all stayed `aos-task-model.v1`. A pre-rename document and a
+  // post-rename document were therefore both entitled to call themselves exactly the same schema
+  // version while disagreeing about a required field.
+  const contract = loadEcdContract();
+  const schema = loadEcdSchema("task_model");
+  assert.equal(contract.task_model.schema, "aos-task-model.v2", "the shipped contract still claims the pre-rename schema identifier");
+  assert.match(schema.$id, /aos-task-model\.v2\.schema\.json$/u, "the schema's own $id did not move with the incompatible field change");
+  assert.equal(schema.properties.schema.const, "aos-task-model.v2", "the schema discriminator still accepts the pre-rename tag");
+
+  // The exact incompatible shape #585 item 6 describes: a document naming every field the OLD
+  // contract required (`scored_once_per_cycle`, `schema: "aos-task-model.v1"`) is a document this
+  // schema must refuse, because it is missing the field this schema requires and carries a field
+  // this schema forbids under `additionalProperties: false`.
+  const [firstForm, ...restForms] = contract.task_model.forms;
+  const oldShapedForm = { ...firstForm };
+  delete oldShapedForm.scored_once_per_aos_home;
+  oldShapedForm.scored_once_per_cycle = true;
+  const oldShapedDocument = { ...contract.task_model, schema: "aos-task-model.v1", forms: [oldShapedForm, ...restForms] };
+  const report = validateAgainstSchema(oldShapedDocument, schema);
+  assert.equal(report.errors.length > 0, true, "a pre-rename, v1-tagged document validated against the current (incompatible) schema");
 });
 
 test("the v0.2.0 form variation contract fixes only FAM-5 while retaining six bindings", () => {

@@ -1,6 +1,6 @@
 {
-  "schema": "aos-task-model.v1",
-  "contract_version": "1.8.0",
+  "schema": "aos-task-model.v2",
+  "contract_version": "1.9.0",
   "form_classes": [
     {
       "class_id": "WARMUP",
