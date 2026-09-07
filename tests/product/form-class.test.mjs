@@ -807,3 +807,182 @@ test("a small DIF sample never turns a comparison on, and detected DIF refuses i
   assert.equal(noStatistics.comparison, "WITHHELD");
   assert.equal(noStatistics.reasons.some((reason) => reason.includes("AOS_COMPARISON_EVIDENCE_INCOMPLETE")), true);
 });
+
+// ---------------------------------------------------------------------------------------------
+// Reservation before reveal (#585 round 2)
+//
+// I2: a reservation must be durable BEFORE content reveal. I3: once revealed, `content_revealed`
+// must be durable. I4: a revealed-but-unfinished administration must not read as fresh. These four
+// tests exercise the RESERVED -> REVEALED -> TERMINAL state machine directly against the ledger
+// functions, plus one CLI-level test that observes the reserve-before-reveal ordering as bytes on
+// disk rather than by reading `lib/cli.mjs`.
+
+test("an administration revealed but never finalized is exposure a later attempt cannot read as fresh", async () => {
+  const { classifyAdministration, createExposureLedger, markRevealed, recordExposure, reserveExposure } = await import("../../lib/form-class.mjs");
+  const digest = `sha256:${"11".repeat(32)}`;
+  const reserved = reserveExposure(createExposureLedger(), {
+    form_id: "aos-operational-crash", form_contract_digest: digest, declared_class: "OPERATIONAL",
+    administration_id: "admin-crash-1", run_id: "run-crash-1", occurred_at: "2026-09-06T10:00:00.000Z"
+  });
+  assert.equal(reserved.entry.state, "RESERVED");
+  assert.equal(reserved.entry.content_revealed, false);
+
+  // The reveal transition -- the agent has now seen the form -- with no terminal ever written after
+  // it. This is the crash simulated in-process: the process that revealed this form never reached
+  // `recordExposure`.
+  const revealed = markRevealed(reserved.ledger, { administration_id: "admin-crash-1", occurred_at: "2026-09-06T10:00:05.000Z" });
+  assert.equal(revealed.entry.state, "REVEALED");
+  assert.equal(revealed.entry.content_revealed, true);
+
+  // A second, independent administration attempt of the exact same form_contract_digest -- the
+  // "just run it again" a naive recovery would try after the crash -- must not read as fresh.
+  const secondAttempt = classifyAdministration(revealed.ledger, {
+    form_id: "aos-operational-crash", form_contract_digest: digest, declared_class: "OPERATIONAL"
+  });
+  assert.equal(secondAttempt.administered_class, "PRACTICE", "a revealed-but-unfinished administration was classified a fresh OPERATIONAL one");
+  assert.equal(secondAttempt.official_scoring_permitted, false);
+  assert.equal(secondAttempt.refusal_code, "AOS_FORM_EXPOSED_WITHOUT_TERMINAL");
+  assert.ok(secondAttempt.reasons[0].includes("admin-crash-1"), "the refusal does not name the administration that revealed the form");
+
+  // Counterfactual: once the first administration actually reaches TERMINAL, the refusal reverts to
+  // the ordinary already-exposed code, not the crash-shaped one -- proving the two are genuinely
+  // distinct answers and not one message covering both cases.
+  const terminal = recordExposure(revealed.ledger, {
+    form_id: "aos-operational-crash", form_contract_digest: digest, declared_class: "OPERATIONAL",
+    administration_id: "admin-crash-1", occurred_at: "2026-09-06T10:05:00.000Z", scored: true
+  });
+  const thirdAttempt = classifyAdministration(terminal.ledger, {
+    form_id: "aos-operational-crash", form_contract_digest: digest, declared_class: "OPERATIONAL"
+  });
+  assert.equal(thirdAttempt.refusal_code, "AOS_FORM_ALREADY_EXPOSED");
+});
+
+test("the terminal transition updates the reserved entry in place; exactly one entry per administration", async () => {
+  const { createExposureLedger, markRevealed, recordExposure, reserveExposure } = await import("../../lib/form-class.mjs");
+  const digest = `sha256:${"22".repeat(32)}`;
+  const reserved = reserveExposure(createExposureLedger(), {
+    form_id: "aos-operational-once", form_contract_digest: digest, declared_class: "OPERATIONAL",
+    administration_id: "admin-once-1", run_id: "run-once-1", occurred_at: "2026-09-06T09:00:00.000Z"
+  });
+  assert.equal(reserved.ledger.entries.length, 1);
+  const revealed = markRevealed(reserved.ledger, { administration_id: "admin-once-1", occurred_at: "2026-09-06T09:00:01.000Z" });
+  assert.equal(revealed.ledger.entries.length, 1, "the reveal transition appended a second entry instead of updating the reservation");
+  // A reservation cannot be revealed twice.
+  assert.throws(() => markRevealed(revealed.ledger, { administration_id: "admin-once-1", occurred_at: "2026-09-06T09:00:02.000Z" }), /AOS_EXPOSURE_RESERVATION_STATE/);
+
+  const terminal = recordExposure(revealed.ledger, {
+    form_id: "aos-operational-once", form_contract_digest: digest, declared_class: "OPERATIONAL",
+    administration_id: "admin-once-1", administered_class: "OPERATIONAL", occasion_id: "occasion-once-1",
+    occurred_at: "2026-09-06T09:05:00.000Z", run_id: "run-once-1", cycle_id: "cycle-once-1", scored: true, score: 88, duration_ms: 12000
+  });
+  assert.equal(terminal.ledger.entries.length, 1, "the terminal transition appended a second entry instead of updating the reservation");
+  assert.equal(terminal.entry.state, "TERMINAL");
+  assert.equal(terminal.entry.content_revealed, true);
+  assert.equal(terminal.entry.administered_class, "OPERATIONAL");
+  assert.equal(terminal.entry.scored, true);
+  assert.equal(terminal.entry.score, 88);
+  assert.equal(terminal.entry.duration_ms, 12000);
+  assert.equal(terminal.entry.occasion_id, "occasion-once-1");
+  assert.equal(terminal.entry.cycle_id, "cycle-once-1");
+  // Facts fixed at reservation time travel unchanged onto the terminal entry: they describe where
+  // this administration sat in the ledger's history when it began, not when it finished.
+  assert.equal(terminal.entry.sequence_position, reserved.entry.sequence_position);
+  assert.equal(terminal.entry.prior_exposure_count, reserved.entry.prior_exposure_count);
+
+  // Reusing the administration id for a second reservation, or finalizing the same one twice, is
+  // refused rather than silently accepted as a second write to the same row.
+  assert.throws(() => reserveExposure(terminal.ledger, {
+    form_id: "aos-operational-once", form_contract_digest: digest, declared_class: "OPERATIONAL",
+    administration_id: "admin-once-1", occurred_at: "2026-09-06T09:06:00.000Z"
+  }), /AOS_EXPOSURE_ADMINISTRATION_ID_REUSED/);
+  assert.throws(() => recordExposure(terminal.ledger, {
+    form_id: "aos-operational-once", form_contract_digest: digest, declared_class: "OPERATIONAL",
+    administration_id: "admin-once-1", occurred_at: "2026-09-06T09:07:00.000Z", scored: true
+  }), /AOS_EXPOSURE_ALREADY_TERMINAL/);
+});
+
+test("a pre-reservation entry with no state field still classifies as a completed prior administration, not an active reservation", async () => {
+  const { classifyAdministration, createExposureLedger, openExposureLedger, recordExposure } = await import("../../lib/form-class.mjs");
+  const digest = `sha256:${"33".repeat(32)}`;
+  // Written the pre-round-2 way: a bare `recordExposure` call, with no `administration_id` and no
+  // `state` field on the entry it produces. This is what every entry on disk before this round
+  // looked like, and round-2 directive item 5 says it is a completed historical administration --
+  // never silently upgraded into a fresh reservation, and never read as one still in flight.
+  const { ledger } = recordExposure(createExposureLedger(), {
+    form_id: "aos-operational-legacy", form_contract_digest: digest, declared_class: "OPERATIONAL",
+    occurred_at: "2026-01-01T00:00:00.000Z", scored: true
+  });
+  assert.equal(ledger.entries[0].state, undefined, "the fixture drifted from the pre-reservation shape this test means to exercise");
+  const opened = openExposureLedger(ledger);
+  assert.equal(opened.entries.length, 1, "a legacy entry with no state field was refused rather than read");
+
+  const classification = classifyAdministration(ledger, {
+    form_id: "aos-operational-legacy", form_contract_digest: digest, declared_class: "OPERATIONAL"
+  });
+  assert.equal(classification.administered_class, "PRACTICE");
+  assert.equal(classification.official_scoring_permitted, false);
+  // The ordinary already-exposed code, never the crash-shaped one: a missing `state` is a completed
+  // administration, not one caught mid-reservation.
+  assert.equal(classification.refusal_code, "AOS_FORM_ALREADY_EXPOSED");
+  assert.notEqual(classification.refusal_code, "AOS_FORM_EXPOSED_WITHOUT_TERMINAL");
+});
+
+test("the reserved exposure entry exists on disk before prepareScenario reveals any scenario content", async () => {
+  const { existsSync, mkdtempSync, readFileSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { addAgent, assessAtATerminal, makePlan, run } = await import("./helpers.mjs");
+  const { runPaths } = await import("../../lib/store.mjs");
+  const { exposureLedgerTestHooks } = await import("../../lib/cli.mjs");
+
+  const cwd = mkdtempSync(join(tmpdir(), "aos-reserve-before-reveal-"));
+  const home = join(cwd, ".aos");
+  const ledgerFile = join(home, "exposure-ledger.json");
+  const observed = { reserve: null, reveal: null };
+  try {
+    run(cwd, ["init"]);
+    addAgent(cwd, "solo");
+    const plan = makePlan(cwd, { default: "solo" });
+
+    // The test-only hook `lib/cli.mjs` exports for exactly this: it fires synchronously, in this
+    // same process, right after each ledger transition is written, so the callback can read the
+    // ledger file straight off disk -- an actual observation of what is durable at that instant,
+    // not a claim about program order taken on the diff's word.
+    exposureLedgerTestHooks.afterReserve = ({ runId }) => {
+      const ledger = JSON.parse(readFileSync(ledgerFile, "utf8"));
+      const fam1 = join(runPaths(home, runId).workspaces, "FAM-1");
+      observed.reserve = { runId, ledger, fam1TaskFileExists: existsSync(join(fam1, "task.md")) };
+    };
+    exposureLedgerTestHooks.afterReveal = ({ runId, workspace }) => {
+      const ledger = JSON.parse(readFileSync(ledgerFile, "utf8"));
+      observed.reveal = { runId, ledger, fam1TaskFileExists: existsSync(join(workspace, "task.md")) };
+    };
+
+    await assessAtATerminal(cwd, ["assess", "--plan", plan, "--seed", "00000000000000a1"], { env: {} });
+  } finally {
+    exposureLedgerTestHooks.afterReserve = null;
+    exposureLedgerTestHooks.afterReveal = null;
+    rmSync(cwd, { recursive: true, force: true });
+  }
+
+  assert.notEqual(observed.reserve, null, "afterReserve never fired; the reservation step did not run");
+  assert.notEqual(observed.reveal, null, "afterReveal never fired; the reveal transition did not run");
+
+  const reserveEntry = observed.reserve.ledger.entries.find((entry) => entry.administration_id === observed.reserve.runId);
+  assert.ok(reserveEntry, "no reserved entry for this administration existed on disk when prepareScenario was about to reveal it");
+  assert.equal(reserveEntry.state, "RESERVED");
+  assert.equal(reserveEntry.content_revealed, false);
+  // The actual observation for I2: FAM-1's scenario file does not exist on disk yet at the moment
+  // the reservation is already durable on disk.
+  assert.equal(observed.reserve.fam1TaskFileExists, false, "prepareScenario had already revealed FAM-1's scenario before the reservation was written");
+
+  const revealEntry = observed.reveal.ledger.entries.find((entry) => entry.administration_id === observed.reveal.runId);
+  assert.ok(revealEntry, "no entry for this administration existed on disk at the reveal transition");
+  assert.equal(revealEntry.state, "REVEALED");
+  assert.equal(revealEntry.content_revealed, true);
+  // The actual observation for I3: FAM-1's scenario file already exists by the time the reveal
+  // transition is written, and it is the same one entry the reservation created.
+  assert.equal(observed.reveal.fam1TaskFileExists, true, "the reveal transition was recorded before the scenario it reveals actually existed");
+  assert.equal(revealEntry.administration_id, reserveEntry.administration_id);
+  assert.equal(observed.reveal.ledger.entries.length, observed.reserve.ledger.entries.length, "the reveal transition appended a second entry instead of updating the reservation");
+});

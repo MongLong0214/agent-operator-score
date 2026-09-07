@@ -8424,7 +8424,7 @@ export const GUARDS = [
     guard: "a malformed exposure ledger entry refuses the ledger instead of vanishing from it",
     reason: "priorEntries filters on form_contract_digest, so an entry that lost or malformed that field silently fell out of every filter and read as a form never administered, permitting an already-exposed form a second official scoring",
     file: "lib/form-class.mjs",
-    from: "for (const entry of raw.entries) {\n    if (entry === null || typeof entry !== \"object\" || entry.schema_id !== EXPOSURE_ENTRY_SCHEMA_ID ||\n        !nonEmpty(entry.form_contract_digest) || !DIGEST_SHAPE.test(entry.form_contract_digest)) {\n      throw new Error(\"AOS_EXPOSURE_ENTRY_CORRUPT a stored exposure entry is not one this release recognises; refusing to read it as no exposure\");\n    }\n  }",
+    from: "for (const entry of raw.entries) {\n    if (entry === null || typeof entry !== \"object\" || !isRecognisedExposureEntry(entry) ||\n        !nonEmpty(entry.form_contract_digest) || !DIGEST_SHAPE.test(entry.form_contract_digest)) {\n      throw new Error(\"AOS_EXPOSURE_ENTRY_CORRUPT a stored exposure entry is not one this release recognises; refusing to read it as no exposure\");\n    }\n  }",
     to: "",
     test: "tests/product/form-class.test.mjs",
     name: "a malformed entry inside an otherwise well-formed ledger is refused, not silently dropped"
@@ -8482,6 +8482,42 @@ export const GUARDS = [
     to: "    if (false) {",
     test: "tests/product/home.test.mjs",
     name: "a lock whose recorded owner is gone is not reclaimed on pid liveness alone"
+  },
+  {
+    guard: "the exposure ledger is reserved before the suite's first prepareScenario reveals anything",
+    reason: "#585 round 2 governing directive I2: without this write a crash between reveal and the finalize write at the bottom of assess leaves no durable trace that the form was ever shown, so the next attempt at the same seed reads as a fresh operational administration instead of the exposure it actually is",
+    file: "lib/cli.mjs",
+    from: "      writeJson(exposureLedgerPath(home), reserveExposure(beforeReservation, {",
+    to: "      if (false) writeJson(exposureLedgerPath(home), reserveExposure(beforeReservation, {",
+    test: "tests/product/form-class.test.mjs",
+    name: "the reserved exposure entry exists on disk before prepareScenario reveals any scenario content"
+  },
+  {
+    guard: "the exposure ledger transitions to REVEALED the instant the first scenario is materialized",
+    reason: "#585 round 2 governing directive I3: content_revealed must become durable the moment the agent can actually see the form, not only once the whole suite finishes; without this write the ledger keeps reporting RESERVED/content_revealed:false for a form the agent has already been shown",
+    file: "lib/cli.mjs",
+    from: "          writeJson(exposureLedgerPath(home), markRevealed(beforeReveal, { administration_id: runId }).ledger);",
+    to: "          if (false) writeJson(exposureLedgerPath(home), markRevealed(beforeReveal, { administration_id: runId }).ledger);",
+    test: "tests/product/form-class.test.mjs",
+    name: "the reserved exposure entry exists on disk before prepareScenario reveals any scenario content"
+  },
+  {
+    guard: "recordExposure finalizes onto the reserved entry instead of appending a second one",
+    reason: "without this branch a run that reserved before revealing still falls through to the bare-append path at finalize time, leaving two ledger rows for one administration -- exactly the double-counting the reservation exists to prevent, reproduced by the mechanism meant to close it",
+    file: "lib/form-class.mjs",
+    from: "  if (administrationId !== null) {",
+    to: "  if (false) {",
+    test: "tests/product/form-class.test.mjs",
+    name: "the terminal transition updates the reserved entry in place; exactly one entry per administration"
+  },
+  {
+    guard: "a form revealed but never terminated classifies as practice, not fresh",
+    reason: "#585 round 2 governing directive I4: a RESERVED or REVEALED entry with no terminal is exposure a crash cannot erase, so without this branch a second administration attempt of the same form_contract_digest falls through to OPERATIONAL and the agent is scored on a form it has already seen",
+    file: "lib/form-class.mjs",
+    from: "  if (unresolved.length > 0) {",
+    to: "  if (false) {",
+    test: "tests/product/form-class.test.mjs",
+    name: "an administration revealed but never finalized is exposure a later attempt cannot read as fresh"
   }
 ];
 
@@ -8690,6 +8726,7 @@ export const ACCOUNTED_GUARDS = [
   "a form bank record's equivalence status requires a real decision and a real relation to it",
   "a form bank record's equivalence status requires a real linking scaffold, not any object naming a status",
   "a form list naming an undeclared cell is refused before it is dereferenced",
+  "a form revealed but never terminated classifies as practice, not fresh",
   "a generation is named for what it actually predates",
   "a handoff is recorded only where something was handed",
   "a lane the release has not proven never reaches official support",
@@ -9158,6 +9195,7 @@ export const ACCOUNTED_GUARDS = [
   "raw filename bytes",
   "raw link target bytes",
   "realpath compare",
+  "recordExposure finalizes onto the reserved entry instead of appending a second one",
   "refusal marker in the tree digest",
   "refused size in the tree digest",
   "refused tree is not artifact identity",
@@ -9288,6 +9326,8 @@ export const ACCOUNTED_GUARDS = [
   "the evidence digest is over the claim, not the transcript row",
   "the exception needs a submission branch to be about",
   "the executable identity digest is recomputed, not read",
+  "the exposure ledger is reserved before the suite's first prepareScenario reveals anything",
+  "the exposure ledger transitions to REVEALED the instant the first scenario is materialized",
   "the exposure ledger's read-modify-write is held under an exclusive lock",
   "the floor follows the worst severity observed",
   "the floor is derived from the work graph, never read off the envelope",
