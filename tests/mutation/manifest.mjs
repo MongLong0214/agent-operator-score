@@ -8422,9 +8422,9 @@ export const GUARDS = [
   },
   {
     guard: "a malformed exposure ledger entry refuses the ledger instead of vanishing from it",
-    reason: "priorEntries filters on form_contract_digest, so an entry that lost or malformed that field silently fell out of every filter and read as a form never administered, permitting an already-exposed form a second official scoring",
+    reason: "priorEntries filters on form_contract_digest, so an entry that lost or malformed that field silently fell out of every filter and read as a form never administered, permitting an already-exposed form a second official scoring. #585 round 3 extended this same condition to also require revision and chain_digest, which is why the `from` string below now spans those checks too -- the guard is unchanged, the line it mutates grew",
     file: "lib/form-class.mjs",
-    from: "for (const entry of raw.entries) {\n    if (entry === null || typeof entry !== \"object\" || !isRecognisedExposureEntry(entry) ||\n        !nonEmpty(entry.form_contract_digest) || !DIGEST_SHAPE.test(entry.form_contract_digest)) {\n      throw new Error(\"AOS_EXPOSURE_ENTRY_CORRUPT a stored exposure entry is not one this release recognises; refusing to read it as no exposure\");\n    }\n  }",
+    from: "for (const entry of raw.entries) {\n    if (entry === null || typeof entry !== \"object\" || !isRecognisedExposureEntry(entry) ||\n        !nonEmpty(entry.form_contract_digest) || !DIGEST_SHAPE.test(entry.form_contract_digest) ||\n        !Number.isInteger(entry.revision) || entry.revision < 1 ||\n        !nonEmpty(entry.chain_digest) || !DIGEST_SHAPE.test(entry.chain_digest)) {\n      throw new Error(\"AOS_EXPOSURE_ENTRY_CORRUPT a stored exposure entry is not one this release recognises; refusing to read it as no exposure\");\n    }\n  }",
     to: "",
     test: "tests/product/form-class.test.mjs",
     name: "a malformed entry inside an otherwise well-formed ledger is refused, not silently dropped"
@@ -8545,6 +8545,42 @@ export const GUARDS = [
     to: "const threshold = typeof callerDriftThresholds?.maximum_anchor_delta === \"number\" ? callerDriftThresholds.maximum_anchor_delta : methodContract.drift_thresholds.maximum_anchor_delta;",
     test: "tests/product/form-class.test.mjs",
     name: "a caller-supplied drift threshold is ignored in both directions; only the registered threshold decides"
+  },
+  {
+    guard: "openExposureLedger refuses two stored entries claiming one administration_id",
+    reason: "#585 round 3, governing directive 19 item 4: two entries sharing one administration_id would let markRevealed and recordExposure's update path silently transition whichever findIndex meets first; without this check a duplicated administration_id -- even inside an otherwise internally consistent transition digest chain, which does not by itself change when an id is merely repeated -- is read back as two ordinary rows",
+    file: "lib/form-class.mjs",
+    from: "  if (new Set(administrationIds).size !== administrationIds.length) {",
+    to: "  if (false) {",
+    test: "tests/product/form-class.test.mjs",
+    name: "two stored exposure entries sharing one administration_id are refused, even with an internally consistent chain"
+  },
+  {
+    guard: "openExposureLedger refuses two stored entries claiming one revision",
+    reason: "#585 round 3, governing directive 19 item 1: each committed transition consumes exactly one ledger revision, so two entries sharing a revision means some transition was never really applied to the row that claims it; without this check a duplicated revision is silently accepted, even though the gap/decrease check below it happens to also refuse most such ledgers -- with a different message, which is what the witness test's specific assertion catches",
+    file: "lib/form-class.mjs",
+    from: "  if (new Set(revisions).size !== revisions.length) {",
+    to: "  if (false) {",
+    test: "tests/product/form-class.test.mjs",
+    name: "duplicating a revision across two stored exposure entries is refused"
+  },
+  {
+    guard: "openExposureLedger recomputes the transition digest chain over every stored entry",
+    reason: "#585 round 3, governing directive 19 item 2: an entry's chain_digest folds in the one before it, so a field altered inside an already-committed entry, a reordering, a deleted middle entry or an inserted one all change what this recomputation produces; without this per-entry comparison the only thing left to notice a mid-sequence tamper is the head digest binding, which does independently catch it here (any change cascades to the end) but with a different message -- the reason the witness test asserts the chain-specific text rather than the generic corrupt prefix",
+    file: "lib/form-class.mjs",
+    from: "    if (recomputed[index].chain_digest !== raw.entries[index].chain_digest) {",
+    to: "    if (false) {",
+    test: "tests/product/form-class.test.mjs",
+    name: "tampering a committed exposure entry's form contract digest breaks the transition digest chain"
+  },
+  {
+    guard: "openExposureLedger binds the ledger to its last entry's digest as head_digest",
+    reason: "#585 round 3, governing directive 19 item 3: the per-entry chain alone does not catch a truncated tail whose revision counter was patched down to match what remains -- the remaining prefix is a genuinely valid shorter chain on its own -- so head_digest, bound to the last entry actually on record, is the check that still refuses it",
+    file: "lib/form-class.mjs",
+    from: "  if (headDigest !== raw.head_digest) {",
+    to: "  if (false) {",
+    test: "tests/product/form-class.test.mjs",
+    name: "truncating the tail of the exposure ledger is refused even if the revision counter is patched to match"
   }
 ];
 
@@ -9165,6 +9201,10 @@ export const ACCOUNTED_GUARDS = [
   "only the configured runtime corroborates its own binding",
   "only the configured runtime's transcript tree is read",
   "only the declared runtime files are staged",
+  "openExposureLedger binds the ledger to its last entry's digest as head_digest",
+  "openExposureLedger recomputes the transition digest chain over every stored entry",
+  "openExposureLedger refuses two stored entries claiming one administration_id",
+  "openExposureLedger refuses two stored entries claiming one revision",
   "operator decision window",
   "operator event authority is the matrix's, not the caller's",
   "operator event authority matrix",

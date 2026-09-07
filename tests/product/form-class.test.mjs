@@ -230,24 +230,231 @@ test("a malformed entry inside an otherwise well-formed ledger is refused, not s
   // field would fall out of every such filter and read as a form that was never administered --
   // permitting a form with a corrupt prior exposure as fresh. An unreadable exposure is not the
   // absence of one, so the ledger must refuse rather than quietly read past the bad row.
+  //
+  // #585 round 3. The well-formed row here used to be a hand-typed object literal with no
+  // `revision` or `chain_digest` field, because those fields did not exist yet. Passed through
+  // `openExposureLedger` unchanged it now reads as a pre-integrity-binding ledger and is refused
+  // with `AOS_EXPOSURE_LEDGER_MIGRATION_REQUIRED` before this test's own malformed-entry checks
+  // ever run -- see the dedicated migration test below for that refusal in isolation. So the
+  // well-formed row here is `recordExposure`'s own real output instead: it carries a real
+  // `revision` and `chain_digest` the way every ledger this release ever writes does, and only the
+  // ONE field each case deliberately drops is missing, isolating the malformed-entry check this
+  // test exists for from the migration check a hand-typed literal would otherwise trip first.
+  const { createExposureLedger, openExposureLedger, recordExposure } = await import("../../lib/form-class.mjs");
+  const digest = `sha256:${"9".repeat(64)}`;
+  const { ledger: base } = recordExposure(createExposureLedger(), {
+    form_id: "f", form_contract_digest: digest, declared_class: "OPERATIONAL",
+    occurred_at: "2026-09-06T10:00:00.000Z", scored: true
+  });
+  const wellFormed = base.entries[0];
+  // A row with no `form_contract_digest` at all: exactly the shape that would vanish from
+  // `priorEntries` and let a second administration of the digest above read as a first one.
+  const { form_contract_digest: _dropped, ...missingDigest } = wellFormed;
+  assert.throws(() => openExposureLedger({ ...base, entries: [missingDigest] }), /AOS_EXPOSURE_ENTRY_CORRUPT/);
+  // A row with the right shape but no entry schema tag -- the same "any object naming the right
+  // fields" gap this ledger already refuses at its own top level.
+  const { schema_id: _tag, ...untagged } = wellFormed;
+  assert.throws(() => openExposureLedger({ ...base, entries: [untagged] }), /AOS_EXPOSURE_ENTRY_CORRUPT/);
+  // A row with no `chain_digest` at all -- the new field this round adds, checked the same way.
+  const { chain_digest: _digest, ...unchained } = wellFormed;
+  assert.throws(() => openExposureLedger({ ...base, entries: [unchained] }), /AOS_EXPOSURE_ENTRY_CORRUPT/);
+  // The well-formed row alone is read without complaint.
+  assert.equal(openExposureLedger(base).entries.length, 1);
+});
+
+test("a ledger written before revision/chain/head integrity binding existed fails closed rather than being read as verified", async () => {
+  // #585 round 3, governing directive 20. This is the exact hand-typed v1 entry shape every
+  // exposure-ledger test in this file used before this round -- a real historical shape, not a
+  // fabricated one. A ledger like this predates `revision` and `head_digest` entirely, and reading
+  // it as though its entries had passed a chain check they never went through would promote
+  // pre-chain history to VERIFIED on the strength of a chain it never had, which is exactly what
+  // directive 20 forbids. There is no explicit migration in this release (see the comment above
+  // `openExposureLedger`'s migration check for why); the alternative this release picked is to fail
+  // closed, named distinctly from ordinary corruption.
   const { openExposureLedger } = await import("../../lib/form-class.mjs");
   const digest = `sha256:${"9".repeat(64)}`;
-  const wellFormed = {
+  const legacyEntry = {
     schema_id: "aos-exposure-entry.v1", form_id: "f", form_contract_digest: digest, declared_class: "OPERATIONAL",
     administered_class: "OPERATIONAL", occasion_id: null, occurred_at: "2026-09-06T10:00:00.000Z", run_id: null,
     cycle_id: null, scored: true, score: null, duration_ms: null, sequence_position: 1, interval_ms: null,
     prior_exposure_count: 0, prior_scored_count: 0, prior_same_form_id_count: 1
   };
-  // A row with no `form_contract_digest` at all: exactly the shape that would vanish from
-  // `priorEntries` and let a second administration of the digest above read as a first one.
-  const { form_contract_digest: _dropped, ...missingDigest } = wellFormed;
-  assert.throws(() => openExposureLedger({ schema_id: "aos-exposure-ledger.v1", entries: [wellFormed, missingDigest] }), /AOS_EXPOSURE_ENTRY_CORRUPT/);
-  // A row with the right shape but no entry schema tag -- the same "any object naming the right
-  // fields" gap this ledger already refuses at its own top level.
-  const { schema_id: _tag, ...untagged } = wellFormed;
-  assert.throws(() => openExposureLedger({ schema_id: "aos-exposure-ledger.v1", entries: [untagged] }), /AOS_EXPOSURE_ENTRY_CORRUPT/);
-  // The well-formed row alone is read without complaint.
-  assert.equal(openExposureLedger({ schema_id: "aos-exposure-ledger.v1", entries: [wellFormed] }).entries.length, 1);
+  assert.throws(
+    () => openExposureLedger({ schema_id: "aos-exposure-ledger.v1", entries: [legacyEntry] }),
+    /AOS_EXPOSURE_LEDGER_MIGRATION_REQUIRED/
+  );
+  // An entirely empty pre-chain ledger (no entries yet, but also no `revision`/`head_digest` --
+  // for instance a ledger some other pre-#585-round-3 tool wrote with an empty history) is refused
+  // the same way; absence of entries is not evidence the ledger ever went through this release's
+  // integrity binding.
+  assert.throws(
+    () => openExposureLedger({ schema_id: "aos-exposure-ledger.v1", entries: [] }),
+    /AOS_EXPOSURE_LEDGER_MIGRATION_REQUIRED/
+  );
+});
+
+// ---------------------------------------------------------------------------------------------
+// Exposure ledger integrity binding: revision, transition digest chain, head, uniqueness (#585
+// round 3, governing directive 19 and the detectable half of 13). `openExposureLedger` validates
+// each entry's own shape; none of that says anything about entries reordered, one deleted from the
+// middle, one inserted, or a field inside a committed entry altered afterward. These tests build a
+// real ledger through the library's own write path -- never a hand-typed literal claiming a chain
+// it never earned -- then apply exactly one tamper and check the one named refusal it produces.
+
+test("a well-formed exposure ledger with a real transition chain opens normally, and each commit advances revision and head", async () => {
+  const { createExposureLedger, openExposureLedger, recordExposure, reserveExposure } = await import("../../lib/form-class.mjs");
+  const digestA = `sha256:${"1".repeat(64)}`;
+  const digestB = `sha256:${"2".repeat(64)}`;
+  const fresh = createExposureLedger();
+  assert.equal(fresh.revision, 0);
+  assert.equal(fresh.head_digest, `sha256:${"0".repeat(64)}`);
+
+  const first = recordExposure(fresh, { form_id: "f1", form_contract_digest: digestA, declared_class: "OPERATIONAL", occurred_at: "2026-09-06T10:00:00.000Z", scored: true });
+  assert.equal(first.ledger.revision, 1, "one committed transition consumes exactly one revision");
+  assert.equal(first.entry.revision, 1, "the entry a transition touches is stamped with that same revision");
+  assert.notEqual(first.ledger.head_digest, fresh.head_digest, "an appended entry must move the head digest off genesis");
+  assert.equal(first.ledger.head_digest, first.entry.chain_digest, "the head digest is the last entry's own chain digest");
+
+  const second = recordExposure(first.ledger, { form_id: "f2", form_contract_digest: digestB, declared_class: "OPERATIONAL", occurred_at: "2026-09-06T11:00:00.000Z", scored: true });
+  assert.equal(second.ledger.revision, 2, "a second commit advances the revision by exactly one");
+  assert.equal(second.ledger.entries[0].chain_digest, first.entry.chain_digest, "an untouched earlier entry keeps its own digest");
+  assert.equal(second.ledger.head_digest, second.entry.chain_digest);
+
+  // A reservation, its reveal and its terminal transition are three separate commits on one row:
+  // three revisions consumed, one entry.
+  const reserved = reserveExposure(second.ledger, { form_id: "f3", form_contract_digest: digestA, declared_class: "OPERATIONAL", administration_id: "admin-integrity-1", occurred_at: "2026-09-06T12:00:00.000Z" });
+  assert.equal(reserved.ledger.revision, 3);
+  const revealed = (await import("../../lib/form-class.mjs")).markRevealed(reserved.ledger, { administration_id: "admin-integrity-1", occurred_at: "2026-09-06T12:01:00.000Z" });
+  assert.equal(revealed.ledger.revision, 4);
+  const terminal = recordExposure(revealed.ledger, { form_id: "f3", form_contract_digest: digestA, declared_class: "OPERATIONAL", administration_id: "admin-integrity-1", occurred_at: "2026-09-06T12:02:00.000Z", scored: true });
+  assert.equal(terminal.ledger.revision, 5, "reserve, reveal and terminal are three commits on one row, so revision 5 with still 3 entries");
+  assert.equal(terminal.ledger.entries.length, 3);
+
+  // Round-tripped through JSON, exactly as the CLI persists and re-reads it, the ledger still opens.
+  const roundTripped = openExposureLedger(JSON.parse(JSON.stringify(terminal.ledger)));
+  assert.equal(roundTripped.entries.length, 3);
+  assert.equal(roundTripped.revision, 5);
+  assert.equal(roundTripped.head_digest, terminal.ledger.head_digest);
+});
+
+/** A real 3-entry ledger via the library's own write path, for the tamper tests below. */
+const realThreeEntryLedger = async () => {
+  const { createExposureLedger, recordExposure } = await import("../../lib/form-class.mjs");
+  const digests = [`sha256:${"1".repeat(64)}`, `sha256:${"2".repeat(64)}`, `sha256:${"3".repeat(64)}`];
+  let ledger = createExposureLedger();
+  for (const [index, digest] of digests.entries()) {
+    ledger = recordExposure(ledger, {
+      form_id: `f${index + 1}`, form_contract_digest: digest, declared_class: "OPERATIONAL",
+      occurred_at: `2026-09-06T1${index}:00:00.000Z`, scored: true
+    }).ledger;
+  }
+  // Plain, JSON-round-tripped data -- the same shape `openExposureLedger` reads off disk, not a
+  // frozen/live object a test could accidentally mutate in place.
+  return JSON.parse(JSON.stringify(ledger));
+};
+
+// The chain-broken message is asserted by name (not only the generic corrupt prefix) in the four
+// tests below, on purpose: the per-entry chain check and the head-digest check overlap in what
+// they catch (any change that cascades to the end also moves the head), so a generic assertion
+// would stay green even with the per-entry check deleted outright, entirely masked by the head
+// check firing instead with a different message. The specific message is what makes the per-entry
+// check's own mutation guard load-bearing rather than redundant with the head guard's.
+const CHAIN_BROKEN = /the transition digest chain is broken at entry \d+/;
+
+test("deleting a middle exposure entry breaks the transition digest chain", async () => {
+  const { openExposureLedger } = await import("../../lib/form-class.mjs");
+  const raw = await realThreeEntryLedger();
+  raw.entries.splice(1, 1); // delete the middle entry; head_digest and revision are left as they were
+  assert.throws(() => openExposureLedger(raw), CHAIN_BROKEN);
+});
+
+test("reordering two committed exposure entries breaks the transition digest chain", async () => {
+  const { openExposureLedger } = await import("../../lib/form-class.mjs");
+  const raw = await realThreeEntryLedger();
+  [raw.entries[0], raw.entries[1]] = [raw.entries[1], raw.entries[0]];
+  assert.throws(() => openExposureLedger(raw), CHAIN_BROKEN);
+});
+
+test("inserting an exposure entry breaks the transition digest chain", async () => {
+  // Not one of the eight named required refusals, but named in the scope's own list of tamper
+  // shapes alongside the other three. Left on the generic corrupt assertion (not `CHAIN_BROKEN`):
+  // copying an existing entry's `revision` for the inserted row also collides with that row's own
+  // revision, so in practice this specific construction is refused by the duplicate-revision check
+  // before the chain is ever recomputed -- itself further evidence the tamper is caught, just not
+  // by the one specific line the other three tests isolate.
+  const { openExposureLedger } = await import("../../lib/form-class.mjs");
+  const raw = await realThreeEntryLedger();
+  raw.entries.splice(1, 0, { ...raw.entries[0], form_contract_digest: `sha256:${"4".repeat(64)}` });
+  assert.throws(() => openExposureLedger(raw), /AOS_EXPOSURE_LEDGER_CORRUPT/);
+});
+
+test("tampering a committed exposure entry's form contract digest breaks the transition digest chain", async () => {
+  const { openExposureLedger } = await import("../../lib/form-class.mjs");
+  const raw = await realThreeEntryLedger();
+  // The field is rewritten; `chain_digest` is left exactly as it was committed, the way an edit
+  // that does not also know to recompute a hash chain always looks.
+  raw.entries[1].form_contract_digest = `sha256:${"9".repeat(64)}`;
+  assert.throws(() => openExposureLedger(raw), CHAIN_BROKEN);
+});
+
+test("duplicating a revision across two stored exposure entries is refused", async () => {
+  const { openExposureLedger } = await import("../../lib/form-class.mjs");
+  const raw = await realThreeEntryLedger();
+  raw.entries[2].revision = raw.entries[0].revision;
+  // Asserted by the specific message: deduplicating a revision this way also makes the highest
+  // entry revision (2) disagree with the ledger's own revision counter (3), so the gap/decrease
+  // check below the duplicate check would also refuse this ledger, with a different message, if
+  // the duplicate check alone were ever removed.
+  assert.throws(() => openExposureLedger(raw), /two stored exposure entries share one revision/);
+});
+
+test("an exposure ledger revision inflated beyond what any entry claims is refused", async () => {
+  // The other half of monotonic revision: no duplicate, no missing entry, nothing about the chain
+  // moved -- only the ledger's own top-level counter no longer matches its most recently committed
+  // entry. Neither the duplicate check nor the chain/head checks fire for this one; only the
+  // gap/decrease check does.
+  const { openExposureLedger } = await import("../../lib/form-class.mjs");
+  const raw = await realThreeEntryLedger();
+  raw.revision += 50;
+  assert.throws(() => openExposureLedger(raw), /the ledger's revision does not match its most recently committed entry/);
+});
+
+test("truncating the tail of the exposure ledger is refused even if the revision counter is patched to match", async () => {
+  const { openExposureLedger } = await import("../../lib/form-class.mjs");
+  const raw = await realThreeEntryLedger();
+  raw.entries.pop();
+  // A naive truncation (leaving `revision` and `head_digest` untouched) is already caught by the
+  // revision-vs-entries check above; patching `revision` down to match the remaining entries
+  // isolates the head digest binding as the check that still catches it -- directive 19 item 3
+  // exists because the per-entry chain alone does not.
+  raw.revision = 2;
+  assert.throws(() => openExposureLedger(raw), /the ledger's head digest does not match its last entry/);
+});
+
+test("two stored exposure entries sharing one administration_id are refused, even with an internally consistent chain", async () => {
+  const { createExposureLedger, openExposureLedger, reserveExposure } = await import("../../lib/form-class.mjs");
+  const { sha256Value } = await import("../../lib/core.mjs");
+  const digestA = `sha256:${"1".repeat(64)}`;
+  const digestB = `sha256:${"2".repeat(64)}`;
+  const first = reserveExposure(createExposureLedger(), { form_id: "f1", form_contract_digest: digestA, declared_class: "OPERATIONAL", administration_id: "admin-dup-1", occurred_at: "2026-09-06T10:00:00.000Z" });
+  const second = reserveExposure(first.ledger, { form_id: "f2", form_contract_digest: digestB, declared_class: "OPERATIONAL", administration_id: "admin-dup-2", occurred_at: "2026-09-06T11:00:00.000Z" });
+  const raw = JSON.parse(JSON.stringify(second.ledger));
+  raw.entries[1].administration_id = raw.entries[0].administration_id;
+  // A forger careful enough to recompute the whole chain after the rename still cannot pass: the
+  // administration_id uniqueness check is independent of the chain, exactly because a duplicated id
+  // does not by itself change any entry's content in a way the chain alone would notice. With the
+  // chain and revisions both left internally consistent, disabling the uniqueness check itself
+  // would leave nothing else in this file to refuse it at all.
+  const GENESIS = `sha256:${"0".repeat(64)}`;
+  let previous = GENESIS;
+  for (const entry of raw.entries) {
+    delete entry.chain_digest;
+    const digest = `sha256:${sha256Value({ previous_digest: previous, entry })}`;
+    entry.chain_digest = digest;
+    previous = digest;
+  }
+  raw.head_digest = previous;
+  assert.throws(() => openExposureLedger(raw), /share one administration_id/);
 });
 
 test("a cycle excludes a practice-classified administration from the official aggregate", async () => {
@@ -403,6 +610,34 @@ test("a corrupt exposure ledger refuses the whole assessment rather than committ
     // And the ledger itself was not quietly rewritten as fresh; the corruption is still there for
     // the operator to see and fix.
     assert.equal(readFileSync(ledgerFile, "utf8").trim(), "null");
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("a truncated or otherwise invalid exposure-ledger.json is a named refusal, not an empty ledger", async () => {
+  // A ledger that cannot even be parsed as JSON is not the same failure `openExposureLedger`
+  // catches -- `readJson` (lib/core.mjs) throws before any of this file's own shape checks ever
+  // run. What matters here is only that this file's read path goes through that same protected
+  // reader rather than, say, defaulting to an empty ledger on a read or parse failure.
+  const { mkdtempSync, readdirSync, writeFileSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { addAgent, makePlan, run } = await import("./helpers.mjs");
+
+  const cwd = mkdtempSync(join(tmpdir(), "aos-exposure-ledger-malformed-json-"));
+  const home = join(cwd, ".aos");
+  try {
+    run(cwd, ["init"]);
+    addAgent(cwd, "solo");
+    const plan = makePlan(cwd, { default: "solo" });
+
+    const ledgerFile = join(home, "exposure-ledger.json");
+    writeFileSync(ledgerFile, '{"schema_id": "aos-exposure-ledger.v1", "entries": [');
+    const attempt = run(cwd, ["assess", "--plan", plan, "--seed", "0000000000000098"], 2);
+    assert.match(attempt.stderr, /AOS_MALFORMED_JSON/);
+    assert.equal(attempt.stderr.includes("AOS_INTERNAL_ERROR"), false);
+    assert.equal(readdirSync(join(home, "runs")).length, 0, "a refused assessment must create no run directory at all");
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }
