@@ -8098,10 +8098,10 @@ export const GUARDS = [
   },
   {
     guard: "a form bank record's equivalence status requires a real linking scaffold, not any object naming a status",
-    reason: "equivalence_status is derived, never declared; without the schema_id tag any caller-supplied object naming a status -- linking: { equivalence_status: \"LINKED\" } needs no linkForms scaffold and no evidence -- would be quoted straight onto the record",
+    reason: "equivalence_status is derived, never declared; without the schema_id tag any caller-supplied object naming a status -- linking: { equivalence_status: \"LINKED\" } needs no linkForms scaffold and no evidence -- would be quoted straight onto the record. #585: this check now lives in the shared `isRealLinkingScaffold` predicate `formBankRecord` and `scoreChangeClaim` both read, which is why the `from` string moved with it, at its new indentation, rather than the object-literal spot it used to occupy inline",
     file: "lib/form-class.mjs",
-    from: "      linking.schema_id === FORM_LINKING_SCHEMA_ID &&",
-    to: "      true &&",
+    from: "  linking !== null && typeof linking === \"object\" &&\n  linking.schema_id === FORM_LINKING_SCHEMA_ID &&",
+    to: "  linking !== null && typeof linking === \"object\" &&\n  true &&",
     test: "tests/product/form-class.test.mjs",
     name: "a form bank record's equivalence status requires a real linking scaffold, not any object naming a status"
   },
@@ -8449,27 +8449,27 @@ export const GUARDS = [
   },
   {
     guard: "linkForms enforces the anchor minimum the method interface declares, not a second literal",
-    reason: "the method declares minimum_anchor_count: 3 but the guard checked only for zero anchors, so one anchor read as a complete set and reached LINKED, removing the claim-stage ceiling on evidence the method never certified as enough",
+    reason: "the method declares minimum_anchor_count: 3 but the guard checked only for zero anchors, so one anchor read as a complete set and reached LINKED, removing the claim-stage ceiling on evidence the method never certified as enough. #585: the floor now counts distinct anchors (`distinctAnchorCount`), not the raw array, which is why the `from` string names that variable instead of `anchorIds.length` -- see the next guard for the duplicate-anchor defect that made this necessary",
     file: "lib/form-class.mjs",
-    from: "if (!Array.isArray(anchorIds) || anchorIds.length < LINKING_METHOD_INTERFACE.minimum_anchor_count) missing.push(\"anchor_opportunity_ids\");",
-    to: "if (!Array.isArray(anchorIds) || anchorIds.length === 0) missing.push(\"anchor_opportunity_ids\");",
+    from: "if (!Array.isArray(anchorIds) || distinctAnchorCount < LINKING_METHOD_INTERFACE.minimum_anchor_count) missing.push(\"anchor_opportunity_ids\");",
+    to: "if (!Array.isArray(anchorIds) || distinctAnchorCount === 0) missing.push(\"anchor_opportunity_ids\");",
     test: "tests/product/form-class.test.mjs",
     name: "fewer anchors than the method declares never links, whatever the samples and deltas say"
   },
   {
     guard: "a form bank record's equivalence status requires a real decision and a real relation to it",
-    reason: "the schema_id tag alone is a string any caller can write into a plain object; a forged linking object naming the right schema and an equivalence_status, with no decision, no empirical inputs and no relation to this form, was accepted as though it were a real linkForms scaffold",
+    reason: "the schema_id tag alone is a string any caller can write into a plain object; a forged linking object naming the right schema and an equivalence_status, with no decision, no empirical inputs and no relation to this form, was accepted as though it were a real linkForms scaffold. #585: the decision/inputs_missing clauses now live in the shared `isRealLinkingScaffold` predicate rather than inline in formBankRecord's own object literal, so the `from` string moved into that predicate's body with it",
     file: "lib/form-class.mjs",
-    from: "equivalence_status: linking !== null &&\n      linking.schema_id === FORM_LINKING_SCHEMA_ID &&\n      typeof linking.equivalence_decision === \"boolean\" &&\n      Array.isArray(linking.inputs_missing) && linking.inputs_missing.length === 0 &&\n      EQUIVALENCE_STATUSES.includes(linking.equivalence_status) &&\n      (linking.left_form_id === formId || linking.right_form_id === formId)\n      ? linking.equivalence_status\n      : \"UNESTABLISHED\"",
-    to: "equivalence_status: linking !== null &&\n      linking.schema_id === FORM_LINKING_SCHEMA_ID &&\n      EQUIVALENCE_STATUSES.includes(linking.equivalence_status)\n      ? linking.equivalence_status\n      : \"UNESTABLISHED\"",
+    from: "  linking.schema_id === FORM_LINKING_SCHEMA_ID &&\n  typeof linking.equivalence_decision === \"boolean\" &&\n  Array.isArray(linking.inputs_missing) && linking.inputs_missing.length === 0 &&\n  EQUIVALENCE_STATUSES.includes(linking.equivalence_status);",
+    to: "  linking.schema_id === FORM_LINKING_SCHEMA_ID &&\n  EQUIVALENCE_STATUSES.includes(linking.equivalence_status);",
     test: "tests/product/form-class.test.mjs",
     name: "a form bank record's equivalence status ignores a correctly-tagged scaffold with no decision, no inputs or no relation to it"
   },
   {
     guard: "comparisonGate requires the DIF report's own declared inputs, not only its verdict",
-    reason: "the report's interface declares anchor_opportunity_ids, responses_per_group and per_anchor_statistics, and comparisonGate checked none of them, so a report naming only its schema, sample counts and dif_detected: false permitted the strongest comparison the gate can make",
+    reason: "the report's interface declares anchor_opportunity_ids, responses_per_group and per_anchor_statistics, and comparisonGate checked none of them, so a report naming only its schema, sample counts and dif_detected: false permitted the strongest comparison the gate can make. #585: the completeness check grew further to also require each response be an actual observation (not a null slot) and each anchor's statistics be an actual non-empty computed record (not an empty object satisfying hasOwnProperty alone) -- see the next guard for that exact defect",
     file: "lib/form-class.mjs",
-    from: "// `DIF_RUNNER_INTERFACE` declares its own inputs (`anchor_opportunity_ids`, `responses_per_group`)\n  // and outputs (`per_anchor_statistics`), and none of them were checked: a report naming only its\n  // schema, a sample count per group and a bare `dif_detected: false` used to permit the strongest\n  // comparison this gate can make. That is the report approving itself -- the declared study\n  // material, not merely its verdict, has to be present before the verdict is trusted.\n  const anchors = Array.isArray(evidence.anchor_opportunity_ids) ? evidence.anchor_opportunity_ids : [];\n  const responses = evidence.responses_per_group;\n  const statistics = evidence.per_anchor_statistics;\n  const evidenceComplete = anchors.length > 0 &&\n    responses !== null && typeof responses === \"object\" &&\n    [leftLevel, rightLevel].every((level) => Array.isArray(responses[level]) && responses[level].length >= DIF_RUNNER_INTERFACE.minimum_sample_per_group) &&\n    statistics !== null && typeof statistics === \"object\" &&\n    anchors.every((anchor) => Object.prototype.hasOwnProperty.call(statistics, anchor));\n  if (!evidenceComplete) {\n    return gateAnswer(facet, leftLevel, rightLevel, null, \"WITHHELD\",\n      [\"AOS_COMPARISON_EVIDENCE_INCOMPLETE the report names no anchor opportunities, no per-group response data, or no per-anchor statistics; a sample count and a verdict are not the study its own interface requires\"]);\n  }",
+    from: "  const anchors = Array.isArray(evidence.anchor_opportunity_ids) ? evidence.anchor_opportunity_ids : [];\n  const responses = evidence.responses_per_group;\n  const statistics = evidence.per_anchor_statistics;\n  // A slot is not an observation and a property is not a statistic: thirty `null` entries per group\n  // satisfied the length check alone, and an empty `{}` per anchor satisfied `hasOwnProperty` alone,\n  // so a report could name its declared inputs and outputs with no real response and no computed\n  // statistic behind any of them and still reach the verdict below. Each response now has to be an\n  // actual observation (not `null`/`undefined`), and each anchor's statistics an actual non-empty\n  // computed record.\n  const evidenceComplete = anchors.length > 0 &&\n    responses !== null && typeof responses === \"object\" &&\n    [leftLevel, rightLevel].every((level) => Array.isArray(responses[level]) &&\n      responses[level].length >= DIF_RUNNER_INTERFACE.minimum_sample_per_group &&\n      responses[level].every((response) => response !== null && response !== undefined)) &&\n    statistics !== null && typeof statistics === \"object\" &&\n    anchors.every((anchor) => {\n      const perAnchor = statistics[anchor];\n      return Object.prototype.hasOwnProperty.call(statistics, anchor) &&\n        perAnchor !== null && typeof perAnchor === \"object\" && Object.keys(perAnchor).length > 0;\n    });\n  if (!evidenceComplete) {\n    return gateAnswer(facet, leftLevel, rightLevel, null, \"WITHHELD\",\n      [\"AOS_COMPARISON_EVIDENCE_INCOMPLETE the report names no anchor opportunities, no per-group response data, or no per-anchor statistics; a sample count and a verdict are not the study its own interface requires\"]);\n  }",
     to: "",
     test: "tests/product/form-class.test.mjs",
     name: "a small DIF sample never turns a comparison on, and detected DIF refuses it"
@@ -8581,8 +8581,88 @@ export const GUARDS = [
     to: "  if (false) {",
     test: "tests/product/form-class.test.mjs",
     name: "truncating the tail of the exposure ledger is refused even if the revision counter is patched to match"
+  },
+  {
+    guard: "practiceAnalysis excludes an abandoned reservation from same-form exposure",
+    reason: "a RESERVED row whose content was never revealed is not an administration -- classifyAdministration already excludes it, but practiceAnalysis counted it anyway, making a nonempty row set out of a form nobody was ever shown and turning practice_contaminated false / generalizability_evidence_eligible true for an administration that never occurred",
+    file: "lib/form-class.mjs",
+    from: "  const rows = administeredEntries(priorEntries(opened, formContractDigest));",
+    to: "  const rows = priorEntries(opened, formContractDigest);",
+    test: "tests/product/form-class.test.mjs",
+    name: "an abandoned reservation is not counted as an administration by practiceAnalysis"
+  },
+  {
+    guard: "formLifecycleState excludes an abandoned reservation from retirement",
+    reason: "the same abandoned-reservation row that practiceAnalysis and classifyAdministration exclude must not retire a form here either, or one ledger disagrees with itself: OPERATIONAL and officially permitted from classifyAdministration's side, RETIRED_FROM_OFFICIAL_USE with exposure_count 1 from this API's side, over the exact same row",
+    file: "lib/form-class.mjs",
+    from: "  const prior = administeredEntries(priorEntries(opened, formContractDigest));",
+    to: "  const prior = priorEntries(opened, formContractDigest);",
+    test: "tests/product/form-class.test.mjs",
+    name: "an abandoned reservation does not retire the form in formLifecycleState either"
+  },
+  {
+    guard: "linkForms counts distinct anchors, not raw array length, against the declared minimum",
+    reason: "the anchors this scaffold actually reports (anchor_ids: sortedUnique(anchorIds)) are deduplicated, so checking the raw array length let a caller repeat one shared anchor up to the declared minimum, satisfy the floor on a single distinct anchor, and reach LINKED on evidence the registered method never certified as enough",
+    file: "lib/form-class.mjs",
+    from: "  const distinctAnchorCount = Array.isArray(anchorIds) ? new Set(anchorIds).size : 0;",
+    to: "  const distinctAnchorCount = Array.isArray(anchorIds) ? anchorIds.length : 0;",
+    test: "tests/product/form-class.test.mjs",
+    name: "repeating one shared anchor to reach the count never satisfies the anchor minimum"
+  },
+  {
+    guard: "scoreChangeClaim requires a real linking scaffold, not a self-authored object naming LINKED",
+    reason: "scoreChangeClaim's `covers` check only confirms a linking object names the two exact digests being compared; without also requiring isRealLinkingScaffold, a caller-authored object carrying only the schema tag, LINKED/true and the two digests -- no inputs_missing check, no registered method, no sample floor, no anchors, no drift evidence -- put two scores on one scale on the strength of nothing",
+    file: "lib/form-class.mjs",
+    from: "  if (covers && isRealLinkingScaffold(linking) && isEstablished(linking.equivalence_decision) && linking.equivalence_status === \"LINKED\") {",
+    to: "  if (covers && isEstablished(linking.equivalence_decision) && linking.equivalence_status === \"LINKED\") {",
+    test: "tests/product/form-class.test.mjs",
+    name: "raw improvement is never marked as skill gain: replay suggests memorisation, an unlinked form withholds, a linked form observes"
+  },
+  {
+    guard: "an empty phase B task array does not read as an observed transfer occasion",
+    reason: "an empty tasks array is presence of the phase B container, not evidence in it -- transferDecision already answers null for every output on an empty array, but status/uncertainty keyed off whether phase_b was non-null at all, so this exact shape reported OBSERVED with uncertainty SINGLE_OCCASION while all four transfer answers stayed null",
+    file: "lib/form-class.mjs",
+    from: "  const phaseBAdministered = phaseB !== null && tasks.length > 0;",
+    to: "  const phaseBAdministered = phaseB !== null;",
+    test: "tests/product/form-class.test.mjs",
+    name: "an empty phase B task array is not an observation: every output stays null and the status stays UNESTABLISHED"
+  },
+  {
+    guard: "comparisonGate requires each DIF response to be an actual observation, not a null slot",
+    reason: "the length check on responses_per_group[level] counted array slots, not observations, so thirty null entries per group satisfied it and a caller-supplied dif_detected:false then permitted the strongest comparison the gate can make on responses nobody actually recorded",
+    file: "lib/form-class.mjs",
+    from: "      responses[level].every((response) => response !== null && response !== undefined)) &&",
+    to: "      true) &&",
+    test: "tests/product/form-class.test.mjs",
+    name: "a small DIF sample never turns a comparison on, and detected DIF refuses it"
+  },
+  {
+    guard: "comparisonGate requires each anchor's per-anchor statistics to be an actual non-empty record",
+    reason: "the completeness check only asked whether each anchor had a property in per_anchor_statistics, so an empty {} per anchor satisfied hasOwnProperty alone and a caller-supplied dif_detected:false then permitted the comparison on statistics nobody actually computed",
+    file: "lib/form-class.mjs",
+    from: "        perAnchor !== null && typeof perAnchor === \"object\" && Object.keys(perAnchor).length > 0;",
+    to: "        true;",
+    test: "tests/product/form-class.test.mjs",
+    name: "a small DIF sample never turns a comparison on, and detected DIF refuses it"
+  },
+  {
+    guard: "the form manifest schema moved with its equivalence vocabulary",
+    reason: "equivalence_status moved from the undeclared UNCALIBRATED to the #585 vocabulary's UNESTABLISHED under the same schema id, and form_contract_digest folds this whole body in, so the rename silently changed what \"the same form\" hashes to for every seed without any version marker saying so",
+    file: "lib/suite.mjs",
+    from: "export const FORM_MANIFEST_SCHEMA = \"aos-form-manifest.v4\";",
+    to: "export const FORM_MANIFEST_SCHEMA = \"aos-form-manifest.v3\";",
+    test: "tests/product/suite-seed.test.mjs",
+    name: "the operational form manifest binds raw task inputs to each family oracle without claiming equivalence"
+  },
+  {
+    guard: "the family form manifest schema moved with its equivalence vocabulary",
+    reason: "familyFormManifest carries its own schema tag and its own equivalence_status field, which moved to the same UNESTABLISHED word under the same untouched aos-form-family-manifest.v1 schema id -- the family manifest is versioned separately from the enclosing suite manifest because they are two distinct schemas, not one",
+    file: "lib/suite.mjs",
+    from: "export const FORM_FAMILY_MANIFEST_SCHEMA = \"aos-form-family-manifest.v2\";",
+    to: "export const FORM_FAMILY_MANIFEST_SCHEMA = \"aos-form-family-manifest.v1\";",
+    test: "tests/product/suite-seed.test.mjs",
+    name: "the operational form manifest binds raw task inputs to each family oracle without claiming equivalence"
   }
-
 ];
 
 /**
@@ -8958,6 +9038,7 @@ export const ACCOUNTED_GUARDS = [
   "an effect event's denial has to be proved",
   "an empty completion says why nothing was eligible",
   "an empty isolation lane is not a chosen one",
+  "an empty phase B task array does not read as an observed transfer occasion",
   "an empty string, array or object is not read as a considered field",
   "an entry records its reference scan and tag containment",
   "an equal rank is a tie and not a winner",
@@ -9069,6 +9150,8 @@ export const ACCOUNTED_GUARDS = [
   "close-evidence issue-specific fields",
   "close-evidence repository confirmation",
   "close-evidence verdict",
+  "comparisonGate requires each DIF response to be an actual observation, not a null slot",
+  "comparisonGate requires each anchor's per-anchor statistics to be an actual non-empty record",
   "comparisonGate requires the DIF report's own declared inputs, not only its verdict",
   "completion requires an authority to check the prerequisites against",
   "composite action discovery",
@@ -9132,6 +9215,7 @@ export const ACCOUNTED_GUARDS = [
   "flow-mapping uses",
   "form binding task identity is recomputed",
   "form variation report counts oracle branches",
+  "formLifecycleState excludes an abandoned reservation from retirement",
   "full-SHA action reference",
   "grading reads what was frozen at settlement",
   "handoff exact compare",
@@ -9161,6 +9245,7 @@ export const ACCOUNTED_GUARDS = [
   "legacy ledger row is not holdout evidence",
   "legacy markdown reports carry the NOT COMPARABLE marker",
   "legacy migration guard",
+  "linkForms counts distinct anchors, not raw array length, against the declared minimum",
   "linkForms enforces the anchor minimum the method interface declares, not a second literal",
   "linkForms refuses to LINK on an unregistered method or method_version",
   "linkForms's drift threshold is read from the registered method, never a caller-supplied one",
@@ -9228,6 +9313,7 @@ export const ACCOUNTED_GUARDS = [
   "phases are a contract",
   "positive-observation cap guard",
   "practice occasions retain their occasion facet",
+  "practiceAnalysis excludes an abandoned reservation from same-form exposure",
   "pristine error classification",
   "probe process independence",
   "probe result authentication",
@@ -9295,6 +9381,7 @@ export const ACCOUNTED_GUARDS = [
   "runtime auth is bound to the adapter that reads it",
   "runtime_version must be measured, not merely present",
   "safety cap",
+  "scoreChangeClaim requires a real linking scaffold, not a self-authored object naming LINKED",
   "secret-shaped material is not a model name",
   "secret-value scan",
   "self-report authority prohibition",
@@ -9400,9 +9487,11 @@ export const ACCOUNTED_GUARDS = [
   "the exposure ledger is reserved before the suite's first prepareScenario reveals anything",
   "the exposure ledger transitions to REVEALED the instant the first scenario is materialized",
   "the exposure ledger's read-modify-write is held under an exclusive lock",
+  "the family form manifest schema moved with its equivalence vocabulary",
   "the floor follows the worst severity observed",
   "the floor is derived from the work graph, never read off the envelope",
   "the floor is recomputed through the producer, not copied from the envelope",
+  "the form manifest schema moved with its equivalence vocabulary",
   "the freeze certificate is over the copy",
   "the freeze copies no link",
   "the fresh observation's derivations are the ones checked",

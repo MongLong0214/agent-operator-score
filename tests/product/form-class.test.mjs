@@ -781,6 +781,29 @@ test("fewer anchors than the method declares never links, whatever the samples a
   assert.ok(scaffold.inputs_missing.includes("anchor_opportunity_ids"));
 });
 
+test("repeating one shared anchor to reach the count never satisfies the anchor minimum", async () => {
+  // The three-anchor minimum was checked against `anchorIds.length` while the anchors this scaffold
+  // actually reports are deduplicated (`anchor_ids: sortedUnique(anchorIds)`), so repeating one
+  // shared anchor three times satisfied the raw-length floor on a single distinct anchor and reached
+  // LINKED from evidence the registered method never certified as enough.
+  const { linkForms, LINKING_METHOD_INTERFACE } = await import("../../lib/form-class.mjs");
+  const { left, right, empirical } = linkingFixtures();
+  assert.equal(LINKING_METHOD_INTERFACE.minimum_anchor_count, 3);
+  const repeated = ["C1.GF.01", "C1.GF.01", "C1.GF.01"];
+  assert.equal(repeated.length, LINKING_METHOD_INTERFACE.minimum_anchor_count, "the raw array meets the floor; only the distinct count does not");
+  const scaffold = linkForms({
+    left_form: left, right_form: right, anchor_ids: repeated,
+    exposure_history: { left_prior_exposure_count: 0, right_prior_exposure_count: 0 },
+    task_model_digest: `sha256:${"9".repeat(64)}`,
+    response_patterns: empirical
+  });
+  assert.equal(scaffold.equivalence_decision, null, "one distinct anchor is not the declared floor, however many times it is repeated");
+  assert.equal(scaffold.equivalence_status, "UNESTABLISHED");
+  assert.equal(scaffold.claim_stage_ceiling, "PROFILE_BOUND");
+  assert.ok(scaffold.inputs_missing.includes("anchor_opportunity_ids"));
+  assert.deepEqual(scaffold.anchor_ids, ["C1.GF.01"], "the emitted anchor set is already deduplicated to one distinct anchor");
+});
+
 // Directive 22.4/22.5: only a registered method/version pair may reach LINKED, and only that
 // method's own registered contract may set the drift threshold a comparison is measured against.
 
@@ -858,6 +881,23 @@ test("the exposure ledger drives form retirement: any exposure retires a form fr
   assert.equal(exposed.scored_count, 0);
 });
 
+test("an abandoned reservation does not retire the form in formLifecycleState either", async () => {
+  // classifyAdministration already reads this exact row as no exposure at all (see "a reservation
+  // abandoned before it revealed anything does not retire the form" further below); formLifecycleState
+  // must not disagree with it about the same ledger row, or one API reports a form fresh and
+  // officially permitted while the other reports it retired with a nonzero exposure count.
+  const { createExposureLedger, formLifecycleState, reserveExposure } = await import("../../lib/form-class.mjs");
+  const digest = `sha256:${"1a".repeat(32)}`;
+  const reserved = reserveExposure(createExposureLedger(), {
+    form_id: "aos-operational-lifecycle-abandoned", form_contract_digest: digest, declared_class: "OPERATIONAL",
+    administration_id: "admin-lifecycle-abandoned-1", occurred_at: "2026-09-06T10:00:00.000Z"
+  });
+  const state = formLifecycleState(reserved.ledger, { form_contract_digest: digest });
+  assert.equal(state.retirement_status, "ACTIVE", "an unrevealed reservation retired the form here while classifyAdministration kept it fresh");
+  assert.equal(state.exposure_count, 0);
+  assert.equal(state.scored_count, 0);
+});
+
 // ---------------------------------------------------------------------------------------------
 // Practice and occasion effects (#585)
 
@@ -891,6 +931,24 @@ test("practice contamination is recorded with its exact reason and excludes the 
   assert.equal(analysis.administrations[1].interval_ms, 86400000);
 });
 
+test("an abandoned reservation is not counted as an administration by practiceAnalysis", async () => {
+  // classifyAdministration already excludes a RESERVED row that never revealed anything from
+  // exposure; practiceAnalysis used to count it anyway, making a nonempty row set out of a form
+  // never actually shown to anybody -- turning practice_contaminated false and
+  // generalizability_evidence_eligible true for an administration that never occurred.
+  const { createExposureLedger, practiceAnalysis, reserveExposure } = await import("../../lib/form-class.mjs");
+  const digest = `sha256:${"1b".repeat(32)}`;
+  const reserved = reserveExposure(createExposureLedger(), {
+    form_id: "aos-operational-practice-abandoned", form_contract_digest: digest, declared_class: "OPERATIONAL",
+    administration_id: "admin-practice-abandoned-1", occurred_at: "2026-09-06T10:00:00.000Z"
+  });
+  const analysis = practiceAnalysis(reserved.ledger, { form_contract_digest: digest });
+  assert.equal(analysis.same_form_exposure_count, 0, "an abandoned reservation was counted as an administration");
+  assert.equal(analysis.practice_contaminated, null, "nothing was administered, so there is nothing to analyse -- not a clean bill");
+  assert.equal(analysis.generalizability_evidence_eligible, null);
+  assert.deepEqual(analysis.administrations, []);
+});
+
 test("speed-only improvement is an indicator on the record, never a skill gain", async () => {
   const { createExposureLedger, practiceAnalysis, recordExposure } = await import("../../lib/form-class.mjs");
   const digest = `sha256:${"f".repeat(64)}`;
@@ -909,7 +967,7 @@ test("speed-only improvement is an indicator on the record, never a skill gain",
 });
 
 test("raw improvement is never marked as skill gain: replay suggests memorisation, an unlinked form withholds, a linked form observes", async () => {
-  const { scoreChangeClaim } = await import("../../lib/form-class.mjs");
+  const { linkForms, scoreChangeClaim } = await import("../../lib/form-class.mjs");
   const digestA = `sha256:${"a1".repeat(32)}`;
   const digestB = `sha256:${"b2".repeat(32)}`;
   const earlier = { form_contract_digest: digestA, score: 55 };
@@ -923,9 +981,30 @@ test("raw improvement is never marked as skill gain: replay suggests memorisatio
   const unlinked = scoreChangeClaim({ earlier, later: { form_contract_digest: digestB, score: 90 } });
   assert.equal(unlinked.interpretable_change, null);
   assert.equal(unlinked.interpretation, "WITHHELD_EQUIVALENCE_UNESTABLISHED");
-  // Linked forms put the two scores on one scale; the observed change becomes interpretable,
-  // and it is still only an observed change.
-  const linking = { schema_id: "aos-form-linking-scaffold.v1", equivalence_status: "LINKED", equivalence_decision: true, left_form_contract_digest: digestA, right_form_contract_digest: digestB };
+  // A self-authored object naming only the schema tag, LINKED/true and the two digests is not a
+  // real `linkForms` scaffold -- it carries no `inputs_missing`, no registered method, no sample
+  // floor, no anchors and no drift evidence, and used to be accepted anyway. scoreChangeClaim must
+  // refuse it exactly the way formBankRecord already refuses the same shape.
+  const forged = { schema_id: "aos-form-linking-scaffold.v1", equivalence_status: "LINKED", equivalence_decision: true, left_form_contract_digest: digestA, right_form_contract_digest: digestB };
+  const withForged = scoreChangeClaim({ earlier, later: { form_contract_digest: digestB, score: 90 }, linking: forged });
+  assert.equal(withForged.interpretable_change, null, "a self-authored linking object must not put two scores on one scale");
+  assert.equal(withForged.interpretation, "WITHHELD_EQUIVALENCE_UNESTABLISHED");
+  // Linked forms put the two scores on one scale, and only a real calibration -- a registered
+  // method, adequate samples, anchors within the drift threshold -- earns that; it is still only an
+  // observed change.
+  const left = { form_id: "aos-operational-score-a", form_contract_digest: digestA, construct_opportunity_ids: ["C1.GF.01", "C2.SC.01", "C3.RD.01"] };
+  const right = { form_id: "aos-operational-score-b", form_contract_digest: digestB, construct_opportunity_ids: ["C1.GF.01", "C2.SC.01", "C3.RD.01"] };
+  const linking = linkForms({
+    left_form: left, right_form: right, anchor_ids: ["C1.GF.01", "C2.SC.01", "C3.RD.01"],
+    exposure_history: { left_prior_exposure_count: 0, right_prior_exposure_count: 0 },
+    task_model_digest: `sha256:${"9".repeat(64)}`,
+    response_patterns: {
+      method: "anchored-delta.v1", method_version: "1.0.0",
+      sample_per_form: { left: 25, right: 25 },
+      anchor_deltas: { "C1.GF.01": 0.02, "C2.SC.01": -0.03, "C3.RD.01": 0.01 }
+    }
+  });
+  assert.equal(linking.equivalence_status, "LINKED", "the fixture must actually reach LINKED for the rest of this test to say anything");
   const linked = scoreChangeClaim({ earlier, later: { form_contract_digest: digestB, score: 90 }, linking });
   assert.equal(linked.interpretable_change, true);
   assert.equal(linked.interpretation, "OBSERVED_ON_LINKED_FORMS");
@@ -958,6 +1037,19 @@ test("the transfer protocol is versioned, phase B is held out, and C7 never ente
   // A phase B that still had the agent or the transcript is not a held-out phase B at all.
   assert.throws(() => assessTransfer({ phase_b: { agent_available: true, transcript_available: false, tasks: [] } }), /AOS_TRANSFER_PHASE_B_NOT_HELD_OUT/);
   assert.throws(() => assessTransfer({ phase_b: { agent_available: false, transcript_available: true, tasks: [] } }), /AOS_TRANSFER_PHASE_B_NOT_HELD_OUT/);
+});
+
+test("an empty phase B task array is not an observation: every output stays null and the status stays UNESTABLISHED", async () => {
+  // A properly held-out phase B object with zero administered tasks is presence of the container,
+  // not evidence in it. `transferDecision` already answers null for every output on an empty array,
+  // but `status`/`uncertainty` used to key off whether `phase_b` was non-null at all, so this exact
+  // shape reported OBSERVED with uncertainty SINGLE_OCCASION while all four transfer answers stayed
+  // null -- promoting an empty container to an observation of nothing administered.
+  const { TRANSFER_PROTOCOL, assessTransfer } = await import("../../lib/form-class.mjs");
+  const report = assessTransfer({ phase_b: { agent_available: false, transcript_available: false, tasks: [] } });
+  for (const output of TRANSFER_PROTOCOL.outputs) assert.equal(report[output], null, `${output} was not null with zero phase B tasks`);
+  assert.equal(report.status, "UNESTABLISHED", "an empty task array must not read as an observed occasion");
+  assert.equal(report.uncertainty.status, "NOT_ADMINISTERED");
 });
 
 test("collaborative success with solo transfer failure stays a C7 fact and touches no core outcome", async () => {
@@ -1103,6 +1195,27 @@ test("a small DIF sample never turns a comparison on, and detected DIF refuses i
   const noStatistics = comparisonGate({ facet: "language", left_level: "ko", right_level: "en", invariance_evidence: evidence({ per_anchor_statistics: {} }) });
   assert.equal(noStatistics.comparison, "WITHHELD");
   assert.equal(noStatistics.reasons.some((reason) => reason.includes("AOS_COMPARISON_EVIDENCE_INCOMPLETE")), true);
+  // Thirty slots is not thirty observations: a `null` per response used to satisfy the length check
+  // on its own.
+  const nullResponses = comparisonGate({
+    facet: "language", left_level: "ko", right_level: "en",
+    invariance_evidence: evidence({
+      responses_per_group: {
+        ko: Array(DIF_RUNNER_INTERFACE.minimum_sample_per_group).fill(null),
+        en: Array(DIF_RUNNER_INTERFACE.minimum_sample_per_group).fill(null)
+      }
+    })
+  });
+  assert.equal(nullResponses.comparison, "WITHHELD", "an array of null entries is not response data, whatever its length");
+  assert.equal(nullResponses.reasons.some((reason) => reason.includes("AOS_COMPARISON_EVIDENCE_INCOMPLETE")), true);
+  // A property is not a statistic: an empty object per anchor used to satisfy `hasOwnProperty`
+  // alone, with a real dif_detected:false then permitting the comparison on nothing computed.
+  const emptyPerAnchorStatistics = comparisonGate({
+    facet: "language", left_level: "ko", right_level: "en",
+    invariance_evidence: evidence({ per_anchor_statistics: Object.fromEntries(anchorIds.map((anchor) => [anchor, {}])) })
+  });
+  assert.equal(emptyPerAnchorStatistics.comparison, "WITHHELD", "an empty statistics object per anchor is a slot, not a computed statistic");
+  assert.equal(emptyPerAnchorStatistics.reasons.some((reason) => reason.includes("AOS_COMPARISON_EVIDENCE_INCOMPLETE")), true);
 });
 
 // ---------------------------------------------------------------------------------------------
