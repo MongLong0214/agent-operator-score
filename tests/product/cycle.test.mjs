@@ -250,6 +250,19 @@ test("a stored classification must be tagged the way classifyAdministration actu
   const seed = "0000000000000001";
   assert.deepEqual(exposureVerification({ ...runOf(seed), form_classification: classification(seed, true) }), { decision: true, status: "VERIFIED" });
   assert.deepEqual(exposureVerification({ ...runOf(seed), form_classification: classification(seed, false) }), { decision: false, status: "REFUSED" });
+
+  // The schema tag, isolated. The binding checks added later refuse the untagged objects above on
+  // their own, so deleting the tag comparison changed nothing observable and its mutation guard
+  // survived a full sweep. A guard whose witness is refused for another reason has not been
+  // witnessed. This object binds correctly to its run, its administration and its form -- every
+  // later check passes -- and carries the wrong tag, so the tag comparison is the only thing left
+  // that can refuse it.
+  const boundButUntagged = { ...classification(seed, true), schema_id: "not-the-classification-schema.v1" };
+  assert.deepEqual(
+    exposureVerification({ ...runOf(seed), form_classification: boundButUntagged }),
+    { decision: null, status: "UNVERIFIED" },
+    "a correctly bound classification under the wrong schema tag authorized itself"
+  );
 });
 
 test("a classification naming a different run, administration or form does not verify this one", () => {
