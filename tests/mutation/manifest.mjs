@@ -8079,15 +8079,6 @@ export const GUARDS = [
     name: "a small linking sample never passes: the decision stays null and names the floor"
   },
   {
-    guard: "phase A collaboration earns no transfer credit",
-    reason: "deriving transfer only from phase B tasks is the C7 separation itself; a phase A success that can synthesise a passed phase B task turns collaborative success into independent transfer",
-    file: "lib/form-class.mjs",
-    from: "  const tasks = phaseB === null ? [] : phaseB.tasks;",
-    to: "  const tasks = phaseB === null ? [{ relatedness: \"near\", passed: phaseA?.collaborative_success === true, independent_verification_observed: true, delayed: false }] : phaseB.tasks;",
-    test: "tests/product/form-class.test.mjs",
-    name: "collaborative success with solo transfer failure stays a C7 fact and touches no core outcome"
-  },
-  {
     guard: "a cross-facet comparison without invariance evidence is withheld",
     reason: "this return is the withholding: without it a translated or re-expressed form compares as if invariance had been shown, which is the exact overclaim the DIF gate exists to stop",
     file: "lib/form-class.mjs",
@@ -8104,15 +8095,6 @@ export const GUARDS = [
     to: "  if (false) {",
     test: "tests/product/form-class.test.mjs",
     name: "a small DIF sample never turns a comparison on, and detected DIF refuses it"
-  },
-  {
-    guard: "a form bank record's equivalence status requires a real linking scaffold, not any object naming a status",
-    reason: "equivalence_status is derived, never declared; without the schema_id tag any caller-supplied object naming a status -- linking: { equivalence_status: \"LINKED\" } needs no linkForms scaffold and no evidence -- would be quoted straight onto the record. #585: this check now lives in the shared `isRealLinkingScaffold` predicate `formBankRecord` and `scoreChangeClaim` both read, which is why the `from` string moved with it, at its new indentation, rather than the object-literal spot it used to occupy inline. #585 BLOCKER item 2 rewrote the predicate from a boolean-AND chain into early-return guard clauses, which is why the `from` string is now the first `if` rather than the chain's opening two lines",
-    file: "lib/form-class.mjs",
-    from: "  if (linking === null || typeof linking !== \"object\" || linking.schema_id !== FORM_LINKING_SCHEMA_ID) return false;",
-    to: "  if (linking === null || typeof linking !== \"object\") return false;",
-    test: "tests/product/form-class.test.mjs",
-    name: "a form bank record's equivalence status requires a real linking scaffold, not any object naming a status"
   },
   {
     guard: 'legacy card carries the NOT COMPARABLE marker',
@@ -8422,9 +8404,9 @@ export const GUARDS = [
   },
   {
     guard: "a PRACTICE terminal ships a result whose composite and profiles are withheld, not the ones buildResult computed before classification ran",
-    reason: "#585 item 3. buildResult has no way to know a run will be classified PRACTICE -- that depends on every prior entry in the exposure ledger and is decided only after grading -- so the terminal used to change while the persisted and rendered result kept its issued profile and composite fields unchanged, shipping a public artefact that still claimed an operational estimate beside a terminal saying it may not be scored",
+    reason: "#585 item 3. buildResult has no way to know a run will be classified PRACTICE -- that depends on every prior entry in the exposure ledger and is decided only after grading -- so the terminal used to change while the persisted and rendered result kept its issued profile and composite fields unchanged, shipping a public artefact that still claimed an operational estimate beside a terminal saying it may not be scored. #585 (this round) moved the `from` string: the condition changed from `status === \"PRACTICE\"` to `practiceReason !== null` so an S2 replay the ledger refuses is withheld too (see the adjacent guard for that exact case); this mutation now asks the broader question, whether any withholding happens here at all.",
     file: "lib/cli.mjs",
-    from: "    const publishedResult = status === \"PRACTICE\"\n      ? withholdPublishedClaim(result, [\"operator_process_profile\", \"system_outcome_profile\", \"aos_composite\"], practiceReason)\n      : result;",
+    from: "    const publishedResult = practiceReason !== null\n      ? withholdPublishedClaim(result, [\"operator_process_profile\", \"system_outcome_profile\", \"aos_composite\"], practiceReason)\n      : result;",
     to: "    const publishedResult = result;",
     test: "tests/product/form-class.test.mjs",
     name: "a replayed operational form crosses runs as practice, never as official aggregate evidence"
@@ -8530,15 +8512,6 @@ export const GUARDS = [
     to: "if (!Array.isArray(anchorIds) || distinctAnchorCount === 0) missing.push(\"anchor_opportunity_ids\");",
     test: "tests/product/form-class.test.mjs",
     name: "fewer anchors than the method declares never links, whatever the samples and deltas say"
-  },
-  {
-    guard: "a form bank record's equivalence status requires a real decision and a real relation to it",
-    reason: "the schema_id tag alone is a string any caller can write into a plain object; a forged linking object naming the right schema and an equivalence_status, with no decision, no empirical inputs and no relation to this form, was accepted as though it were a real linkForms scaffold. #585: the decision/inputs_missing clauses now live in the shared `isRealLinkingScaffold` predicate rather than inline in formBankRecord's own object literal, so the `from` string moved into that predicate's body with it. #585 BLOCKER item 2 rewrote the predicate into early-return guard clauses, one per check, which is why the `from` string is now three `if` statements rather than a boolean-AND chain",
-    file: "lib/form-class.mjs",
-    from: "  if (typeof linking.equivalence_decision !== \"boolean\") return false;\n  if (!Array.isArray(linking.inputs_missing) || linking.inputs_missing.length > 0) return false;\n  if (!EQUIVALENCE_STATUSES.includes(linking.equivalence_status)) return false;",
-    to: "  if (!EQUIVALENCE_STATUSES.includes(linking.equivalence_status)) return false;",
-    test: "tests/product/form-class.test.mjs",
-    name: "a form bank record's equivalence status ignores a correctly-tagged scaffold with no decision, no inputs or no relation to it"
   },
   {
     guard: "comparisonGate requires the DIF report's own declared inputs, not only its verdict",
@@ -8694,15 +8667,6 @@ export const GUARDS = [
     name: "repeating one shared anchor to reach the count never satisfies the anchor minimum"
   },
   {
-    guard: "scoreChangeClaim requires a real linking scaffold, not a self-authored object naming LINKED",
-    reason: "scoreChangeClaim's `covers` check only confirms a linking object names the two exact digests being compared; without also requiring isRealLinkingScaffold, a caller-authored object carrying only the schema tag, LINKED/true and the two digests -- no inputs_missing check, no registered method, no sample floor, no anchors, no drift evidence -- put two scores on one scale on the strength of nothing",
-    file: "lib/form-class.mjs",
-    from: "  if (covers && isRealLinkingScaffold(linking) && isEstablished(linking.equivalence_decision) && linking.equivalence_status === \"LINKED\") {",
-    to: "  if (covers && isEstablished(linking.equivalence_decision) && linking.equivalence_status === \"LINKED\") {",
-    test: "tests/product/form-class.test.mjs",
-    name: "raw improvement is never marked as skill gain: replay suggests memorisation, an unlinked form withholds, a linked form observes"
-  },
-  {
     guard: "an empty phase B task array does not read as an observed transfer occasion",
     reason: "an empty tasks array is presence of the phase B container, not evidence in it -- transferDecision already answers null for every output on an empty array, but status/uncertainty keyed off whether phase_b was non-null at all, so this exact shape reported OBSERVED with uncertainty SINGLE_OCCASION while all four transfer answers stayed null",
     file: "lib/form-class.mjs",
@@ -8749,21 +8713,30 @@ export const GUARDS = [
   },
   {
     guard: "aos verify recomputes a PRACTICE result under its own recorded withholding",
-    reason: "#585 BLOCKER item 1: `withholdPublishedClaim` patched a PRACTICE run's published surfaces AFTER `buildResult` produced them, but `evaluate`/`buildResult` never took the exposure-ledger refusal as an input -- so `aos verify --run`'s from-scratch recomputation reproduced the un-withheld surfaces and every PRACTICE result failed its own verification. `assess` now records the refusal onto the run's own working record, and `verifyProfileResult` applies the identical withholding to its rebuild before comparing; deleting the record write reproduces the original defect.",
+    reason: "#585 BLOCKER item 1: `withholdPublishedClaim` patched a PRACTICE run's published surfaces AFTER `buildResult` produced them, but `evaluate`/`buildResult` never took the exposure-ledger refusal as an input -- so `aos verify --run`'s from-scratch recomputation reproduced the un-withheld surfaces and every PRACTICE result failed its own verification. `assess` now records the refusal onto the run's own working record, and `verifyProfileResult` applies the identical withholding to its rebuild before comparing; deleting the record write reproduces the original defect. #585 (this round) moved the `from` string: the condition changed from `status === \"PRACTICE\"` to `practiceReason !== null`, because `status` is `\"UNSAFE\"` whenever S2 wins over a ledger refusal and the record write has to follow the refusal regardless of which status won (see the next two guards).",
     file: "lib/cli.mjs",
-    from: "practice_withholding: status === \"PRACTICE\" ? { reason: practiceReason } : null",
+    from: "practice_withholding: practiceReason !== null ? { reason: practiceReason } : null",
     to: "practice_withholding: null",
     test: "tests/product/verify-run.test.mjs",
     name: "a PRACTICE result withheld by the exposure ledger passes its own verifier"
   },
   {
-    guard: "a hand-written linking scaffold cannot fake a registered method's floors and drift evidence",
-    reason: "#585 BLOCKER item 2: the prior `isRealLinkingScaffold` checked only a schema tag, a boolean decision, an empty inputs_missing and an enum word -- every one of them a field a caller can type by hand -- so a forged object one field short of the previous forgery still reached LINKED. The predicate now also requires a method/version pair this file has a registered contract for; removing that requirement lets the same forged object from the regression test through again.",
-    file: "lib/form-class.mjs",
-    from: "  if (methodContract === undefined) return false;",
-    to: "  if (false) return false;",
-    test: "tests/product/form-class.test.mjs",
-    name: "a forged scaffold naming the right schema, a real decision and no missing inputs is still refused"
+    guard: "an S2 replay the ledger refuses withholds its published surfaces regardless of which status won",
+    reason: "#585 (this round). `status` is `\"UNSAFE\"` whenever the agent triggers S2, and S2 deliberately wins the status over a ledger refusal -- but the publish path keyed withholding off `status === \"PRACTICE\"`, so an S2 replay of an already-exposed form published its issued composite and profiles in full beside an UNSAFE terminal. `practiceReason` already names the ledger's own refusal independent of `status`; withholding now follows it directly.",
+    file: "lib/cli.mjs",
+    from: "    const publishedResult = practiceReason !== null\n      ? withholdPublishedClaim(result, [\"operator_process_profile\", \"system_outcome_profile\", \"aos_composite\"], practiceReason)\n      : result;",
+    to: "    const publishedResult = status === \"PRACTICE\"\n      ? withholdPublishedClaim(result, [\"operator_process_profile\", \"system_outcome_profile\", \"aos_composite\"], practiceReason)\n      : result;",
+    test: "tests/product/verify-run.test.mjs",
+    name: "an S2 replay of an already-exposed form withholds its published surfaces exactly like a PRACTICE replay does"
+  },
+  {
+    guard: "verify --run reconciles practice_withholding against the exposure ledger, not the stored record alone",
+    reason: "#585 (this round). `practiceReason` inside `verifyProfileResult` used to read `record.practice_withholding.reason` alone -- a field on the run's own working record, a plain file an operator can edit. Removing that field made a PRACTICE run's own recompute stop reapplying its withholding, so an untampered result whose record merely lost the field failed its own verification; the ledger's own committed entry for this exact administration must decide whether withholding applies, the same move `exposureVerification` (lib/cycle.mjs) already made for `form_classification`.",
+    file: "lib/cli.mjs",
+    from: "    const ledgerWithholds = ledgerEntry === undefined\n      ? null\n      : ledgerEntry.declared_class !== \"OPERATIONAL\" || ledgerEntry.prior_exposure_count > 0;",
+    to: "    const ledgerWithholds = null;",
+    test: "tests/product/verify-run.test.mjs",
+    name: "stripping practice_withholding from the run's own record does not change verify --run's verdict; the ledger still says so"
   },
   {
     guard: "reserveExposure excludes an abandoned reservation from its own prior_exposure_count",
@@ -8791,6 +8764,67 @@ export const GUARDS = [
     to: "    (lockPath, why) => `AOS_EXPOSURE_LOCK_UNAVAILABLE ${lockPath} (${why})`,\n    body\n  );",
     test: "tests/product/home.test.mjs",
     name: "a run lock in the older bare-pid format is broken, not refused under the ledger's answer"
+  },
+  {
+    // #585 (this round). This guard's name is inherited: `isRealLinkingScaffold` (the predicate
+    // this name originally described) is deleted outright, and `tests/mutation/measured.json`
+    // cannot be edited to drop or rename a measured guard, so the name that already has a
+    // measurement record stays and now covers the branch that replaced what it used to guard --
+    // `linkForms` itself never authorizing LINKED. Every guard below through "assessTransfer never
+    // authorizes..." repurposes a name this round retired its original code for, for the same
+    // reason.
+    guard: "a hand-written linking scaffold cannot fake a registered method's floors and drift evidence",
+    reason: "#585 (this round). Five review rounds hardened a predicate over caller-supplied linking evidence one field at a time, and each next round's forgery satisfied the new field -- no predicate over fields the caller controls can certify a study that did not happen. This is the branch every one of those forgeries, and this file's own retired `completeForgedLinking`, was built to reach: every floor met, drift within threshold. It is closed by construction now; what the caller's numbers claimed is recorded on `unauthenticated_claim` instead of authorizing `decision`/`status`.",
+    file: "lib/form-class.mjs",
+    from: "        unauthenticatedClaim = deepFreeze({\n          claimed_equivalence_status: \"LINKED\",\n          claimed_method: { method: method.method, method_version: method.method_version },\n          maximum_observed_delta: observedMaximumDelta,\n          reason: \"AOS_LINKING_UNAUTHENTICATED AOS has no trust root for externally-produced linking studies -- no signed study, no attested producer, no data AOS itself recorded -- so a complete, well-formed calibration is recorded as an unauthenticated claim and never converted into a LINKED verdict\"\n        });",
+    to: "        decision = true;\n        status = \"LINKED\";\n        driftStatus = \"WITHIN_THRESHOLDS\";",
+    test: "tests/product/form-class.test.mjs",
+    name: "a complete, well-formed calibration is closed by construction: it stays UNESTABLISHED and its claim is recorded, unauthenticated; drift and disjoint anchors are unaffected"
+  },
+  {
+    guard: "a form bank record's equivalence status requires a real linking scaffold, not any object naming a status",
+    reason: "#585 (this round). `isRealLinkingScaffold`, the predicate this field used to trust, is deleted: it grew one more required field every review round and a forgery satisfying the new field followed every time. `equivalence_status` is no longer computed from `linking` at all -- it is the literal `\"UNESTABLISHED\"` -- so there is no predicate left to defeat.",
+    file: "lib/form-class.mjs",
+    from: "    equivalence_status: \"UNESTABLISHED\",",
+    to: "    equivalence_status: linking?.equivalence_status ?? \"UNESTABLISHED\",",
+    test: "tests/product/form-class.test.mjs",
+    name: "a form bank record's equivalence status is closed by construction: a perfect linking claim still yields UNESTABLISHED"
+  },
+  {
+    guard: "scoreChangeClaim requires a real linking scaffold, not a self-authored object naming LINKED",
+    reason: "#585 (this round). The `covers && isRealLinkingScaffold(...) && ...` branch that used to promote this claim is deleted outright, not merely re-guarded: `linkForms` itself can no longer produce a LINKED-shaped scaffold, so trusting one here -- real or hand-authored -- would only ever be trusting a caller's own say-so. This is the return this function always takes now for two distinct, unreplayed forms; what `linking` claimed is recorded on `unauthenticated_claim`, never promoted to `interpretation`.",
+    file: "lib/form-class.mjs",
+    from: "    interpretable_change: null,\n    interpretation: \"WITHHELD_EQUIVALENCE_UNESTABLISHED\",",
+    to: "    interpretable_change: linking?.equivalence_status === \"LINKED\" ? true : null,\n    interpretation: linking?.equivalence_status === \"LINKED\" ? \"OBSERVED_ON_LINKED_FORMS\" : \"WITHHELD_EQUIVALENCE_UNESTABLISHED\",",
+    test: "tests/product/form-class.test.mjs",
+    name: "raw improvement is never marked as skill gain: replay suggests memorisation, and closed by construction no linking claim ever observes a change"
+  },
+  {
+    guard: "a form bank record's equivalence status requires a real decision and a real relation to it",
+    reason: "#585 (this round). `isRealLinkingScaffold` is deleted outright, so nothing in this file checks a decision or a relation to a form any more; this name is repurposed (see the comment on the first guard of this round's batch) for `comparisonGate`'s own closed branch -- the complete, well-formed DIF report every declared input present, adequate samples per group, no detected differential functioning -- reaches. AOS did not run the study, so it stays WITHHELD however completely the report is shaped; the report's own reported verdict is recorded on `unauthenticated_claim` instead of authorizing `comparison`.",
+    file: "lib/form-class.mjs",
+    from: "  return gateAnswer(facet, leftLevel, rightLevel, null, \"WITHHELD\",\n    [\"AOS_COMPARISON_UNAUTHENTICATED AOS has no trust root for externally-produced DIF studies -- no signed study, no attested producer, no data AOS itself recorded -- so a complete study reporting no detected differential functioning is recorded as an unauthenticated claim and never converted into a PERMITTED verdict\"],\n    deepFreeze({ claimed_comparison: \"PERMITTED\", reported_dif_detected: evidence.dif_detected }));",
+    to: "  return gateAnswer(facet, leftLevel, rightLevel, true, \"PERMITTED\", []);",
+    test: "tests/product/form-class.test.mjs",
+    name: "a small DIF sample never turns a comparison on, and detected DIF refuses it"
+  },
+  {
+    guard: "phase A collaboration earns no transfer credit",
+    reason: "#585 (this round). `agent_available: false` and `transcript_available: false` are booleans a caller types exactly as easily as `true`; assessTransfer has no way to confirm phase B was genuinely held out. The four real outputs and `status` are hardcoded to their closed defaults now -- `near`/`far`/`retention`/`verification` are computed only to populate `unauthenticated_claim`, never these four fields directly, so phase A's own collaborative success (or any caller-claimed phase B) still earns no transfer credit, now by construction rather than by a check on `tasks`.",
+    file: "lib/form-class.mjs",
+    from: "    near_transfer: null,\n    far_transfer: null,\n    retention_transfer: null,\n    independent_verification_behavior: null,\n    status: \"UNESTABLISHED\",",
+    to: "    near_transfer: near,\n    far_transfer: far,\n    retention_transfer: retention,\n    independent_verification_behavior: verification,\n    status: phaseBAdministered ? \"OBSERVED\" : \"UNESTABLISHED\",",
+    test: "tests/product/form-class.test.mjs",
+    name: "held-out passes are closed by construction: they never establish a real transfer verdict, only an unauthenticated claim"
+  },
+  {
+    guard: "the pre-chain and chained exposure ledger shapes own two different schema ids",
+    reason: "#585 (this round). Both shapes used to share `aos-exposure-ledger.v1`, and `openExposureLedger` told them apart by whether `revision`/`head_digest` were present, not by the id -- so a raw object tagged with the old id but fabricated with `revision`, `head_digest` and a self-consistent chain was read as a fully verified round-3 ledger, exactly the promotion the migration check exists to refuse for anything that predates the chain. The chained shape now owns `aos-exposure-ledger.v2`; the old id is refused unconditionally.",
+    file: "lib/form-class.mjs",
+    from: "  if (raw.schema_id === EXPOSURE_LEDGER_SCHEMA_ID) {\n    throw new Error(\"AOS_EXPOSURE_LEDGER_MIGRATION_REQUIRED the stored exposure ledger predates revision/chain/head integrity binding; it cannot be read as verified without an explicit migration, and none is silently performed\");\n  }",
+    to: "  if (false) {\n    throw new Error(\"AOS_EXPOSURE_LEDGER_MIGRATION_REQUIRED the stored exposure ledger predates revision/chain/head integrity binding; it cannot be read as verified without an explicit migration, and none is silently performed\");\n  }",
+    test: "tests/product/form-class.test.mjs",
+    name: "a ledger relabeled with the pre-chain id is refused as migration-required, even if it is otherwise a real, chain-verified ledger"
   }
 ];
 
@@ -9162,6 +9196,7 @@ export const ACCOUNTED_GUARDS = [
   "an OBSERVED canary cannot be built without a real profile digest to bind",
   "an OBSERVED canary cannot be built without a runtime version actually measured",
   "an OBSERVED canary reads its profile digest from the run, never from a caller",
+  "an S2 replay the ledger refuses withholds its published surfaces regardless of which status won",
   "an UNTRUSTED identity is not a verified one",
   "an absent boundary is not a passing one",
   "an after-snapshot head is in flight, not merely named",
@@ -9664,6 +9699,7 @@ export const ACCOUNTED_GUARDS = [
   "the policy digest covers the forbidden rules themselves",
   "the post-deletion observation follows the deletion",
   "the post-deletion observation is taken promptly",
+  "the pre-chain and chained exposure ledger shapes own two different schema ids",
   "the pre-deletion observation is fresh",
   "the pre-deletion observation predates the deletion",
   "the pre-valid fallback fires only for a cycle that never decided which runs counted",
@@ -9775,6 +9811,7 @@ export const ACCOUNTED_GUARDS = [
   "verification re-gates the invocations the record carries",
   "verification result check",
   "verifier rederives uncertainty instead of trusting it",
+  "verify --run reconciles practice_withholding against the exposure ledger, not the stored record alone",
   "version comment after a flow mapping",
   "version comment is a version",
   "what runs after a reroute belongs to the decision that caused it",

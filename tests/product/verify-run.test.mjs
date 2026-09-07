@@ -51,6 +51,27 @@ const assessedPractice = () => {
   return { cwd, runId, recordPath: join(runDirectory, "record.json"), resultPath: join(runDirectory, "result.json") };
 };
 
+// #585 (this round). A second administration of the exact same seed where the agent also behaves
+// unsafely: the exposure ledger refuses this administration exactly as it does in
+// `assessedPractice` above, but `status` becomes `"UNSAFE"` rather than `"PRACTICE"` because S2
+// deliberately wins the status (see the comment in `lib/cli.mjs` where `status` is assigned). The
+// publish path used to key its withholding off `status === "PRACTICE"` rather than off the ledger's
+// own refusal, so this exact shape published its issued composite and profiles in full beside an
+// UNSAFE terminal.
+const assessedUnsafeReplay = () => {
+  const cwd = mkdtempSync(join(tmpdir(), "aos-verify-run-unsafe-replay-"));
+  run(cwd, ["init"]);
+  addAgent(cwd, "solo");
+  const plan = makePlan(cwd, { default: "solo" });
+  run(cwd, ["assess", "--plan", plan, "--seed", "5"], 3);
+  run(cwd, ["assess", "--plan", plan, "--seed", "5", "--json"], 4, { FAKE_AGENT_PROFILE: "unsafe" });
+  const runId = newestRunId(cwd);
+  const runDirectory = join(cwd, ".aos", "runs", runId);
+  const terminal = JSON.parse(readFileSync(join(runDirectory, "terminal.json"), "utf8"));
+  assert.equal(terminal.status, "UNSAFE", `the unsafe replay of an already-exposed seed did not classify as UNSAFE: ${JSON.stringify(terminal)}`);
+  return { cwd, runId, recordPath: join(runDirectory, "record.json"), resultPath: join(runDirectory, "result.json") };
+};
+
 const assessedWithProbe = (profile = "probe-cut-off") => {
   const cwd = mkdtempSync(join(tmpdir(), "aos-verify-run-probe-"));
   initBare(cwd);
@@ -446,6 +467,56 @@ test("a PRACTICE result withheld by the exposure ledger passes its own verifier"
     assert.equal(stored.aos_composite.issued, false, "a PRACTICE result should have withheld its composite");
     assert.equal(stored.aos_composite.withheld_reason, record.practice_withholding.reason, "the stored withheld reason and the run's own record disagree");
 
+    const verified = run(cwd, ["verify", "--run", runId]);
+    assert.match(verified.stdout, /PASS\trecompute/, verified.stdout);
+    assert.equal(/FAIL/.test(verified.stdout), false, verified.stdout);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+// #585 (this round). `verify --run` used to read `practiceReason` from `record.practice_withholding`
+// alone, with nothing to reconcile it against -- the same working-record file an operator can edit
+// by hand. Stripping that field off an otherwise-untouched, legitimately-withheld PRACTICE run's
+// record left the stored (still correctly withheld) `result.json` unchanged but made the verifier's
+// own rebuild stop reapplying the withholding, so the honest rebuild (raw, unwithheld) no longer
+// matched the honest stored artifact (withheld) -- an untampered result failing verification purely
+// because a side file lost one field. Reconciling against the exposure ledger's own committed entry
+// for this administration, which the record cannot edit, means removing the field changes nothing:
+// the ledger still says this administration was already exposed, and the rebuild still withholds.
+test("stripping practice_withholding from the run's own record does not change verify --run's verdict; the ledger still says so", () => {
+  const { cwd, runId, recordPath } = assessedPractice();
+  try {
+    const record = JSON.parse(readFileSync(recordPath, "utf8"));
+    assert.equal(typeof record.practice_withholding?.reason, "string", "the run's own working record does not carry the reason it was withheld");
+    // Tamper only the record's own claim; `result.json` on disk is untouched and still legitimately
+    // withheld. A verifier that reconciles against the ledger cannot be steered by this edit alone.
+    writeFileSync(recordPath, JSON.stringify({ ...record, practice_withholding: null }, null, 2));
+    const verified = run(cwd, ["verify", "--run", runId]);
+    assert.match(verified.stdout, /PASS\trecompute/, verified.stdout);
+    assert.equal(/FAIL/.test(verified.stdout), false, verified.stdout);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+// #585 (this round). `status` is `"UNSAFE"` whenever the agent triggers S2, and S2 deliberately
+// wins the status over a ledger refusal -- but the publish path used to key withholding off
+// `status === "PRACTICE"`, so an S2 replay of an already-exposed form published its issued
+// composite and profiles in full beside an UNSAFE terminal. This is the fix's own regression test.
+test("an S2 replay of an already-exposed form withholds its published surfaces exactly like a PRACTICE replay does", () => {
+  const { cwd, runId, recordPath, resultPath } = assessedUnsafeReplay();
+  try {
+    const record = JSON.parse(readFileSync(recordPath, "utf8"));
+    assert.equal(typeof record.practice_withholding?.reason, "string", "the ledger refused this replay, but the run's own working record does not say so because S2 -- not PRACTICE -- won the status");
+    const stored = JSON.parse(readFileSync(resultPath, "utf8"));
+    assert.equal(stored.aos_composite.issued, false, "an S2 replay of an already-exposed form published its issued composite in full");
+    assert.equal(stored.operator_process_profile.issued, false, "an S2 replay of an already-exposed form published its operator process profile in full");
+    assert.equal(stored.system_outcome_profile.issued, false, "an S2 replay of an already-exposed form published its system outcome profile in full");
+    assert.equal(stored.aos_composite.withheld_reason, record.practice_withholding.reason, "the stored withheld reason and the run's own record disagree");
+
+    // The same fix that withholds the publish path also has to be reconciled by `verify --run`: the
+    // ledger, not `status`, is what verification's own rebuild has to withhold under too.
     const verified = run(cwd, ["verify", "--run", runId]);
     assert.match(verified.stdout, /PASS\trecompute/, verified.stdout);
     assert.equal(/FAIL/.test(verified.stdout), false, verified.stdout);

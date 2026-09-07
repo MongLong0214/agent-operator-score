@@ -13,14 +13,17 @@ import {
 } from "../../lib/form-class.mjs";
 import { formManifest } from "../../lib/suite.mjs";
 
-// #585 BLOCKER item 2. A linking object that satisfies EVERY clause `isRealLinkingScaffold` checks
-// -- a registered method and version, a method interface quoting that exact registered contract, an
-// anchor set meeting its declared floor, a drift record consistent with LINKED, and the digests the
-// evidence rests on -- except the one field a test overrides. Without a complete base, disabling any
-// single clause is unwitnessed: the object is refused by one of the OTHER clauses anyway, and the
-// mutation guard for the disabled clause survives even though it does nothing (the exact failure
-// mode the schema_id-tag test below already calls out by name).
-const completeForgedLinking = (overrides = {}) => ({
+// #585 (this round). Five review rounds hardened a predicate here (`isRealLinkingScaffold`, once a
+// named function in `lib/form-class.mjs`) by requiring one more field each round, and each next
+// round's forgery satisfied it -- this fixture, `wellFormedLinkingClaim`, is that final-round
+// forgery: a registered method and version, a method interface quoting that exact registered
+// contract, an anchor set meeting its declared floor, a drift record consistent with LINKED, and
+// the digests the evidence is supposed to rest on. It still reached LINKED, because every one of
+// those fields is exactly as caller-supplied as the single field the first round checked. The
+// predicate is gone now -- `formBankRecord` and `scoreChangeClaim` do not ask a `linking` object
+// anything before deciding whether to trust it -- and this fixture is kept only to prove the
+// closure holds against the strongest artifact these tests can construct.
+const wellFormedLinkingClaim = (overrides = {}) => ({
   schema_id: FORM_LINKING_SCHEMA_ID,
   equivalence_decision: true,
   inputs_missing: [],
@@ -113,93 +116,35 @@ test("a form bank record cannot declare itself linked; equivalence stays unestab
   assert.equal(EQUIVALENCE_STATUSES.includes(record.equivalence_status), true);
 });
 
-test("a form bank record's equivalence status requires a real linking scaffold, not any object naming a status", () => {
-  // `linking: { equivalence_status: "LINKED" }` is exactly the shape a caller can construct by
-  // hand, with no `linkForms` scaffold and no empirical evidence behind it. Only an object tagged
-  // with the linking scaffold's own schema_id -- the same check `scoreChangeClaim` performs before
-  // it will quote a linking record -- may move this field off its UNESTABLISHED default.
-  const record = formBankRecord({
-    form_id: "FAM-1.form-2b",
-    form_class: "OPERATIONAL",
-    construct_opportunity_ids: ["C1.GF.01"],
-    oracle_digest: `sha256:${"b".repeat(64)}`,
-    linking: { equivalence_status: "LINKED" }
-  });
-  assert.equal(record.equivalence_status, "UNESTABLISHED");
-
-  // And the schema_id tag isolated: an object that satisfies EVERY other clause -- a registered
-  // method and version, a matching interface, an adequate anchor set, a consistent drift record,
-  // the evidence digests, a real boolean decision, no missing inputs, a known status, and this
-  // exact form on one side -- but carries the wrong tag. Without a COMPLETE object here the tag
-  // check is unwitnessed: the stricter clauses #585 BLOCKER item 2 added refuse an incomplete
-  // hand-written object on their own, so deleting the tag comparison broke nothing and its mutation
-  // guard survived. A guard whose witness is refused for another reason has not been witnessed at
-  // all.
-  const tagOnly = formBankRecord({
-    form_id: "FAM-1.form-2b",
-    form_class: "OPERATIONAL",
-    construct_opportunity_ids: ["C1.GF.01"],
-    oracle_digest: `sha256:${"b".repeat(64)}`,
-    linking: completeForgedLinking({ schema_id: "not-the-linking-scaffold.v1" })
-  });
-  assert.equal(tagOnly.equivalence_status, "UNESTABLISHED");
-});
-
-test("a forged scaffold naming the right schema, a real decision and no missing inputs is still refused", () => {
-  // The prior predicate checked exactly four things: the schema tag, `equivalence_decision` being
-  // a boolean, an empty `inputs_missing`, and a known `equivalence_status` word -- every one of
-  // them a field a caller can type by hand. This object supplies all four, plus the exact form on
-  // one side, and used to reach LINKED with nothing behind it: no registered method, no method
-  // interface, no anchor evidence meeting any floor, no drift record and no digest naming the
-  // linking evidence it claims to rest on. `isRealLinkingScaffold` must refuse it anyway.
-  const record = formBankRecord({
-    form_id: "FAM-1.form-2b",
-    form_class: "OPERATIONAL",
-    construct_opportunity_ids: ["C1.GF.01"],
-    oracle_digest: `sha256:${"b".repeat(64)}`,
-    linking: {
-      schema_id: FORM_LINKING_SCHEMA_ID,
-      equivalence_decision: true,
-      inputs_missing: [],
-      equivalence_status: "LINKED",
-      left_form_id: "FAM-1.form-2b",
-      right_form_id: "FAM-1.form-3c"
-    }
-  });
-  assert.equal(record.equivalence_status, "UNESTABLISHED");
-
-  // The next forgery a caller would reach for once the shape above is refused: name a method and
-  // version that LOOK registered, and fill in every other surface a real `linkForms` scaffold
-  // carries -- a method interface, an anchor set meeting its own declared floor, a drift record
-  // consistent with LINKED, and the digests the evidence is supposed to rest on. Nothing here is a
-  // real calibration; the method/version pair is not one `LINKING_METHOD_REGISTRY` has a contract
-  // for, and that lookup -- not the shape of the surrounding object -- is what has to refuse it.
-  const elaborateForgery = formBankRecord({
-    form_id: "FAM-1.form-2b",
-    form_class: "OPERATIONAL",
-    construct_opportunity_ids: ["C1.GF.01"],
-    oracle_digest: `sha256:${"b".repeat(64)}`,
-    linking: completeForgedLinking({ linking_method: { method: "unregistered-forged-method.v1", method_version: "1.0.0" } })
-  });
-  assert.equal(elaborateForgery.equivalence_status, "UNESTABLISHED", "an unregistered method dressed up with a plausible interface, anchors, drift and digests still reached LINKED");
-});
-
-test("a form bank record's equivalence status ignores a correctly-tagged scaffold with no decision, no inputs or no relation to it", () => {
-  // The schema_id tag alone is a string any caller can write into a plain object. A forged
-  // scaffold that carries it -- but never reached a decision, never reports its inputs as
-  // complete, or is not even about this form -- must be refused exactly like the untagged object
-  // above, or the tag becomes the only thing standing between a caller's claim and this record's
-  // strongest field. Each object below is otherwise COMPLETE (`completeForgedLinking`, #585
-  // BLOCKER item 2) so that only the one overridden field is what refuses it -- an incomplete
-  // object would be refused by a different, unrelated clause and leave the field under test
-  // unwitnessed, exactly the failure the schema_id-tag test above calls out by name.
+test("a form bank record's equivalence status is closed by construction: a perfect linking claim still yields UNESTABLISHED", () => {
+  // #585 (this round). This test replaces three that checked individual clauses of a predicate
+  // (`isRealLinkingScaffold`) that no longer exists: five review rounds hardened it one field at a
+  // time, and each next round's forgery satisfied the new field. `formBankRecord` no longer asks a
+  // `linking` object anything at all -- `equivalence_status` is always UNESTABLISHED, proven here
+  // against the most complete linking claim these tests can construct, not merely an incomplete one
+  // a leftover clause happens to still catch.
   const base = { form_id: "FAM-1.form-2b", form_class: "OPERATIONAL", construct_opportunity_ids: ["C1.GF.01"], oracle_digest: `sha256:${"b".repeat(64)}` };
-  // Enum-valid and otherwise complete, but `equivalence_decision` was never set -- no scaffold ever decided.
-  assert.equal(formBankRecord({ ...base, linking: completeForgedLinking({ equivalence_decision: undefined }) }).equivalence_status, "UNESTABLISHED");
-  // A decision, but the scaffold itself says inputs are missing -- an incomplete study quoted as final.
-  assert.equal(formBankRecord({ ...base, linking: completeForgedLinking({ inputs_missing: ["anchor_opportunity_ids"] }) }).equivalence_status, "UNESTABLISHED");
-  // A real decision about a different pair of forms entirely -- not a relation to this record.
-  assert.equal(formBankRecord({ ...base, linking: completeForgedLinking({ left_form_id: "some-other-form", right_form_id: "yet-another-form" }) }).equivalence_status, "UNESTABLISHED");
+  const record = formBankRecord({ ...base, linking: wellFormedLinkingClaim() });
+  assert.equal(record.equivalence_status, "UNESTABLISHED", "a perfect linking claim must not authorize LINKED");
+  assert.equal(EQUIVALENCE_STATUSES.includes(record.equivalence_status), true);
+  assert.equal(Object.isFrozen(record), true);
+  // What the caller supplied is recorded, but only ever as an explicit, named, unauthenticated
+  // claim -- never folded into the derived field, never a second decision vocabulary.
+  assert.equal(record.unauthenticated_claim.claimed_equivalence_status, "LINKED");
+  assert.equal(record.unauthenticated_claim.claimed_schema_id, FORM_LINKING_SCHEMA_ID);
+  assert.match(record.unauthenticated_claim.reason, /AOS_LINKING_UNAUTHENTICATED/);
+
+  // The schema tag alone -- no method, no interface, no anchors, no drift, no digests -- is exactly
+  // as inert, and its (much thinner) claim is recorded too.
+  const bare = formBankRecord({ ...base, linking: { equivalence_status: "LINKED" } });
+  assert.equal(bare.equivalence_status, "UNESTABLISHED");
+  assert.equal(bare.unauthenticated_claim.claimed_equivalence_status, "LINKED");
+  assert.equal(bare.unauthenticated_claim.claimed_schema_id, null);
+
+  // No linking claim at all: nothing to record.
+  const none = formBankRecord({ ...base });
+  assert.equal(none.equivalence_status, "UNESTABLISHED");
+  assert.equal(none.unauthenticated_claim, null);
 });
 
 test("the shipped operational form manifest speaks the form class contract's own words", () => {
@@ -232,7 +177,7 @@ test("the exposure ledger records sequence position, administration interval and
   const digestA = `sha256:${"1".repeat(64)}`;
   const digestB = `sha256:${"2".repeat(64)}`;
   const base = createExposureLedger();
-  assert.equal(base.schema_id, "aos-exposure-ledger.v1");
+  assert.equal(base.schema_id, "aos-exposure-ledger.v2");
   assert.deepEqual(base.entries, []);
   const first = recordExposure(base, { form_id: "aos-operational-002a", form_contract_digest: digestA, declared_class: "OPERATIONAL", occurred_at: "2026-09-06T10:00:00.000Z", scored: true });
   const second = recordExposure(first.ledger, { form_id: "aos-operational-002b", form_contract_digest: digestB, declared_class: "OPERATIONAL", occurred_at: "2026-09-06T11:00:00.000Z", scored: true });
@@ -360,6 +305,29 @@ test("a ledger written before revision/chain/head integrity binding existed fail
     () => openExposureLedger({ schema_id: "aos-exposure-ledger.v1", entries: [] }),
     /AOS_EXPOSURE_LEDGER_MIGRATION_REQUIRED/
   );
+});
+
+test("a ledger relabeled with the pre-chain id is refused as migration-required, even if it is otherwise a real, chain-verified ledger", async () => {
+  // #585 (this round). The pre-chain shape and the revision/chain/head-digest-bound shape used to
+  // share one schema id (`aos-exposure-ledger.v1`), so which shape a raw object actually was
+  // depended on whether `revision`/`head_digest` happened to be present, not on the id it claimed.
+  // A real, internally consistent v2 ledger -- straight out of this library's own write path,
+  // chain-verified and all -- relabeled with the OLD id used to be accepted anyway, because the
+  // migration check only fired when `revision` and `head_digest` were BOTH absent. Now the id alone
+  // decides: the pre-chain id is refused unconditionally, whatever fields the object also carries.
+  const { createExposureLedger, openExposureLedger, recordExposure, EXPOSURE_LEDGER_SCHEMA_ID, EXPOSURE_LEDGER_SCHEMA_ID_V2 } = await import("../../lib/form-class.mjs");
+  const digest = `sha256:${"7".repeat(64)}`;
+  const { ledger: real } = recordExposure(createExposureLedger(), {
+    form_id: "f", form_contract_digest: digest, declared_class: "OPERATIONAL",
+    occurred_at: "2026-09-06T10:00:00.000Z", scored: true
+  });
+  assert.equal(real.schema_id, EXPOSURE_LEDGER_SCHEMA_ID_V2, "a fresh ledger from this library's own write path carries the chained shape's own id");
+  // The exact same bytes, opened without complaint under their real id.
+  assert.equal(openExposureLedger(real).entries.length, 1);
+  // Relabeled with the pre-chain id and nothing else changed: still a fully well-formed, chain-
+  // verified v2 ledger by every field it carries, but claiming the OLD id.
+  const relabeled = { ...real, schema_id: EXPOSURE_LEDGER_SCHEMA_ID };
+  assert.throws(() => openExposureLedger(relabeled), /AOS_EXPOSURE_LEDGER_MIGRATION_REQUIRED/);
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -883,7 +851,15 @@ test("a small linking sample never passes: the decision stays null and names the
   assert.equal(scaffold.reasons.some((reason) => reason.includes("AOS_LINKING_SAMPLE_BELOW_MINIMUM")), true);
 });
 
-test("adequate anchor evidence within thresholds links; beyond them it drifts; disjoint anchors fail", async () => {
+test("a complete, well-formed calibration is closed by construction: it stays UNESTABLISHED and its claim is recorded, unauthenticated; drift and disjoint anchors are unaffected", async () => {
+  // #585 (this round). This is the exact scenario every review round's forgery, and this test
+  // itself before this round, was built to reach: every floor met, every digest present, drift
+  // within the registered threshold. `linkForms` never sets `equivalence_decision: true` /
+  // `equivalence_status: "LINKED"` from this branch any more, whatever the caller's numbers say --
+  // AOS has no trust root for the study behind them. What those numbers implied is recorded on
+  // `unauthenticated_claim` instead. DRIFTED and FAILED are unaffected: they grant nothing an
+  // authorized verdict would, so they stay exactly the negative, non-authorizing answers they
+  // always were.
   const { linkForms } = await import("../../lib/form-class.mjs");
   const { left, right, anchors, empirical } = linkingFixtures();
   const complete = {
@@ -891,26 +867,35 @@ test("adequate anchor evidence within thresholds links; beyond them it drifts; d
     exposure_history: { left_prior_exposure_count: 0, right_prior_exposure_count: 0 },
     task_model_digest: `sha256:${"9".repeat(64)}`
   };
-  const linked = linkForms({ ...complete, response_patterns: empirical });
-  assert.equal(linked.equivalence_decision, true);
-  assert.equal(linked.equivalence_status, "LINKED");
-  assert.equal(linked.claim_stage_ceiling, null);
-  assert.equal(linked.drift.status, "WITHIN_THRESHOLDS");
+  const wouldHaveLinked = linkForms({ ...complete, response_patterns: empirical });
+  assert.equal(wouldHaveLinked.equivalence_decision, null, "a complete calibration must not authorize a decision");
+  assert.equal(wouldHaveLinked.equivalence_status, "UNESTABLISHED");
+  assert.equal(wouldHaveLinked.claim_stage_ceiling, "PROFILE_BOUND");
+  assert.equal(wouldHaveLinked.drift.status, "NOT_MONITORED", "the authoritative drift field must not report a determination this function never authorized");
+  assert.deepEqual(wouldHaveLinked.inputs_missing, [], "the artifact really was complete; nothing here is a shape refusal");
+  assert.equal(wouldHaveLinked.unauthenticated_claim.claimed_equivalence_status, "LINKED");
+  assert.equal(wouldHaveLinked.unauthenticated_claim.maximum_observed_delta < 0.1, true);
+  assert.match(wouldHaveLinked.unauthenticated_claim.reason, /AOS_LINKING_UNAUTHENTICATED/);
+
   const drifted = linkForms({ ...complete, response_patterns: { ...empirical, anchor_deltas: { ...empirical.anchor_deltas, "C3.RD.01": 0.4 } } });
   assert.equal(drifted.equivalence_decision, false);
   assert.equal(drifted.equivalence_status, "DRIFTED");
   assert.equal(drifted.claim_stage_ceiling, "PROFILE_BOUND");
   assert.equal(drifted.drift.status, "EXCEEDED");
+  assert.equal(drifted.unauthenticated_claim, null, "DRIFTED is not a suppressed authorization; there is nothing to record");
   const disjoint = linkForms({ ...complete, anchor_ids: ["C9.XX.01", "C1.GF.01", "C2.SC.01"], response_patterns: empirical });
   assert.equal(disjoint.equivalence_decision, false);
   assert.equal(disjoint.equivalence_status, "FAILED");
   assert.equal(disjoint.reasons.some((reason) => reason.includes("AOS_LINKING_ANCHORS_NOT_SHARED")), true);
+  assert.equal(disjoint.unauthenticated_claim, null);
   // Linking a form to itself is not a question this scaffold answers.
   assert.throws(() => linkForms({ ...complete, right_form: left, response_patterns: empirical }), /AOS_LINKING_SAME_FORM/);
-  // And a linked scaffold is what lets a bank record say LINKED -- derived, not declared.
+  // And a complete calibration is still not what lets a bank record say LINKED: `formBankRecord`
+  // does not even look at `linking.equivalence_status` any more.
   const { formBankRecord: bank } = await import("../../lib/form-class.mjs");
-  const record = bank({ form_id: left.form_id, form_class: "OPERATIONAL", construct_opportunity_ids: left.construct_opportunity_ids, oracle_digest: `sha256:${"c".repeat(64)}`, linking: linked });
-  assert.equal(record.equivalence_status, "LINKED");
+  const record = bank({ form_id: left.form_id, form_class: "OPERATIONAL", construct_opportunity_ids: left.construct_opportunity_ids, oracle_digest: `sha256:${"c".repeat(64)}`, linking: wouldHaveLinked });
+  assert.equal(record.equivalence_status, "UNESTABLISHED");
+  assert.equal(record.unauthenticated_claim.claimed_equivalence_status, "UNESTABLISHED", "formBankRecord echoes what linkForms actually decided, not what the caller's numbers implied");
 });
 
 test("fewer anchors than the method declares never links, whatever the samples and deltas say", async () => {
@@ -1014,10 +999,14 @@ test("a caller-supplied drift threshold is ignored in both directions; only the 
   assert.equal(widened.equivalence_decision, false);
   // And a caller narrowing the threshold must not turn a comparison genuinely within the
   // registered threshold into a refusal either -- the caller's field is ignored, not merged with
-  // the registered one in either direction.
+  // the registered one in either direction. #585 (this round): the comparison genuinely within the
+  // registered threshold is itself closed by construction now, so this stays UNESTABLISHED (never
+  // LINKED) with the caller's numbers recorded as an unauthenticated claim -- the assertion this
+  // test replaces was itself the thing #585 closes.
   const narrowed = linkForms({ ...complete, response_patterns: empirical, drift_thresholds: { maximum_anchor_delta: 0.0001 } });
-  assert.equal(narrowed.equivalence_status, "LINKED", "a caller threshold tighter than the registered one must not be honoured either; only the registered contract decides");
-  assert.equal(narrowed.equivalence_decision, true);
+  assert.equal(narrowed.equivalence_status, "UNESTABLISHED", "a caller threshold tighter than the registered one must not be honoured either; only the registered contract decides, and that contract's own comparison is unauthenticated");
+  assert.equal(narrowed.equivalence_decision, null);
+  assert.equal(narrowed.unauthenticated_claim.claimed_equivalence_status, "LINKED", "the registered threshold, not the caller's 0.0001, is what the claim reports as having been met");
 });
 
 test("the exposure ledger drives form retirement: any exposure retires a form from official use", async () => {
@@ -1120,7 +1109,7 @@ test("speed-only improvement is an indicator on the record, never a skill gain",
   assert.equal(practiceAnalysis(scoreless, { form_contract_digest: digest }).speed_only_improvement, null);
 });
 
-test("raw improvement is never marked as skill gain: replay suggests memorisation, an unlinked form withholds, a linked form observes", async () => {
+test("raw improvement is never marked as skill gain: replay suggests memorisation, and closed by construction no linking claim ever observes a change", async () => {
   const { linkForms, scoreChangeClaim } = await import("../../lib/form-class.mjs");
   const digestA = `sha256:${"a1".repeat(32)}`;
   const digestB = `sha256:${"b2".repeat(32)}`;
@@ -1135,20 +1124,26 @@ test("raw improvement is never marked as skill gain: replay suggests memorisatio
   const unlinked = scoreChangeClaim({ earlier, later: { form_contract_digest: digestB, score: 90 } });
   assert.equal(unlinked.interpretable_change, null);
   assert.equal(unlinked.interpretation, "WITHHELD_EQUIVALENCE_UNESTABLISHED");
-  // A self-authored object naming only the schema tag, LINKED/true and the two digests is not a
-  // real `linkForms` scaffold -- it carries no `inputs_missing`, no registered method, no sample
-  // floor, no anchors and no drift evidence, and used to be accepted anyway. scoreChangeClaim must
-  // refuse it exactly the way formBankRecord already refuses the same shape.
+  // #585 (this round). A self-authored object naming only the schema tag, LINKED/true and the two
+  // digests is not a real `linkForms` scaffold -- it carries no `inputs_missing`, no registered
+  // method, no sample floor, no anchors and no drift evidence -- and this is now doubly refused:
+  // `scoreChangeClaim` does not check any of those fields any more, closed by construction, so this
+  // stays withheld whatever shape the object has.
   const forged = { schema_id: "aos-form-linking-scaffold.v1", equivalence_status: "LINKED", equivalence_decision: true, left_form_contract_digest: digestA, right_form_contract_digest: digestB };
   const withForged = scoreChangeClaim({ earlier, later: { form_contract_digest: digestB, score: 90 }, linking: forged });
   assert.equal(withForged.interpretable_change, null, "a self-authored linking object must not put two scores on one scale");
   assert.equal(withForged.interpretation, "WITHHELD_EQUIVALENCE_UNESTABLISHED");
-  // Linked forms put the two scores on one scale, and only a real calibration -- a registered
-  // method, adequate samples, anchors within the drift threshold -- earns that; it is still only an
-  // observed change.
+  assert.equal(withForged.unauthenticated_claim.claimed_equivalence_status, "LINKED");
+
+  // #585 (this round). Closed by construction: even a real, complete calibration through
+  // `linkForms` itself -- a registered method, adequate samples, anchors within the drift threshold
+  // -- no longer reaches LINKED (see `linkForms`'s own closure test), so it cannot put two scores on
+  // one scale here either. The fixture below is exactly the one this test used, pre-#585, to prove
+  // the opposite; it now demonstrates the closure holds end to end, from `linkForms`'s own output
+  // through to `scoreChangeClaim`.
   const left = { form_id: "aos-operational-score-a", form_contract_digest: digestA, construct_opportunity_ids: ["C1.GF.01", "C2.SC.01", "C3.RD.01"] };
   const right = { form_id: "aos-operational-score-b", form_contract_digest: digestB, construct_opportunity_ids: ["C1.GF.01", "C2.SC.01", "C3.RD.01"] };
-  const linking = linkForms({
+  const wouldHaveLinked = linkForms({
     left_form: left, right_form: right, anchor_ids: ["C1.GF.01", "C2.SC.01", "C3.RD.01"],
     exposure_history: { left_prior_exposure_count: 0, right_prior_exposure_count: 0 },
     task_model_digest: `sha256:${"9".repeat(64)}`,
@@ -1158,12 +1153,14 @@ test("raw improvement is never marked as skill gain: replay suggests memorisatio
       anchor_deltas: { "C1.GF.01": 0.02, "C2.SC.01": -0.03, "C3.RD.01": 0.01 }
     }
   });
-  assert.equal(linking.equivalence_status, "LINKED", "the fixture must actually reach LINKED for the rest of this test to say anything");
-  const linked = scoreChangeClaim({ earlier, later: { form_contract_digest: digestB, score: 90 }, linking });
-  assert.equal(linked.interpretable_change, true);
-  assert.equal(linked.interpretation, "OBSERVED_ON_LINKED_FORMS");
+  assert.equal(wouldHaveLinked.equivalence_status, "UNESTABLISHED", "linkForms itself must not authorize LINKED any more");
+  assert.equal(wouldHaveLinked.unauthenticated_claim.claimed_equivalence_status, "LINKED", "the fixture must actually be complete enough to have claimed LINKED, for the rest of this test to say anything");
+  const stillWithheld = scoreChangeClaim({ earlier, later: { form_contract_digest: digestB, score: 90 }, linking: wouldHaveLinked });
+  assert.equal(stillWithheld.interpretable_change, null);
+  assert.equal(stillWithheld.interpretation, "WITHHELD_EQUIVALENCE_UNESTABLISHED");
+  assert.equal(stillWithheld.unauthenticated_claim.claimed_equivalence_status, "UNESTABLISHED", "scoreChangeClaim echoes what linkForms actually decided about these two forms, not what its numbers implied");
   // A linking record about two other forms is not evidence about these two.
-  const foreign = { ...linking, left_form_contract_digest: `sha256:${"c3".repeat(32)}`, right_form_contract_digest: `sha256:${"d4".repeat(32)}` };
+  const foreign = { ...wouldHaveLinked, left_form_contract_digest: `sha256:${"c3".repeat(32)}`, right_form_contract_digest: `sha256:${"d4".repeat(32)}` };
   assert.equal(scoreChangeClaim({ earlier, later: { form_contract_digest: digestB, score: 90 }, linking: foreign }).interpretable_change, null);
 });
 
@@ -1204,6 +1201,10 @@ test("an empty phase B task array is not an observation: every output stays null
   for (const output of TRANSFER_PROTOCOL.outputs) assert.equal(report[output], null, `${output} was not null with zero phase B tasks`);
   assert.equal(report.status, "UNESTABLISHED", "an empty task array must not read as an observed occasion");
   assert.equal(report.uncertainty.status, "NOT_ADMINISTERED");
+  // Presence of `phase_b` alone is not evidence: `phaseBAdministered` has to key on `tasks`
+  // actually holding an observed task, not merely on `phase_b !== null` -- if it did, an empty
+  // tasks array would still populate `unauthenticated_claim`.
+  assert.equal(report.unauthenticated_claim, null, "an empty tasks array is not administered evidence, so there is nothing to claim");
 });
 
 test("a phase B task array holding only empty objects is not an observation either: status stays UNESTABLISHED", async () => {
@@ -1217,9 +1218,17 @@ test("a phase B task array holding only empty objects is not an observation eith
   for (const output of TRANSFER_PROTOCOL.outputs) assert.equal(report[output], null, `${output} was not null with only empty phase B task objects`);
   assert.equal(report.status, "UNESTABLISHED", "a tasks array holding only empty objects must not read as an observed occasion");
   assert.equal(report.uncertainty.status, "NOT_ADMINISTERED");
+  // A nonempty tasks array is not by itself an observation: `isObservedTask` is what has to decide
+  // this, not `tasks.length > 0` -- if it were, this array of two empty slots would still populate
+  // `unauthenticated_claim` (with every claimed_* field null, since neither slot answers anything,
+  // but a claim nonetheless) even though nothing here was ever administered.
+  assert.equal(report.unauthenticated_claim, null, "two empty task slots are not administered evidence, so there is nothing to claim");
 
-  // A single genuinely observed task among otherwise-empty slots is enough to count as administered
-  // -- the fix is about tasks with no observed answer at all, not about requiring every slot filled.
+  // A single genuinely observed task among otherwise-empty slots is enough to count as
+  // administered -- but #585 (this round) closes assessTransfer by construction, so "counts as
+  // administered" now means only that `unauthenticated_claim` is populated with what the caller's
+  // data would have implied; `status` and the four real outputs never move off their closed
+  // defaults, whatever a caller-supplied phase B claims.
   const mixed = assessTransfer({
     phase_b: {
       agent_available: false,
@@ -1227,31 +1236,52 @@ test("a phase B task array holding only empty objects is not an observation eith
       tasks: [{}, { task_id: "near-1", relatedness: "near", passed: true, independent_verification_observed: true, delayed: false }]
     }
   });
-  assert.equal(mixed.status, "OBSERVED", "a real observed task among empty slots must still count as administered");
-  assert.equal(mixed.near_transfer, true);
+  assert.equal(mixed.status, "UNESTABLISHED", "a caller-supplied phase B must never authorize OBSERVED, however real one of its tasks looks");
+  assert.equal(mixed.near_transfer, null);
+  assert.equal(mixed.unauthenticated_claim.claimed_status, "OBSERVED", "what the caller's data would have implied is still recorded, unauthenticated");
+  assert.equal(mixed.unauthenticated_claim.claimed_near_transfer, true);
+  assert.match(mixed.unauthenticated_claim.reason, /AOS_TRANSFER_UNAUTHENTICATED/);
 });
 
-test("collaborative success with solo transfer failure stays a C7 fact and touches no core outcome", async () => {
+test("collaborative success with solo transfer failure stays a C7 fact, and the held-out result is closed by construction", async () => {
   const { readFileSync } = await import("node:fs");
   const { assessTransfer } = await import("../../lib/form-class.mjs");
   const fixture = JSON.parse(readFileSync(new URL("../../fixtures/transfer/c7-collaborative-success-solo-fail.json", import.meta.url), "utf8"));
   const report = assessTransfer(fixture);
   assert.equal(report.phase_a.collaborative_success, true, "phase A is recorded");
-  assert.equal(report.near_transfer, false, "the held-out related task failed and the report says so");
-  assert.equal(report.far_transfer, null, "no far task was administered; null, not failure");
+  // #585 (this round). `assessTransfer` is closed by construction: even this fixture's real,
+  // properly held-out-shaped phase B -- a genuine failed near task -- never promotes `status` past
+  // UNESTABLISHED or any of the four outputs off null, because AOS has no trust root confirming the
+  // agent and transcript really were withheld from an administration it never witnessed.
+  assert.equal(report.near_transfer, null, "a caller-claimed held-out result must not authorize a real transfer verdict");
+  assert.equal(report.far_transfer, null);
   assert.equal(report.retention_transfer, null);
-  assert.equal(report.independent_verification_behavior, false);
-  assert.equal(report.status, "OBSERVED");
+  assert.equal(report.independent_verification_behavior, null);
+  assert.equal(report.status, "UNESTABLISHED");
   assert.equal(report.included_in_core_composite, false);
   assert.equal(report.core_composite_contribution, null);
   assert.equal(Object.isFrozen(report), true);
-  // The counterfactual: phase A alone, however successful, moves nothing.
+  // What the fixture claimed is still recorded, unauthenticated -- this is the same fact the
+  // pre-#585 version of this test read straight off the real outputs.
+  assert.equal(report.unauthenticated_claim.claimed_status, "OBSERVED");
+  assert.equal(report.unauthenticated_claim.claimed_near_transfer, false, "the held-out related task failed and the claim says so");
+  assert.equal(report.unauthenticated_claim.claimed_far_transfer, null, "no far task was administered; null, not failure");
+  assert.equal(report.unauthenticated_claim.claimed_retention_transfer, null);
+  assert.equal(report.unauthenticated_claim.claimed_independent_verification_behavior, false);
+  assert.match(report.unauthenticated_claim.reason, /AOS_TRANSFER_UNAUTHENTICATED/);
+  // The counterfactual: phase A alone, however successful, moves nothing, and claims nothing either.
   const phaseAOnly = assessTransfer({ phase_a: fixture.phase_a });
   assert.equal(phaseAOnly.near_transfer, null, "collaborative success is not independent transfer");
   assert.equal(phaseAOnly.status, "UNESTABLISHED");
+  assert.equal(phaseAOnly.unauthenticated_claim, null, "phase A alone claims no held-out administration at all");
 });
 
-test("held-out passes establish transfer per relatedness, and delayed tasks answer retention", async () => {
+test("held-out passes are closed by construction: they never establish a real transfer verdict, only an unauthenticated claim", async () => {
+  // #585 (this round). Before this round, a fully-passing, correctly-shaped held-out phase B
+  // established real transfer per relatedness. It no longer can: AOS has no trust root for a
+  // caller-claimed held-out administration, so this stays UNESTABLISHED with all four outputs null,
+  // whatever the caller's tasks report -- the same closure `linkForms` and `comparisonGate` apply to
+  // their own strongest, most complete caller-supplied artifacts.
   const { assessTransfer } = await import("../../lib/form-class.mjs");
   const report = assessTransfer({
     phase_b: {
@@ -1263,12 +1293,18 @@ test("held-out passes establish transfer per relatedness, and delayed tasks answ
       ]
     }
   });
-  assert.equal(report.near_transfer, true);
-  assert.equal(report.far_transfer, true);
-  assert.equal(report.retention_transfer, true);
-  assert.equal(report.independent_verification_behavior, true);
-  assert.equal(report.uncertainty.status, "SINGLE_OCCASION", "one held-out occasion is not a longitudinal study and the report says so");
+  assert.equal(report.near_transfer, null);
+  assert.equal(report.far_transfer, null);
+  assert.equal(report.retention_transfer, null);
+  assert.equal(report.independent_verification_behavior, null);
+  assert.equal(report.status, "UNESTABLISHED");
+  assert.equal(report.uncertainty.status, "NOT_ADMINISTERED");
   assert.equal(report.included_in_core_composite, false);
+  assert.equal(report.unauthenticated_claim.claimed_status, "OBSERVED");
+  assert.equal(report.unauthenticated_claim.claimed_near_transfer, true);
+  assert.equal(report.unauthenticated_claim.claimed_far_transfer, true);
+  assert.equal(report.unauthenticated_claim.claimed_retention_transfer, true);
+  assert.equal(report.unauthenticated_claim.claimed_independent_verification_behavior, true);
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -1339,9 +1375,16 @@ test("a small DIF sample never turns a comparison on, and detected DIF refuses i
   assert.equal(small.decision, null, "a small sample is not a smaller yes");
   assert.equal(small.comparison, "WITHHELD");
   assert.equal(small.reasons.some((reason) => reason.includes("AOS_COMPARISON_SAMPLE_BELOW_MINIMUM")), true);
+  // #585 (this round). This is the complete, well-formed DIF report every field above exists to
+  // build: every declared input present, adequate samples per group, no detected differential
+  // functioning. Closed by construction now -- it stays WITHHELD, never PERMITTED, and what the
+  // report reported is recorded as an unauthenticated claim instead.
   const passed = comparisonGate({ facet: "language", left_level: "ko", right_level: "en", invariance_evidence: evidence() });
-  assert.equal(passed.decision, true);
-  assert.equal(passed.comparison, "PERMITTED");
+  assert.equal(passed.decision, null, "a complete DIF report must not authorize a decision");
+  assert.equal(passed.comparison, "WITHHELD");
+  assert.equal(passed.reasons.some((reason) => reason.includes("AOS_COMPARISON_UNAUTHENTICATED")), true);
+  assert.equal(passed.unauthenticated_claim.claimed_comparison, "PERMITTED");
+  assert.equal(passed.unauthenticated_claim.reported_dif_detected, false);
   const detected = comparisonGate({ facet: "language", left_level: "ko", right_level: "en", invariance_evidence: evidence({ dif_detected: true }) });
   assert.equal(detected.decision, false, "detected DIF is a contradiction, not an absence");
   assert.equal(detected.comparison, "REFUSED");
