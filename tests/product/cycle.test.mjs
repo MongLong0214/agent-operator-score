@@ -194,6 +194,32 @@ test("exposureVerification names the third state a permitted run and a pre-ledge
   );
 });
 
+test("a v0.2 result whose exposure the ledger never verified is refused from the official aggregate", () => {
+  // Governance directive 21. `valid_runs_exposure_unverified` NAMES the runs the ledger never saw,
+  // but naming is not excluding: an UNVERIFIED run stayed valid and its score entered the median,
+  // so a PROFILE_BOUND number could rest on administrations nothing verified were administered
+  // once. The compatibility this preserves is for LEGACY records -- a run written before the
+  // ledger existed keeps its historical validity, because the ledger cannot testify about
+  // administrations it never saw and an absence is not a refusal. A v0.2 result is a different
+  // claim: it was written by a build that has the ledger, so an exposure it cannot verify is a
+  // gap in the evidence rather than a record from before the evidence existed.
+  // The cycle normalises its seeds, so a run has to carry the stored form of one.
+  const seed = cycleOf().seeds[0];
+  const legacyPreLedger = runOf(seed, { result_schema: "aos-mvp-result.v1" });
+  assert.equal(runValidity(cycleOf(), legacyPreLedger).exposure.status, "UNVERIFIED");
+  assert.equal(runValidity(cycleOf(), legacyPreLedger).valid, true, "a pre-ledger legacy run lost its historical validity");
+
+  const profileUnverified = runOf(seed, { result_schema: "aos-result.v4" });
+  const verdict = runValidity(cycleOf(), profileUnverified);
+  assert.equal(verdict.exposure.status, "UNVERIFIED");
+  assert.equal(verdict.valid, false, "a v0.2 run the ledger never verified counted toward the official aggregate");
+  assert.equal(verdict.reason, "AOS_EXPOSURE_UNVERIFIED_FOR_PROFILE_BOUND");
+
+  // And a v0.2 run the ledger did verify still counts.
+  const profileVerified = runOf(seed, { result_schema: "aos-result.v4", form_classification: classification(true) });
+  assert.equal(runValidity(cycleOf(), profileVerified).valid, true, "a verified v0.2 run was refused");
+});
+
 test("a stored classification must be tagged the way classifyAdministration actually tags one, or it is unverified", () => {
   // `form_classification` lives on `cycle.json`, a plain file. An untagged object carrying only
   // `official_scoring_permitted: true` used to authorize VERIFIED on its own say-so -- no

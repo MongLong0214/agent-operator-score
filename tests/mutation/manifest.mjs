@@ -8518,6 +8518,15 @@ export const GUARDS = [
     to: "  if (false) {",
     test: "tests/product/form-class.test.mjs",
     name: "an administration revealed but never finalized is exposure a later attempt cannot read as fresh"
+  },
+  {
+    guard: "a v0.2 result with unverified exposure is refused from the official aggregate",
+    reason: "governance directive 21. valid_runs_exposure_unverified named the runs the ledger never saw and counted them anyway, so a PROFILE_BOUND median could rest on administrations nothing verified were administered once; naming a gap is not closing it",
+    file: "lib/cycle.mjs",
+    from: "  if (run.result_schema === PROFILE_RESULT_SCHEMA_ID && exposure.status !== \"VERIFIED\") {",
+    to: "  if (false) {",
+    test: "tests/product/cycle.test.mjs",
+    name: "a v0.2 result whose exposure the ledger never verified is refused from the official aggregate"
   }
 ];
 
@@ -8846,6 +8855,7 @@ export const ACCOUNTED_GUARDS = [
   "a truncated reachability answer is not an answer",
   "a truncated reference sweep supports no reference claim",
   "a truncated sweep is refused when the observation is verified",
+  "a v0.2 result with unverified exposure is refused from the official aggregate",
   "a value and its digest are not both accepted",
   "a verdict asserted is not a comparison performed",
   "a verdict must report what was claimed",
