@@ -100,6 +100,28 @@ test("a form bank record's equivalence status requires a real linking scaffold, 
     linking: { equivalence_status: "LINKED" }
   });
   assert.equal(record.equivalence_status, "UNESTABLISHED");
+
+  // And the schema_id tag isolated: an object that satisfies EVERY other clause -- a real boolean
+  // decision, no missing inputs, a known status, and this exact form on one side -- but carries the
+  // wrong tag. Without this case the tag check is unwitnessed: the stricter clauses added later
+  // refuse the hand-written object above on their own, so deleting the tag comparison broke nothing
+  // and its mutation guard survived. A guard whose witness is refused for another reason has not
+  // been witnessed at all.
+  const tagOnly = formBankRecord({
+    form_id: "FAM-1.form-2b",
+    form_class: "OPERATIONAL",
+    construct_opportunity_ids: ["C1.GF.01"],
+    oracle_digest: `sha256:${"b".repeat(64)}`,
+    linking: {
+      schema_id: "not-the-linking-scaffold.v1",
+      equivalence_decision: true,
+      inputs_missing: [],
+      equivalence_status: "LINKED",
+      left_form_id: "FAM-1.form-2b",
+      right_form_id: "FAM-1.form-3c"
+    }
+  });
+  assert.equal(tagOnly.equivalence_status, "UNESTABLISHED");
 });
 
 test("a form bank record's equivalence status ignores a correctly-tagged scaffold with no decision, no inputs or no relation to it", () => {
