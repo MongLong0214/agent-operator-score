@@ -546,6 +546,68 @@ test("fewer anchors than the method declares never links, whatever the samples a
   assert.ok(scaffold.inputs_missing.includes("anchor_opportunity_ids"));
 });
 
+// Directive 22.4/22.5: only a registered method/version pair may reach LINKED, and only that
+// method's own registered contract may set the drift threshold a comparison is measured against.
+
+test("an unregistered linking method never reaches LINKED, whatever the rest of the evidence says", async () => {
+  const { linkForms } = await import("../../lib/form-class.mjs");
+  const { left, right, anchors, empirical } = linkingFixtures();
+  // Every other input here is otherwise complete -- adequate samples, deltas within threshold --
+  // so a LINKED result would mean the method name itself was never actually checked.
+  const scaffold = linkForms({
+    left_form: left, right_form: right, anchor_ids: anchors,
+    exposure_history: { left_prior_exposure_count: 0, right_prior_exposure_count: 0 },
+    task_model_digest: `sha256:${"9".repeat(64)}`,
+    response_patterns: { ...empirical, method: "unregistered-method.v1" }
+  });
+  assert.notEqual(scaffold.equivalence_status, "LINKED");
+  assert.equal(scaffold.equivalence_status, "UNESTABLISHED");
+  assert.equal(scaffold.equivalence_decision, null);
+  assert.ok(scaffold.inputs_missing.includes("linking_method_unregistered"), "an unregistered method must be named as missing, not silently accepted as a real calibration");
+});
+
+test("an unregistered version of a registered method never reaches LINKED", async () => {
+  const { linkForms } = await import("../../lib/form-class.mjs");
+  const { left, right, anchors, empirical } = linkingFixtures();
+  // anchored-delta.v1 is registered only at 1.0.0; a different version string is not a smaller
+  // study, it is a method version nobody built a contract for.
+  const scaffold = linkForms({
+    left_form: left, right_form: right, anchor_ids: anchors,
+    exposure_history: { left_prior_exposure_count: 0, right_prior_exposure_count: 0 },
+    task_model_digest: `sha256:${"9".repeat(64)}`,
+    response_patterns: { ...empirical, method_version: "9.9.9" }
+  });
+  assert.notEqual(scaffold.equivalence_status, "LINKED");
+  assert.equal(scaffold.equivalence_status, "UNESTABLISHED");
+  assert.equal(scaffold.equivalence_decision, null);
+  assert.ok(scaffold.inputs_missing.includes("linking_method_unregistered"));
+});
+
+test("a caller-supplied drift threshold is ignored in both directions; only the registered threshold decides", async () => {
+  const { linkForms } = await import("../../lib/form-class.mjs");
+  const { left, right, anchors, empirical } = linkingFixtures();
+  const complete = {
+    left_form: left, right_form: right, anchor_ids: anchors,
+    exposure_history: { left_prior_exposure_count: 0, right_prior_exposure_count: 0 },
+    task_model_digest: `sha256:${"9".repeat(64)}`
+  };
+  // A caller widening the threshold to 999 must not launder a genuinely drifting comparison into
+  // LINKED.
+  const widened = linkForms({
+    ...complete,
+    response_patterns: { ...empirical, anchor_deltas: { ...empirical.anchor_deltas, "C3.RD.01": 0.4 } },
+    drift_thresholds: { maximum_anchor_delta: 999 }
+  });
+  assert.equal(widened.equivalence_status, "DRIFTED", "a caller threshold of 999 must not turn a genuine drift into LINKED");
+  assert.equal(widened.equivalence_decision, false);
+  // And a caller narrowing the threshold must not turn a comparison genuinely within the
+  // registered threshold into a refusal either -- the caller's field is ignored, not merged with
+  // the registered one in either direction.
+  const narrowed = linkForms({ ...complete, response_patterns: empirical, drift_thresholds: { maximum_anchor_delta: 0.0001 } });
+  assert.equal(narrowed.equivalence_status, "LINKED", "a caller threshold tighter than the registered one must not be honoured either; only the registered contract decides");
+  assert.equal(narrowed.equivalence_decision, true);
+});
+
 test("the exposure ledger drives form retirement: any exposure retires a form from official use", async () => {
   const { createExposureLedger, formLifecycleState, recordExposure } = await import("../../lib/form-class.mjs");
   const digest = `sha256:${"d".repeat(64)}`;

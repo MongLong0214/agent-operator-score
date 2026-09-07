@@ -8527,6 +8527,24 @@ export const GUARDS = [
     to: "  if (false) {",
     test: "tests/product/cycle.test.mjs",
     name: "a v0.2 result whose exposure the ledger never verified is refused from the official aggregate"
+  },
+  {
+    guard: "linkForms refuses to LINK on an unregistered method or method_version",
+    reason: "directive 22.4: any non-empty method and method_version used to be accepted as a real calibration, so a caller could name a method nobody built a contract for and still reach LINKED; without this check an unregistered pair evaluates anchors, samples and drift as though a certified method had produced them",
+    file: "lib/form-class.mjs",
+    from: "  if (method !== null && nonEmpty(method.method) && nonEmpty(method.method_version) && methodContract === null) {\n    missing.push(\"linking_method_unregistered\");\n  }",
+    to: "  if (false) {\n    missing.push(\"linking_method_unregistered\");\n  }",
+    test: "tests/product/form-class.test.mjs",
+    name: "an unregistered linking method never reaches LINKED, whatever the rest of the evidence says"
+  },
+  {
+    guard: "linkForms's drift threshold is read from the registered method, never a caller-supplied one",
+    reason: "directive 22.5: a caller-supplied drift_thresholds field used to override the registered method's own threshold, so passing maximum_anchor_delta: 999 could turn a genuinely drifting comparison into LINKED; the registered method's contract is the only source a real loosening can come from",
+    file: "lib/form-class.mjs",
+    from: "const threshold = methodContract.drift_thresholds.maximum_anchor_delta;",
+    to: "const threshold = typeof callerDriftThresholds?.maximum_anchor_delta === \"number\" ? callerDriftThresholds.maximum_anchor_delta : methodContract.drift_thresholds.maximum_anchor_delta;",
+    test: "tests/product/form-class.test.mjs",
+    name: "a caller-supplied drift threshold is ignored in both directions; only the registered threshold decides"
   }
 ];
 
@@ -9107,6 +9125,8 @@ export const ACCOUNTED_GUARDS = [
   "legacy markdown reports carry the NOT COMPARABLE marker",
   "legacy migration guard",
   "linkForms enforces the anchor minimum the method interface declares, not a second literal",
+  "linkForms refuses to LINK on an unregistered method or method_version",
+  "linkForms's drift threshold is read from the registered method, never a caller-supplied one",
   "linking without empirical evidence stays unestablished",
   "local reference redirection",
   "locked cycle seed",
