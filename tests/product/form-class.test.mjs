@@ -879,6 +879,40 @@ test("a small DIF sample never turns a comparison on, and detected DIF refuses i
 // functions, plus one CLI-level test that observes the reserve-before-reveal ordering as bytes on
 // disk rather than by reading `lib/cli.mjs`.
 
+test("a reservation abandoned before it revealed anything does not retire the form", async () => {
+  // Governing directive 18.1. A reservation that never revealed content and a reveal that never
+  // terminated used to be the same refusal, so a form was retired forever by an administration
+  // that had shown nobody anything -- and the cross-process suite reproduced exactly that from
+  // ordinary lock contention rather than a crash: the process that lost the race left a RESERVED
+  // row behind and the form became permanently unusable, recoverable only by hand-editing the
+  // ledger. Nothing about the form reached an agent, so nothing about it is spent.
+  const { classifyAdministration, createExposureLedger, markRevealed, reserveExposure } = await import("../../lib/form-class.mjs");
+  const digest = `sha256:${"22".repeat(32)}`;
+  const reserved = reserveExposure(createExposureLedger(), {
+    form_id: "aos-operational-abandoned", form_contract_digest: digest, declared_class: "OPERATIONAL",
+    administration_id: "admin-abandoned-1", run_id: "run-abandoned-1", occurred_at: "2026-09-06T10:00:00.000Z"
+  });
+  assert.equal(reserved.entry.state, "RESERVED");
+  assert.equal(reserved.entry.content_revealed, false);
+
+  const nextAttempt = classifyAdministration(reserved.ledger, {
+    form_id: "aos-operational-abandoned", form_contract_digest: digest, declared_class: "OPERATIONAL"
+  });
+  assert.equal(nextAttempt.administered_class, "OPERATIONAL", "an unrevealed reservation retired the form for every later attempt");
+  assert.equal(nextAttempt.official_scoring_permitted, true);
+  // Abandoned, not forgotten: the row is still accounted for by name, so an abandoned reservation
+  // and a form nobody ever reserved do not read identically.
+  assert.deepEqual(nextAttempt.aborted_before_reveal, ["admin-abandoned-1"]);
+
+  // The moment that same reservation reveals, the form IS spent and the next attempt is refused.
+  const revealed = markRevealed(reserved.ledger, { administration_id: "admin-abandoned-1", occurred_at: "2026-09-06T10:00:05.000Z" });
+  const afterReveal = classifyAdministration(revealed.ledger, {
+    form_id: "aos-operational-abandoned", form_contract_digest: digest, declared_class: "OPERATIONAL"
+  });
+  assert.equal(afterReveal.official_scoring_permitted, false, "a revealed form stayed available after the reveal transition");
+  assert.equal(afterReveal.refusal_code, "AOS_FORM_EXPOSED_WITHOUT_TERMINAL");
+});
+
 test("an administration revealed but never finalized is exposure a later attempt cannot read as fresh", async () => {
   const { classifyAdministration, createExposureLedger, markRevealed, recordExposure, reserveExposure } = await import("../../lib/form-class.mjs");
   const digest = `sha256:${"11".repeat(32)}`;

@@ -336,22 +336,44 @@ const crashAndRestart = async (crashAfter) => {
     const classification = classifyAdministration(openExposureLedger(ledgerAfterCrash), {
       form_id: form.form_id, form_contract_digest: form.form_contract_digest, declared_class: form.form_class
     });
-    assert.equal(classification.official_scoring_permitted, false);
-    assert.equal(classification.administered_class, "PRACTICE");
-    assert.equal(classification.refusal_code, "AOS_FORM_EXPOSED_WITHOUT_TERMINAL", "an unresolved exposure -- reserved or revealed, never terminal -- must never be read as a fresh form, and must never silently become a second official slot");
+    // Directive 18.1 and 18.2 answer the two crash points differently, and this helper now holds
+    // both answers rather than one. A crash after RESERVED revealed nothing -- the scenario was
+    // never materialised and no agent saw the form -- so the reservation is abandoned and the form
+    // stays usable; retiring it would burn a form over an administration that showed nobody
+    // anything. A crash after REVEALED did put the task in front of the agent, and no crash
+    // un-shows a task, so that form is spent and every later attempt is refused by name.
+    if (crashAfter === "reveal") {
+      assert.equal(classification.official_scoring_permitted, false);
+      assert.equal(classification.administered_class, "PRACTICE");
+      assert.equal(classification.refusal_code, "AOS_FORM_EXPOSED_WITHOUT_TERMINAL", "a revealed-but-unterminated exposure must never be read as a fresh form, and must never silently become a second official slot");
+    } else {
+      assert.equal(classification.official_scoring_permitted, true, "a reservation that never revealed content retired the form anyway");
+      assert.equal(classification.administered_class, "OPERATIONAL");
+      assert.deepEqual(classification.aborted_before_reveal, [crashedRunId], "the abandoned reservation must still be named, or it reads the same as a form nobody ever reserved");
+    }
 
     // Restart: a real second `cycle run` against the same home. `cycle.json` was never updated by
     // the crashed attempt (the whole process died before it returned), so this reattempts the exact
     // same pending seed for real, through the production classify-then-record path, and the refusal
     // above must be the one the operator actually sees printed.
+    // Exit 3 either way: one seed of three has run, so the cycle is incomplete whichever answer
+    // the exposure ledger gave. What differs is the reason printed and the row recorded, below.
     const restarted = run(cwd, ["cycle", "run", "--plan", plan], 3);
-    assert.match(restarted.stdout, /practice lane: AOS_FORM_EXPOSED_WITHOUT_TERMINAL/u, "the restart's own refusal must name the blocker on the terminal where the operator reads it");
+    if (crashAfter === "reveal") {
+      assert.match(restarted.stdout, /practice lane: AOS_FORM_EXPOSED_WITHOUT_TERMINAL/u, "the restart's own refusal must name the blocker on the terminal where the operator reads it");
+    } else {
+      assert.equal(/AOS_FORM_EXPOSED_WITHOUT_TERMINAL/u.test(restarted.stdout), false, "an abandoned reservation refused the restart on the operator's terminal");
+    }
 
     const cycleAfterRestart = JSON.parse(readFileSync(join(home, "cycle.json"), "utf8"));
     const recordedRun = cycleAfterRestart.runs[0];
-    assert.equal(recordedRun.valid, false, "the resumed attempt must never be counted as official aggregate evidence");
-    assert.equal(recordedRun.invalid_reason, "AOS_FORM_EXPOSED_WITHOUT_TERMINAL");
-    assert.equal(recordedRun.exposure_verification, "REFUSED");
+    if (crashAfter === "reveal") {
+      assert.equal(recordedRun.valid, false, "the resumed attempt must never be counted as official aggregate evidence");
+      assert.equal(recordedRun.invalid_reason, "AOS_FORM_EXPOSED_WITHOUT_TERMINAL");
+      assert.equal(recordedRun.exposure_verification, "REFUSED");
+    } else {
+      assert.notEqual(recordedRun.invalid_reason, "AOS_FORM_EXPOSED_WITHOUT_TERMINAL", "the restart after an unrevealed reservation was refused as though the form had been shown");
+    }
 
     const ledgerAfterRestart = ledgerOf(home);
     assert.equal(ledgerAfterRestart.entries.length, 2, "the restart adds its own terminal row beside the orphaned crash row; neither replaces the other");
@@ -373,15 +395,23 @@ const crashAndRestart = async (crashAfter) => {
     assert.notEqual(restartRunId, undefined);
     const restartEntry = ledgerAfterRestart.entries.find((entry) => entry.administration_id === restartRunId);
     assert.equal(restartEntry.state, "TERMINAL");
-    assert.equal(restartEntry.scored, false, "the resumed administration of an exposed-without-terminal form must never be scored");
+    assert.equal(restartEntry.scored, crashAfter === "reserve", crashAfter === "reveal"
+      ? "the resumed administration of an exposed-without-terminal form must never be scored"
+      : "the restart after a reservation that revealed nothing should have scored officially");
 
     // The core safety property, checked one last time against everything now on disk: this exact
     // form_contract_digest never carries two official slots, and (per the finding above) in this
     // codebase it in fact never carries even one after a crash -- neither entry for this digest is
     // ever an OPERATIONAL, scored administration.
-    for (const entry of ledgerAfterRestart.entries) {
-      assert.notEqual(entry.scored, true, `entry ${entry.administration_id} for a form that crashed mid-exposure must never be scored`);
-    }
+    // The core safety property, whichever crash point this was: one official slot at most, never
+    // two. After a reveal crash the form is spent and the count is zero; after a reservation that
+    // revealed nothing the restart takes the one slot the abandoned reservation never used.
+    const scoredEntries = ledgerAfterRestart.entries.filter((entry) => entry.scored === true);
+    assert.ok(scoredEntries.length <= 1, `this form carries ${scoredEntries.length} scored administrations; at most one is ever permitted`);
+    assert.equal(scoredEntries.length, crashAfter === "reserve" ? 1 : 0,
+      crashAfter === "reveal"
+        ? "a form whose content reached the agent was scored anyway after a crash"
+        : "the restart after an unrevealed reservation never took the official slot the abandonment left free");
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

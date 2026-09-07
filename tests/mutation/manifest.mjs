@@ -8019,7 +8019,7 @@ export const GUARDS = [
     guard: "a prior exposure reclassifies an operational administration as practice",
     reason: "the scored-once policy is this branch: an OPERATIONAL administration of a form the ledger has already seen must become practice, or an abandoned-and-reopened cycle scores the same form twice",
     file: "lib/form-class.mjs",
-    from: "  if (prior.length > 0) {",
+    from: "  if (exposures.length > 0) {",
     to: "  if (false) {",
     test: "tests/product/form-class.test.mjs",
     name: "an operational form is scored once; its replay is classified practice and refused official scoring"
