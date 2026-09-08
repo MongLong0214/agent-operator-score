@@ -16,7 +16,12 @@ step "dev points at the merge SHA" bash -c "[ \"\$(git rev-parse origin/dev)\" =
 step "required checks all green" bash -c 'gh api repos/MongLong0214/agent-operator-score/commits/'"$merge"'/check-runs -q "[.check_runs[]|select(.conclusion!=\"success\" and .conclusion!=\"skipped\")]|length" | grep -qx 0'
 step "EN suite" bash -c 'LANG=en_US.UTF-8 npm test 2>&1 | grep -qE "^# fail 0$"'
 step "KO suite" bash -c 'LANG=ko_KR.UTF-8 npm test 2>&1 | grep -qE "^# fail 0$"'
+# The sweep rewrites its own ledger, so a second run in the same checkout meets a dirty tree
+# and the runner refuses -- correctly, since it would then measure something other than HEAD.
+# Verify against a pristine copy of the merged commit instead of the tree this script sits in.
+step "tree is clean before measuring" bash -c '[ -z "$(git status --porcelain)" ]'
 step "mutation" bash -c 'npm run --silent test:mutation 2>&1 | grep -q "guards are load-bearing"'
+step "sweep left the ledger unchanged" bash -c 'git diff --quiet -- tests/mutation/measured.json'
 step "package smoke" npm run --silent smoke:package
 step "operational form gates" bash -c 'for s in verify:form-classification verify:exposure-ledger verify:scored-once verify:practice-contamination verify:transfer-scaffold verify:comparison-withholding verify:form-linking-status; do npm run --silent $s >/dev/null 2>&1 || exit 1; done'
 step "execution-plan offline" npm run --silent verify:execution-plan
