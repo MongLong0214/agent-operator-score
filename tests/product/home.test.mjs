@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { hostname as osHostname, tmpdir, uptime as osUptime } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -124,10 +124,9 @@ test("a lock whose owner is gone is broken, not honoured", () => {
 });
 
 test("a lock file caught mid-acquisition is contended, not unreadable", () => {
-  // 락 파일은 `openSync(..., "wx")` 로 만들어진 뒤 내용이 채워지기까지 짧게 0바이트다. 그 창에서
-  // 읽으면 "읽을 수 없는 기록" 과 구분되지 않았다. 원장 락은 살아있는 같은 부트의 소유자를 두고
-  // 손으로 지우라는 잘못된 fail-closed 를 냈고, 런 락은 판정 불가 분기를 지나쳐 그 파일을 치우고
-  // 들어가 두 writer 를 만들었다. 빈 파일은 판정 불가가 아니라 소유자가 아직 취득 중이라는 뜻이다.
+  // Legacy writers can leave a fresh empty file while acquiring. This first attempt grants
+  // their bounded grace; it cannot establish that an owner is alive. Recovery after the grace
+  // and publication without an empty-file window are exercised separately below.
   const home = scratch();
   try {
     initHome(home);
@@ -144,6 +143,74 @@ test("a lock file caught mid-acquisition is contended, not unreadable", () => {
       /AOS_RUN_LOCKED/u,
       "0바이트 런 락을 치우고 들어갔다 -- 두 writer 가 된다"
     );
+  } finally { rmSync(home, { recursive: true, force: true }); }
+});
+
+test("abandoned empty locks are recovered for both resources after the acquisition grace", () => {
+  for (const resource of ["run", "exposure ledger"]) {
+    const home = scratch();
+    try {
+      const { runId } = createRun(home, { mode: "TEST" });
+      const lock = resource === "run" ? join(runPaths(home, runId).root, "run.lock") : join(home, "exposure-ledger.lock");
+      const acquire = (body) => resource === "run" ? withRunLock(home, runId, body) : withExposureLedgerLock(home, body);
+      writeFileSync(lock, "");
+      let entered = 0;
+      assert.throws(() => acquire(() => { entered += 1; }), /AOS_(?:RUN|EXPOSURE_LEDGER)_LOCKED/u);
+      assert.equal(entered, 0);
+      // Advance the file's age without a wall-clock sleep. This is the identical empty inode.
+      const old = new Date(Date.now() - 60_000);
+      utimesSync(lock, old, old);
+      assert.equal(acquire(() => { entered += 1; return "recovered"; }), "recovered");
+      assert.equal(entered, 1);
+      assert.equal(existsSync(lock), false);
+      assert.equal(acquire(() => "again"), "again");
+    } finally { rmSync(home, { recursive: true, force: true }); }
+  }
+});
+
+test("both lock names appear only with an already durable owner record", () => {
+  const home = scratch();
+  try {
+    const child = spawnSync(process.execPath, ["--input-type=module", "-e", `
+      import assert from 'node:assert/strict';
+      import fs from 'node:fs';
+      import { syncBuiltinESMExports } from 'node:module';
+      const durable = new Set();
+      const opened = new Map();
+      const original = { open: fs.openSync, fsync: fs.fsyncSync, link: fs.linkSync };
+      const isLock = path => /(?:run|exposure-ledger)\\.lock$/.test(String(path));
+      let published = 0;
+      fs.openSync = (...args) => {
+        const fd = original.open(...args);
+        opened.set(fd, String(args[0]));
+        if (isLock(args[0]) && args[1] === 'wx') {
+          assert.ok(fs.fstatSync(fd).size > 0, 'published an empty lock before writing its owner');
+        }
+        return fd;
+      };
+      fs.fsyncSync = fd => {
+        original.fsync(fd);
+        if (/\\.lock\\.owner-/.test(opened.get(fd))) durable.add(fs.fstatSync(fd).ino);
+      };
+      fs.linkSync = (source, target) => {
+        if (isLock(target)) {
+          assert.ok(fs.statSync(source).size > 0, 'published an empty owner record');
+          const owner = JSON.parse(fs.readFileSync(source, 'utf8'));
+          assert.equal(owner.pid, process.pid);
+          assert.ok(durable.has(fs.statSync(source).ino), 'owner record was published without fsync');
+          published += 1;
+        }
+        return original.link(source, target);
+      };
+      syncBuiltinESMExports();
+      const store = await import(${JSON.stringify(new URL("../../lib/store.mjs", import.meta.url).href)});
+      const home = process.argv[1];
+      const { runId } = store.createRun(home, { mode: 'TEST' });
+      store.withRunLock(home, runId, () => {});
+      store.withExposureLedgerLock(home, () => {});
+      assert.ok(published >= 2, 'both resources must exercise publication');
+    `, home], { encoding: "utf8" });
+    assert.equal(child.status, 0, child.stderr);
   } finally { rmSync(home, { recursive: true, force: true }); }
 });
 

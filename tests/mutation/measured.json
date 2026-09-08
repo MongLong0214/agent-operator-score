@@ -1531,15 +1531,6 @@
         "at": "2026-09-08T08:01:37.864Z"
       }
     },
-    "a lock file caught mid-acquisition is contended, not unreadable": {
-      "platform": "darwin",
-      "fingerprint": "sha256:e29d3cba5a36ab39136f9bae92050a8812f18d3f68a087cf6e38cef99ad8a568",
-      "measured_on": {
-        "arch": "arm64",
-        "node": "v22.23.2",
-        "at": "2026-09-08T08:01:37.900Z"
-      }
-    },
     "a log checked without its observations is not a log that passed": {
       "platform": "darwin",
       "fingerprint": "sha256:500a200d66539cadc406a53aed0cf212e4064483831d8c4bb789c6de704d5998",
@@ -3448,15 +3439,6 @@
         "at": "2026-09-08T08:01:37.851Z"
       }
     },
-    "an unadjudicable lock is refused rather than reclaimed": {
-      "platform": "darwin",
-      "fingerprint": "sha256:9f867bc33994a0912131b3bedc9df464fdacd091db55cfd75954954e7bac2cba",
-      "measured_on": {
-        "arch": "arm64",
-        "node": "v22.23.2",
-        "at": "2026-09-08T08:01:37.898Z"
-      }
-    },
     "an unanswered checkpoint mints nothing": {
       "platform": "darwin",
       "fingerprint": "sha256:e40142bdfc6782fa6b1886cc240a140615b4279858a79990b40d32daae34f3be",
@@ -4213,13 +4195,13 @@
         "at": "2026-09-08T08:01:37.857Z"
       }
     },
-    "current verification cannot fall back when exposure evidence is unavailable": {
+    "current verification cannot substitute artifacts for unreadable or absent ledger evidence": {
       "platform": "darwin",
-      "fingerprint": "sha256:eeb9edfe5d01196e40d661fef013d3f4ed3163ef2dbdb1530ab67c814ffe04b0",
+      "fingerprint": "sha256:985fbc86f4f20787c40421c1a1bd740900496d5add6888f9881f9cd4f3df6631",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T08:01:37.900Z"
+        "at": "2026-09-08T10:18:08.486Z"
       }
     },
     "cycle occasion allocation uses the locked reservation sequence": {
@@ -4364,6 +4346,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-08T08:01:37.863Z"
+      }
+    },
+    "empty lock contention expires instead of becoming permanent": {
+      "platform": "darwin",
+      "fingerprint": "sha256:54de08f0bf879ed602c9a8f3f49e2bedc28224a18ba9e437b48c3aab56cff5e9",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T10:19:58.484Z"
       }
     },
     "entry state coherence": {
@@ -4600,6 +4591,15 @@
         "at": "2026-09-08T08:01:37.867Z"
       }
     },
+    "expired empty ledger locks bypass only the unadjudicable-record refusal": {
+      "platform": "darwin",
+      "fingerprint": "sha256:9902b7825e34e9d367890781d55aa3dfe10bb7b55288c5f3db961e2573620c26",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T10:19:58.357Z"
+      }
+    },
     "explicit keys are keys": {
       "platform": "darwin",
       "fingerprint": "sha256:8658fe751fb14ae8945978947f0bcc4207d012723f8c92d68e2c56f3ef4345a4",
@@ -4607,6 +4607,24 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-08T08:01:37.853Z"
+      }
+    },
+    "exposure CLI commands resume pending scored runs before dispatch": {
+      "platform": "darwin",
+      "fingerprint": "sha256:51d35d255476325a24271db3a26404918f1d61a6068fdacc1f7642f02af4dff6",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T10:17:11.309Z"
+      }
+    },
+    "exposure entry recovery does not gate unrelated commands": {
+      "platform": "darwin",
+      "fingerprint": "sha256:4c8d83e3b413822ad8e3e649280dceac7f506f511e6568ea67f8e4f3f21d4b82",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T10:15:57.704Z"
       }
     },
     "exposure verification leaves missing eligibility evidence unknown": {
@@ -4724,6 +4742,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-08T08:01:37.900Z"
+      }
+    },
+    "fresh empty locks receive a bounded acquisition grace": {
+      "platform": "darwin",
+      "fingerprint": "sha256:5f2328e63f3473e8d6d4b172a6dbd4bf4794af2593f50e960d72def47837ad49",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T10:19:58.898Z"
       }
     },
     "full-SHA action reference": {
@@ -5068,6 +5095,33 @@
         "at": "2026-09-08T08:01:37.853Z"
       }
     },
+    "lock owner records are synced before publication": {
+      "platform": "darwin",
+      "fingerprint": "sha256:41daa8cb7155ee068cbf3a2566b1997037c8e29c79a87e012724e4c05b08ff09",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T10:19:57.888Z"
+      }
+    },
+    "lock publication cannot overwrite an existing owner": {
+      "platform": "darwin",
+      "fingerprint": "sha256:6e4ec7eeb3edd774427c4a2e4f64af6792fe4e1fb39c93349b2be742b3e15004",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T10:19:57.599Z"
+      }
+    },
+    "lock publication follows owner record creation": {
+      "platform": "darwin",
+      "fingerprint": "sha256:225dcd5e71fdc809f0286f6e465d8a3763d8cac44207ac9be76a4381b82c0f26",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T10:19:58.039Z"
+      }
+    },
     "locked cycle seed": {
       "platform": "darwin",
       "fingerprint": "sha256:dddea0bb1ad3ea66f22a5a14afac2c5046c1f2114a2b4a269dc67ca51cfd3b1c",
@@ -5237,6 +5291,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-08T08:01:37.872Z"
+      }
+    },
+    "nonempty unadjudicable ledger locks remain refused": {
+      "platform": "darwin",
+      "fingerprint": "sha256:9c305b858240cddf0fc2df80a75fff27743a5e433c5bbea463ca5622ebb5f0d5",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T10:19:58.687Z"
       }
     },
     "nothing claimed as deleted is still there": {
@@ -5426,15 +5489,6 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-08T08:01:37.899Z"
-      }
-    },
-    "opening an AOS home resumes its pending scored runs": {
-      "platform": "darwin",
-      "fingerprint": "sha256:c6b82a345b06a7d16546aa924540f7ff154c601b9bb4c6e567e3c02e6d6a0450",
-      "measured_on": {
-        "arch": "arm64",
-        "node": "v22.23.2",
-        "at": "2026-09-08T08:01:37.847Z"
       }
     },
     "opening terminal exposure requires its reveal evidence": {
@@ -8681,6 +8735,24 @@
         "at": "2026-09-08T08:01:37.848Z"
       }
     },
+    "verification freezes exposure policy at finalization": {
+      "platform": "darwin",
+      "fingerprint": "sha256:9d0629291010318cf31ec5a3208263ac68b73692c0ef4ad6a083cc716897adaa",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T10:15:43.903Z"
+      }
+    },
+    "verification obtains withholding text from the ledger receipt": {
+      "platform": "darwin",
+      "fingerprint": "sha256:a9cfdc0841f2c8db146a51e4646010130b8c89f1397b3bb08fdb5aa03e6a923f",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T10:14:52.526Z"
+      }
+    },
     "verification re-derives the settlement half too": {
       "platform": "darwin",
       "fingerprint": "sha256:2e40ea4704db1d956d8641f271073ff1bc09487b3e52c2242b4937467ce2874a",
@@ -8699,6 +8771,24 @@
         "at": "2026-09-08T08:01:37.869Z"
       }
     },
+    "verification reapplies ledger receipt withholding without a working record reason": {
+      "platform": "darwin",
+      "fingerprint": "sha256:8403fdc06c94268d143bd8cb225da1f0dd11b77044a01171fcff2072d5240296",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T10:17:53.738Z"
+      }
+    },
+    "verification requires a terminal finalization receipt": {
+      "platform": "darwin",
+      "fingerprint": "sha256:409e91fdf49f8ec3e71497a7d7ff5dfb5fd2671f06419ce1d9fb2ccf4427cc18",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T10:15:13.527Z"
+      }
+    },
     "verification result check": {
       "platform": "darwin",
       "fingerprint": "sha256:24fd01b4754f0bbc7788d77428d4a1db8a335b793ee8b1f7e25026de9f6d6510",
@@ -8708,6 +8798,15 @@
         "at": "2026-09-08T08:01:37.868Z"
       }
     },
+    "verification retains the receipt refusal for exposure revealed after reservation": {
+      "platform": "darwin",
+      "fingerprint": "sha256:7ee6a13cf7afb1a95ec1081ae9f0126e3c91e9dabca88ede8e7133b794646e3d",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T10:17:26.546Z"
+      }
+    },
     "verifier rederives uncertainty instead of trusting it": {
       "platform": "darwin",
       "fingerprint": "sha256:0f021e18ce1afcd55a6ffd233ae41455414ed4f5e8a49e38dfb98cee14c103e9",
@@ -8715,24 +8814,6 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-08T08:01:37.896Z"
-      }
-    },
-    "verify --run reconciles practice_withholding against the exposure ledger, not the stored record alone": {
-      "platform": "darwin",
-      "fingerprint": "sha256:807168f7eb03c74c408b96b3b7120f0b5054e08016e204618cf4dc83b79761e7",
-      "measured_on": {
-        "arch": "arm64",
-        "node": "v22.23.2",
-        "at": "2026-09-08T08:01:37.899Z"
-      }
-    },
-    "verify delegates post-reservation exposure to the administration classifier": {
-      "platform": "darwin",
-      "fingerprint": "sha256:9414c32596d46fb32e926577b5e6098fb181b969ea26b79efa9ebcf1b004e613",
-      "measured_on": {
-        "arch": "arm64",
-        "node": "v22.23.2",
-        "at": "2026-09-08T08:01:37.848Z"
       }
     },
     "version comment after a flow mapping": {

@@ -16,6 +16,87 @@
 
 export const GUARDS = [
   {
+    guard: "verification obtains withholding text from the ledger receipt",
+    reason: "Editing the working and published artifacts together cannot replace the independently committed reason in the ledger receipt.",
+    file: "lib/cli.mjs",
+    from: "    const practiceReason = ledgerEntry.finalization.practice_reason;",
+    to: "    const practiceReason = ledgerEntry.finalization.practice_reason === null ? null : record?.practice_withholding?.reason ?? ledgerEntry.finalization.practice_reason;",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "editing both published and working withholding reasons cannot replace the ledger receipt"
+  },
+  {
+    guard: "verification requires a terminal finalization receipt",
+    reason: "An otherwise valid terminal ledger without a receipt cannot establish the historical exposure decision and stays not checked.",
+    file: "lib/cli.mjs",
+    from: "    if (ledgerEntry === undefined || ledgerEntry.state !== \"TERMINAL\" || ledgerEntry.finalization?.practice_reason === undefined) {",
+    to: "    if (ledgerEntry === undefined || ledgerEntry.state !== \"TERMINAL\") {",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "verification without a finalization receipt stays unresolved even with an intact result"
+  },
+  {
+    guard: "verification freezes exposure policy at finalization",
+    reason: "A later administration must not retroactively contradict an unchanged earlier result by reclassifying against the current ledger.",
+    file: "lib/cli.mjs",
+    from: "    const practiceReason = ledgerEntry.finalization.practice_reason;",
+    to: "    const practiceReason = classifyAdministration(openExposureLedger(readExposureLedgerFile(home)), ledgerEntry).official_scoring_permitted ? null : \"AOS_FORM_NOT_OFFICIAL this administration is not this form's official attempt\";",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "an earlier result stays verified after the same form is administered again"
+  },
+  {
+    guard: "exposure entry recovery does not gate unrelated commands",
+    reason: "A held lock or corrupt ledger beside a real signed pending completion must not disable review, doctor, init, agent list or forms.",
+    file: "lib/cli.mjs",
+    from: "    if ([\"assess\", \"cycle\", \"verify\", \"dashboard\"].includes(command)) recoverExposureFinalizations(home);",
+    to: "    recoverExposureFinalizations(home);",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "unrelated commands remain available with a pending completion and a faulted exposure ledger"
+  },
+  {
+    guard: "lock publication cannot overwrite an existing owner",
+    reason: "Publishing a prepared owner record must still fail exclusively when the resource is already held.",
+    file: "lib/store.mjs",
+    from: "    linkSync(candidate, lockPath);",
+    to: "    renameSync(candidate, lockPath);",
+    test: "tests/product/home.test.mjs",
+    name: "two writers cannot hold one run"
+  },
+  {
+    guard: "lock owner records are synced before publication",
+    reason: "A power loss after lock publication must not leave a record whose content was never synced.",
+    file: "lib/store.mjs",
+    from: "    fsyncSync(descriptor);",
+    to: "    // owner fsync removed",
+    test: "tests/product/home.test.mjs",
+    name: "both lock names appear only with an already durable owner record"
+  },
+  {
+    guard: "lock publication follows owner record creation",
+    reason: "No interruption may expose an empty lock path before the complete owner record exists.",
+    file: "lib/store.mjs",
+    from: "    writeFileSync(descriptor, canonicalJson(lockRecord()), \"utf8\");\n    fsyncSync(descriptor);\n    linkSync(candidate, lockPath);",
+    to: "    linkSync(candidate, lockPath);\n    writeFileSync(descriptor, canonicalJson(lockRecord()), \"utf8\");\n    fsyncSync(descriptor);",
+    test: "tests/product/home.test.mjs",
+    name: "both lock names appear only with an already durable owner record"
+  },
+  {
+    guard: "expired empty ledger locks bypass only the unadjudicable-record refusal",
+    reason: "The empty-file recovery must reach reclamation for the ledger as well as the run lock.",
+    file: "lib/store.mjs",
+    from: "    if (!emptyHeld && (held === null || held.host !== bootHost() || !(sameBoot(held.boot_instant) || earlierBoot(held.boot_instant)))) {",
+    to: "    if ((held === null || held.host !== bootHost() || !(sameBoot(held.boot_instant) || earlierBoot(held.boot_instant)))) {",
+    test: "tests/product/home.test.mjs",
+    name: "abandoned empty locks are recovered for both resources after the acquisition grace"
+  },
+  {
+    guard: "empty lock contention expires instead of becoming permanent",
+    reason: "An abandoned empty lock must permit both resources to recover after the legacy acquisition grace.",
+    file: "lib/store.mjs",
+    from: "    if (emptyHeld && Date.now() - statSync(lockPath).mtimeMs < 5_000) {",
+    to: "    if (emptyHeld) {",
+    test: "tests/product/home.test.mjs",
+    name: "abandoned empty locks are recovered for both resources after the acquisition grace"
+  },
+  {
     guard: "the completion producer signs its in-memory working record",
     reason: "Reloading a persisted record before signing turns a file replacement into producer-authenticated evidence and can destroy an otherwise recoverable graded completion.",
     file: "lib/cli.mjs",
@@ -34,11 +115,11 @@ export const GUARDS = [
     name: "process death before during and after the pending write preserves exposure and recovers only committed completions"
   },
   {
-    guard: "opening an AOS home resumes its pending scored runs",
-    reason: "Read-only CLI entry points must recover a durable scored run before deciding it has no result or committing an aborted terminal.",
+    guard: "exposure CLI commands resume pending scored runs before dispatch",
+    reason: "Exposure consumers must replay durable completions before reading run artifacts; unrelated commands must not depend on this recovery.",
     file: "lib/cli.mjs",
-    from: "    recoverExposureFinalizations(home);",
-    to: "    // recovery removed",
+    from: "    if ([\"assess\", \"cycle\", \"verify\", \"dashboard\"].includes(command)) recoverExposureFinalizations(home);",
+    to: "    // exposure entry recovery removed",
     name: "process death before during and after the pending write preserves exposure and recovers only committed completions",
     test: "tests/product/exposure-finalization.test.mjs"
   },
@@ -160,13 +241,13 @@ export const GUARDS = [
     name: "pending replay derives withholding from current ledger exposure instead of payload permission"
   },
   {
-    guard: "verify delegates post-reservation exposure to the administration classifier",
-    reason: "The reservation snapshot misses a later sibling reveal, so reconstructing permission from its two fields disagrees with assess.",
+    guard: "verification retains the receipt refusal for exposure revealed after reservation",
+    reason: "Reservation counts cannot reconstruct a sibling reveal before finalization; the terminal receipt carries the decision at that instant.",
     file: "lib/cli.mjs",
-    from: "    const ledgerWithholds = classifyAdministration(exposureLedger, ledgerEntry).official_scoring_permitted !== true;",
-    to: "    const ledgerWithholds = ledgerEntry.declared_class !== \"OPERATIONAL\" || ledgerEntry.prior_exposure_count > 0;",
+    from: "    const practiceReason = ledgerEntry.finalization.practice_reason;",
+    to: "    const practiceReason = ledgerEntry.prior_exposure_count > 0 ? ledgerEntry.finalization.practice_reason : null;",
     test: "tests/product/exposure-finalization.test.mjs",
-    name: "verify uses the classifier when a sibling reveals after this administration reserved"
+    name: "verify retains the finalization refusal when a sibling revealed after reservation"
   },
   {
     guard: "the prepared seed, not a supplied binding, selects the oracle",
@@ -8676,10 +8757,10 @@ export const GUARDS = [
     name: "DIF findings stay unauthenticated in both directions and incomplete studies stay withheld"
   },
   {
-    guard: "an unadjudicable lock is refused rather than reclaimed",
-    reason: "#585 governance directive 15.4. Reclaiming on isAlive(pid) alone is a guess in both directions: a recycled pid reads as a live owner, and a dead pid reads as safe to break even when the owner died mid-transaction and left the ledger half-written. Only a lock this boot wrote can be adjudicated; anything else is refused",
+    guard: "nonempty unadjudicable ledger locks remain refused",
+    reason: "The compatibility exception for empty locks cannot reclaim a nonempty record whose owner cannot be adjudicated.",
     file: "lib/store.mjs",
-    from: "    if (held === null || held.host !== bootHost() || !(sameBoot(held.boot_instant) || earlierBoot(held.boot_instant))) {",
+    from: "    if (!emptyHeld && (held === null || held.host !== bootHost() || !(sameBoot(held.boot_instant) || earlierBoot(held.boot_instant)))) {",
     to: "    if (false) {",
     test: "tests/product/home.test.mjs",
     name: "a lock whose recorded owner is gone is not reclaimed on pid liveness alone"
@@ -8883,11 +8964,11 @@ export const GUARDS = [
     name: "an S2 replay of an already-exposed form withholds its published surfaces exactly like a PRACTICE replay does"
   },
   {
-    guard: "verify --run reconciles practice_withholding against the exposure ledger, not the stored record alone",
-    reason: "#585 (this round). `practiceReason` inside `verifyProfileResult` used to read `record.practice_withholding.reason` alone -- a field on the run's own working record, a plain file an operator can edit. Removing that field made a PRACTICE run's own recompute stop reapplying its withholding, so an untampered result whose record merely lost the field failed its own verification; the ledger's own committed entry for this exact administration must decide whether withholding applies, the same move `exposureVerification` (lib/cycle.mjs) already made for `form_classification`.",
+    guard: "verification reapplies ledger receipt withholding without a working record reason",
+    reason: "Deleting the editable working record reason cannot undo withholding already committed in the ledger terminal receipt.",
     file: "lib/cli.mjs",
-    from: "    const ledgerWithholds = classifyAdministration(exposureLedger, ledgerEntry).official_scoring_permitted !== true;",
-    to: "    const ledgerWithholds = false;",
+    from: "    const practiceReason = ledgerEntry.finalization.practice_reason;",
+    to: "    const practiceReason = null;",
     test: "tests/product/verify-run.test.mjs",
     name: "stripping practice_withholding from the run's own record does not change verify --run's verdict; the ledger still says so"
   },
@@ -8990,11 +9071,11 @@ export const GUARDS = [
   }
 ,
   {
-    guard: "a lock file caught mid-acquisition is contended, not unreadable",
-    reason: "\ub77d \ud30c\uc77c\uc740 wx \ub85c \ub9cc\ub4e4\uc5b4\uc9c4 \ub4a4 \ub0b4\uc6a9\uc774 \ucc44\uc6cc\uc9c0\uae30\uae4c\uc9c0 \uc9e7\uac8c 0\ubc14\uc774\ud2b8\ub2e4. \uadf8 \ucc3d\uc744 \ud310\uc815 \ubd88\uac00\ub85c \uc77d\uc73c\uba74 \uc6d0\uc7a5 \ub77d\uc740 \uc0b4\uc544\uc788\ub294 \uc18c\uc720\uc790\ub97c \ub450\uace0 \uc190\uc73c\ub85c \uc9c0\uc6b0\ub77c\ub294 \uc798\ubabb\ub41c fail-closed \ub97c \ub0b4\uace0, \ub7f0 \ub77d\uc740 \uadf8 \ud30c\uc77c\uc744 \uce58\uc6b0\uace0 \ub4e4\uc5b4\uac00 \ub450 writer \uac00 \ub41c\ub2e4",
+    guard: "fresh empty locks receive a bounded acquisition grace",
+    reason: "A fresh legacy empty lock receives transient contention during its acquisition grace for both protected resources.",
     file: "lib/store.mjs",
-    from: "    if (rawHeld !== null && rawHeld.trim() === \"\") {\n      throw new Error(buildLockedError(\"acquiring\"));\n    }",
-    to: "    if (false) {\n      throw new Error(buildLockedError(\"acquiring\"));\n    }",
+    from: "    if (emptyHeld && Date.now() - statSync(lockPath).mtimeMs < 5_000) {",
+    to: "    if (false) {",
     test: "tests/product/home.test.mjs",
     name: "a lock file caught mid-acquisition is contended, not unreadable"
   },
@@ -9026,11 +9107,11 @@ export const GUARDS = [
     name: "opening a chained terminal exposure requires reveal evidence"
   },
   {
-    guard: "current verification cannot fall back when exposure evidence is unavailable",
+    guard: "current verification cannot substitute artifacts for unreadable or absent ledger evidence",
     reason: "Missing, unreadable and corrupt ledgers cannot become a verified current result through the editable run record.",
     file: "lib/cli.mjs",
-    from: "    } catch (error) {\n      add(\"exposure-ledger\", false, error.message);\n      add(\"recompute\", CHECK_NOT_CHECKED, \"AOS_EXPOSURE_UNVERIFIED exposure evidence could not be read\");\n      return false;\n    }\n    if (ledgerEntry === undefined || ledgerEntry.state !== \"TERMINAL\") {\n      add(\"exposure-ledger\", CHECK_NOT_CHECKED, \"AOS_EXPOSURE_UNVERIFIED no completed exposure entry exists for this current result\");\n      add(\"recompute\", CHECK_NOT_CHECKED, \"AOS_EXPOSURE_UNVERIFIED withholding cannot be reconstructed without exposure evidence\");\n      return false;\n    }\n    const recordReason",
-    to: "    } catch {\n      ledgerEntry = undefined;\n    }\n    const recordReason",
+    from: "    } catch (error) {\n      add(\"exposure-ledger\", false, error.message);\n      add(\"recompute\", CHECK_NOT_CHECKED, \"AOS_EXPOSURE_UNVERIFIED exposure evidence could not be read\");\n      return false;\n    }\n    if (ledgerEntry === undefined || ledgerEntry.state !== \"TERMINAL\" || ledgerEntry.finalization?.practice_reason === undefined) {\n      add(\"exposure-ledger\", CHECK_NOT_CHECKED, \"AOS_EXPOSURE_UNVERIFIED no completed exposure entry with a finalization receipt exists for this current result\");\n      add(\"recompute\", CHECK_NOT_CHECKED, \"AOS_EXPOSURE_UNVERIFIED withholding cannot be reconstructed without exposure evidence\");\n      return false;\n    }\n",
+    to: "    } catch { ledgerEntry = undefined; }\n    ledgerEntry ??= { finalization: { practice_reason: record?.practice_withholding?.reason ?? null } };\n",
     test: "tests/product/verify-run.test.mjs",
     name: "current result verification cannot replace missing or corrupt exposure evidence with the run record"
   },
@@ -9352,7 +9433,6 @@ export const ACCOUNTED_GUARDS = [
   "a ledger open replays durable pending completions",
   "a live audit needs a live snapshot",
   "a live head the audit never covered is reported",
-  "a lock file caught mid-acquisition is contended, not unreadable",
   "a log checked without its observations is not a log that passed",
   "a malformed exposure ledger entry refuses the ledger instead of vanishing from it",
   "a metric's status and its value are one state",
@@ -9565,7 +9645,6 @@ export const ACCOUNTED_GUARDS = [
   "an overlap in the ledger is a collision whatever the schedule said",
   "an overlap the requirement does not permit is not an adequate route",
   "an owner AOS cannot judge is not delegation the operator got wrong",
-  "an unadjudicable lock is refused rather than reclaimed",
   "an unanswered checkpoint mints nothing",
   "an unanswered reliance metric stays NOT_OBSERVED",
   "an unavailable author is reported as unavailable",
@@ -9650,7 +9729,7 @@ export const ACCOUNTED_GUARDS = [
   "credential env refusal",
   "credential names a shape rule cannot see are listed",
   "credential names are matched whatever their capitalisation",
-  "current verification cannot fall back when exposure evidence is unavailable",
+  "current verification cannot substitute artifacts for unreadable or absent ledger evidence",
   "cycle occasion allocation uses the locked reservation sequence",
   "cycle run identity",
   "cycle search inside strongly connected components",
@@ -9667,6 +9746,7 @@ export const ACCOUNTED_GUARDS = [
   "effective execute permission",
   "either spelling of an open pull request blocks",
   "elementary cycle enumeration",
+  "empty lock contention expires instead of becoming permanent",
   "entry state coherence",
   "env option scan",
   "env policy digest binding",
@@ -9693,7 +9773,10 @@ export const ACCOUNTED_GUARDS = [
   "excluded issues are a floor",
   "excluded issues present in the snapshot",
   "execution plan cycle detection",
+  "expired empty ledger locks bypass only the unadjudicable-record refusal",
   "explicit keys are keys",
+  "exposure CLI commands resume pending scored runs before dispatch",
+  "exposure entry recovery does not gate unrelated commands",
   "exposure verification leaves missing eligibility evidence unknown",
   "exposure verification rederives scored-once eligibility",
   "exposureVerification's VERIFIED answer is the ledger's own administered_class, not merely that some entry exists under this run's id",
@@ -9707,6 +9790,7 @@ export const ACCOUNTED_GUARDS = [
   "form variation report counts oracle branches",
   "formLifecycleState excludes an abandoned reservation from retirement",
   "formLifecycleState issues neither equivalence nor drift from a caller's object",
+  "fresh empty locks receive a bounded acquisition grace",
   "full-SHA action reference",
   "grading reads what was frozen at settlement",
   "handoff exact compare",
@@ -9745,6 +9829,9 @@ export const ACCOUNTED_GUARDS = [
   "linkForms's drift threshold is read from the registered method, never a caller-supplied one",
   "linking without empirical evidence stays unestablished",
   "local reference redirection",
+  "lock owner records are synced before publication",
+  "lock publication cannot overwrite an existing owner",
+  "lock publication follows owner record creation",
   "locked cycle seed",
   "main and dev are compared across the deletion itself",
   "malformed-row reporting",
@@ -9764,6 +9851,7 @@ export const ACCOUNTED_GUARDS = [
   "no raw confinement evidence is a verification failure",
   "no raw target reaches a published event",
   "no variable may carry the store path",
+  "nonempty unadjudicable ledger locks remain refused",
   "nothing claimed as deleted is still there",
   "nothing is eligible without a live observation",
   "nothing vanished that the log did not claim",
@@ -9785,7 +9873,6 @@ export const ACCOUNTED_GUARDS = [
   "openExposureLedger recomputes the transition digest chain over every stored entry",
   "openExposureLedger refuses two stored entries claiming one administration_id",
   "openExposureLedger refuses two stored entries claiming one revision",
-  "opening an AOS home resumes its pending scored runs",
   "opening terminal exposure requires its reveal evidence",
   "operator decision window",
   "operator event authority is the matrix's, not the caller's",
@@ -10147,12 +10234,15 @@ export const ACCOUNTED_GUARDS = [
   "unverified cleanup blocks issuance",
   "uses under with: or env: is an input",
   "variation report derives axis completeness from frozen contracts",
+  "verification freezes exposure policy at finalization",
+  "verification obtains withholding text from the ledger receipt",
   "verification re-derives the settlement half too",
   "verification re-gates the invocations the record carries",
+  "verification reapplies ledger receipt withholding without a working record reason",
+  "verification requires a terminal finalization receipt",
   "verification result check",
+  "verification retains the receipt refusal for exposure revealed after reservation",
   "verifier rederives uncertainty instead of trusting it",
-  "verify --run reconciles practice_withholding against the exposure ledger, not the stored record alone",
-  "verify delegates post-reservation exposure to the administration classifier",
   "version comment after a flow mapping",
   "version comment is a version",
   "what runs after a reroute belongs to the decision that caused it",
@@ -10165,5 +10255,5 @@ export const ACCOUNTED_GUARDS = [
   "workspace snapshot map is null-prototype",
   "workspace snapshot reads bytes",
   "workspace snapshot records directories",
-  "write access asked of the repository",
+  "write access asked of the repository"
 ];

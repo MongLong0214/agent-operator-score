@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { generateKeyPairSync } from "node:crypto";
@@ -49,7 +49,108 @@ test("a graded administration survives a held finalize lock and replays on the n
   } finally { clean(cwd); }
 });
 
-test("verify uses the classifier when a sibling reveals after this administration reserved", async () => {
+test("unrelated commands remain available with a pending completion and a faulted exposure ledger", async () => {
+  const { cwd, home, plan } = fixture();
+  const lock = join(home, "exposure-ledger.lock");
+  const session = join(cwd, "review-session.jsonl");
+  writeFileSync(session, `${JSON.stringify({ type: "summary", summary: "fixture session" })}\n`);
+  try {
+    exposureLedgerTestHooks.afterReveal = () => writeJson(lock, { pid: process.pid });
+    const assessed = await assessAtATerminal(cwd, ["assess", "--plan", plan, "--seed", "5"]);
+    assert.equal(assessed.status, 3, assessed.stderr);
+    const runId = newestRunId(cwd);
+    const pending = join(home, `exposure-pending-${runId}.json`);
+    assert.equal(existsSync(pending), true);
+    for (const fault of ["held", "corrupt"]) {
+      if (fault === "corrupt") {
+        rmSync(lock);
+        writeFileSync(exposureLedgerPath(home), "not JSON");
+      }
+      for (const args of [["review", "--since", "1", "--session", session], ["doctor"], ["init"], ["agent", "list"], ["forms"]]) {
+        const answer = await assessAtATerminal(cwd, args, { env: { PATH: cwd } });
+        assert.equal(answer.status, 0, `${fault}: ${args.join(" ")}\n${answer.stderr}`);
+      }
+      const refused = await assessAtATerminal(cwd, ["assess", "--plan", plan]);
+      assert.equal(refused.status, 2, refused.stderr);
+      assert.match(refused.stderr, fault === "held" ? /AOS_EXPOSURE_LEDGER_LOCKED/u : /AOS_MALFORMED_JSON/u);
+      assert.equal(existsSync(pending), true);
+    }
+  } finally { clean(cwd); }
+});
+
+test("an earlier result stays verified after the same form is administered again", async () => {
+  const { cwd, home, plan } = fixture();
+  try {
+    const first = await assessAtATerminal(cwd, ["assess", "--plan", plan, "--seed", "5"]);
+    assert.equal(first.status, 3, first.stderr);
+    const firstId = newestRunId(cwd);
+    const paths = runPaths(home, firstId);
+    const before = [paths.result, paths.record, paths.terminal].map((file) => readFileSync(file, "utf8"));
+    assert.equal(openExposureLedger(readExposureLedgerFile(home)).entries[0].finalization.practice_reason, null);
+    const verifyFirst = () => JSON.parse(run(cwd, ["verify", "--run", firstId, "--json"], 0).stdout);
+    assert.equal(verifyFirst().state, "verified");
+    const second = await assessAtATerminal(cwd, ["assess", "--plan", plan, "--seed", "5"]);
+    assert.equal(second.status, 3, second.stderr);
+    assert.equal(json(runPaths(home, newestRunId(cwd)).terminal).status, "PRACTICE");
+    assert.deepEqual([paths.result, paths.record, paths.terminal].map((file) => readFileSync(file, "utf8")), before);
+    const verified = verifyFirst();
+    assert.equal(verified.state, "verified");
+    assert.equal(verified.checks.find((check) => check.check === "recompute").decision, true);
+    const edited = json(paths.result);
+    assert.equal(edited.aos_composite.issued, false);
+    edited.aos_composite.issued = true;
+    writeJson(paths.result, edited);
+    const contradicted = JSON.parse(run(cwd, ["verify", "--run", firstId, "--json"], 5).stdout);
+    assert.equal(contradicted.state, "contradicted");
+    assert.equal(contradicted.checks.find((check) => check.check === "recompute").decision, false);
+  } finally { clean(cwd); }
+});
+
+test("verification without a finalization receipt stays unresolved even with an intact result", async () => {
+  const { cwd, home, plan } = fixture();
+  try {
+    const assessed = await assessAtATerminal(cwd, ["assess", "--plan", plan, "--seed", "5"]);
+    assert.equal(assessed.status, 3, assessed.stderr);
+    const runId = newestRunId(cwd);
+    run(cwd, ["verify", "--run", runId], 0);
+    const entry = openExposureLedger(readExposureLedgerFile(home)).entries[0];
+    // A legitimate pre-receipt terminal made through the public transitions, with a valid chain.
+    // Corrupting the chain instead would refuse before the missing-receipt guard was reached.
+    const revealed = markRevealed(reserveExposure(undefined, entry).ledger, { administration_id: runId }).ledger;
+    const withoutReceipt = recordExposure(revealed, { ...entry, finalization: null }).ledger;
+    assert.equal(openExposureLedger(withoutReceipt).entries[0].finalization, undefined);
+    writeJson(exposureLedgerPath(home), withoutReceipt);
+    const report = JSON.parse(run(cwd, ["verify", "--run", runId, "--json"], 4).stdout);
+    assert.equal(report.state, "unresolved");
+    assert.equal(report.checks.find((check) => check.check === "exposure-ledger").decision, null);
+    assert.equal(report.checks.find((check) => check.check === "recompute").decision, null);
+  } finally { clean(cwd); }
+});
+
+test("editing both published and working withholding reasons cannot replace the ledger receipt", async () => {
+  const { cwd, home, plan } = fixture();
+  try {
+    for (let i = 0; i < 2; i += 1) {
+      const assessed = await assessAtATerminal(cwd, ["assess", "--plan", plan, "--seed", "5"]);
+      assert.equal(assessed.status, 3, assessed.stderr);
+    }
+    const runId = newestRunId(cwd);
+    const paths = runPaths(home, runId);
+    run(cwd, ["verify", "--run", runId], 0);
+    const record = json(paths.record);
+    const result = json(paths.result);
+    const invented = "AOS_FORM_NOT_OFFICIAL invented artifact reason";
+    record.practice_withholding.reason = invented;
+    for (const key of ["operator_process_profile", "system_outcome_profile", "aos_composite"]) result[key].withheld_reason = invented;
+    writeJson(paths.record, record);
+    writeJson(paths.result, result);
+    const report = JSON.parse(run(cwd, ["verify", "--run", runId, "--json"], 5).stdout);
+    assert.equal(report.state, "contradicted");
+    assert.equal(report.checks.find((check) => check.check === "recompute").decision, false);
+  } finally { clean(cwd); }
+});
+
+test("verify retains the finalization refusal when a sibling revealed after reservation", async () => {
   const { cwd, home, plan } = fixture();
   try {
     exposureLedgerTestHooks.afterReserve = () => {
@@ -179,10 +280,10 @@ test("process death before during and after the pending write preserves exposure
       assert.equal(existsSync(join(home, `exposure-pending-${runId}.json`)), wasCommitted, stage);
       // A new process opens the home, not an in-memory object carrying the signing key.
       const reopened = spawnSync(process.execPath, [new URL("./exposure-finalization-crash-harness.mjs", import.meta.url).pathname,
-        "recover", "session", "list", "--json"], {
+        "recover", "verify", "--run", runId, "--json"], {
         cwd, env: { ...process.env, AOS_HOME: home }, encoding: "utf8", timeout: 120000
       });
-      assert.equal(reopened.status, 0, `${stage}: ${reopened.stderr}`);
+      assert.equal(reopened.status, wasCommitted ? 0 : 2, `${stage}: ${reopened.stdout}\n${reopened.stderr}`);
       const after = openExposureLedger(json(exposureLedgerPath(home)));
       if (wasCommitted) {
         assert.equal(after.entries[0].state, "TERMINAL", stage);
