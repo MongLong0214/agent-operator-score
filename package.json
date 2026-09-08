@@ -86,7 +86,8 @@
     "verify:agent-discovery-fixture": "node --test tests/product/discovery-canary.test.mjs",
     "verify:agent-discovery-local": "AOS_DISCOVERY_LOCAL_REQUIRED=1 node --test tests/product/discovery-canary.test.mjs",
     "verify:official-support-selection": "node --test tests/product/discovery-official-support.test.mjs",
-    "verify:zero-setup-discovery": "node --test tests/product/discovery-zero-setup.test.mjs tests/product/discovery.test.mjs"
+    "verify:zero-setup-discovery": "node --test tests/product/discovery-zero-setup.test.mjs tests/product/discovery.test.mjs",
+    "verify:pr-body": "bash scripts/refresh-pr-verification-block.sh"
   },
   "bin": {
     "aos": "./bin/aos.mjs"
