@@ -8785,7 +8785,7 @@ export const GUARDS = [
     guard: "a form bank record's equivalence status is UNESTABLISHED by construction",
     reason: "#585 (this round). `isRealLinkingScaffold`, the predicate this field used to trust, is deleted: it grew one more required field every review round and a forgery satisfying the new field followed every time. `equivalence_status` is no longer computed from `linking` at all -- it is the literal `\"UNESTABLISHED\"` -- so there is no predicate left to defeat.",
     file: "lib/form-class.mjs",
-    from: "    equivalence_status: \"UNESTABLISHED\",",
+    from: "    equivalence_status: \"UNESTABLISHED\",\n    unauthenticated_claim: unauthenticatedLinkingClaim(linking)",
     to: "    equivalence_status: linking?.equivalence_status ?? \"UNESTABLISHED\",",
     test: "tests/product/form-class.test.mjs",
     name: "a form bank record's equivalence status is closed by construction: a perfect linking claim still yields UNESTABLISHED"
@@ -8825,6 +8825,15 @@ export const GUARDS = [
     to: "  if (false) {\n    throw new Error(\"AOS_EXPOSURE_LEDGER_MIGRATION_REQUIRED the stored exposure ledger predates revision/chain/head integrity binding; it cannot be read as verified without an explicit migration, and none is silently performed\");\n  }",
     test: "tests/product/form-class.test.mjs",
     name: "a ledger relabeled with the pre-chain id is refused as migration-required, even if it is otherwise a real, chain-verified ledger"
+  },
+  {
+    guard: "formLifecycleState issues neither equivalence nor drift from a caller's object",
+    reason: "\uc5ec\uc12f \ubc88\uc9f8 \uac8c\uc774\ud2b8. \ub2e4\uc12f \uac1c\ub97c \ub2eb\uc740 \ub77c\uc6b4\ub4dc\uac00 \uc774 \ud568\uc218\ub97c \ube60\ub728\ub838\uace0 \ub9ac\ubdf0\uac00 \uc2e4\ud589\uc73c\ub85c \uc7a1\uc558\ub2e4. linkForms \uac00 \ub354 \uc774\uc0c1 LINKED \ub97c \ubabb \ub0b4\ubcf4\ub0b4\ubbc0\ub85c \uc5ec\uae30\uc11c \uadf8 \uac12\uc758 \uc720\uc77c\ud55c \uc0dd\uc0b0\uc790\ub294 \uc190\uc73c\ub85c \uc4f4 \uac1d\uccb4\ubfd0\uc774\uc5c8\uace0, drift_status \ub294 enum \uac80\uc0ac\uc870\ucc28 \uc5c6\uc5b4 \uc544\ubb34 \ubb38\uc790\uc5f4\uc774\ub098 \uad8c\uc704 \uc788\ub294 \ud310\uc815\uc73c\ub85c \ub098\uac14\ub2e4",
+    file: "lib/form-class.mjs",
+    from: "    drift_status: \"NOT_MONITORED\",\n    equivalence_status: \"UNESTABLISHED\",",
+    to: "    drift_status: linking?.drift?.status ?? \"NOT_MONITORED\",\n    equivalence_status: EQUIVALENCE_STATUSES.includes(linking?.equivalence_status) ? linking.equivalence_status : \"UNESTABLISHED\",",
+    test: "tests/product/form-class.test.mjs",
+    name: "formLifecycleState is closed too: a caller's equivalence and drift claims are recorded, never issued"
   }
 ];
 
@@ -9388,6 +9397,7 @@ export const ACCOUNTED_GUARDS = [
   "form binding task identity is recomputed",
   "form variation report counts oracle branches",
   "formLifecycleState excludes an abandoned reservation from retirement",
+  "formLifecycleState issues neither equivalence nor drift from a caller's object",
   "full-SHA action reference",
   "grading reads what was frozen at settlement",
   "handoff exact compare",

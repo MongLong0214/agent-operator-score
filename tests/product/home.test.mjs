@@ -123,6 +123,39 @@ test("a lock whose owner is gone is broken, not honoured", () => {
   } finally { rmSync(home, { recursive: true, force: true }); }
 });
 
+test("the store never reads the clock at import time", async () => {
+  // 샌드박스에서 `os.uptime()` 이 `uv_uptime returned EPERM` 을 던진다. 부트 식별자를 모듈 최상단
+  // const 로 계산하던 동안에는 그 예외가 `lib/store.mjs` 의 import 자체를 실패시켰고, store 를 쓰는
+  // 명령 전부가 함께 죽었다. AOS 는 에이전트를 confinement 아래 돌리는 게 본업이라 샌드박스 안에서
+  // 도는 건 예외가 아니다.
+  //
+  // 처음 쓴 이 테스트는 자식 프로세스에서 `os.uptime` 을 갈아끼웠는데, `store.mjs` 가 명명 임포트를
+  // 쓰기 때문에 그 바인딩은 링크 시점에 원본에 묶여 바뀌지 않았다. 즉 대상에 닿지 못한 채 통과했고,
+  // 수정을 되돌려도 그대로 통과했다. 그래서 성질을 직접 잰다: 이 호출이 함수 밖에 있으면 안 된다.
+  const { parse } = await import("acorn");
+  const source = readFileSync(new URL("../../lib/store.mjs", import.meta.url), "utf8");
+  const tree = parse(source, { ecmaVersion: "latest", sourceType: "module" });
+
+  const offenders = [];
+  const walk = (node, insideFunction) => {
+    if (node === null || typeof node !== "object") return;
+    if (Array.isArray(node)) { for (const child of node) walk(child, insideFunction); return; }
+    const isFunction = node.type === "FunctionDeclaration" || node.type === "FunctionExpression"
+      || node.type === "ArrowFunctionExpression";
+    if (!insideFunction && node.type === "CallExpression"
+      && node.callee?.type === "Identifier" && node.callee.name === "uptime") {
+      offenders.push(node.start);
+    }
+    for (const key of Object.keys(node)) {
+      if (key === "type" || key === "start" || key === "end") continue;
+      walk(node[key], insideFunction || isFunction);
+    }
+  };
+  walk(tree, false);
+
+  assert.deepEqual(offenders, [], `uptime() is called outside any function at offset(s) ${offenders.join(", ")}; a sandbox that refuses it would fail the import of this module and every command that stores anything`);
+});
+
 test("a run lock in the older bare-pid format is broken, not refused under the ledger's answer", () => {
   // Found by round 2. Failing closed on a lock this process cannot adjudicate is right for the
   // exposure ledger, where counting an administration twice is worse than refusing to count it at

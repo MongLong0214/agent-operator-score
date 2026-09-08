@@ -116,6 +116,31 @@ test("a form bank record cannot declare itself linked; equivalence stays unestab
   assert.equal(EQUIVALENCE_STATUSES.includes(record.equivalence_status), true);
 });
 
+test("formLifecycleState is closed too: a caller's equivalence and drift claims are recorded, never issued", async () => {
+  // 여섯 번째 게이트. 다섯 개를 닫은 라운드가 이 함수를 빠뜨렸고, 리뷰가 실행으로 잡았다:
+  // 손으로 쓴 `{equivalence_status:"LINKED", drift:{status:"WITHIN_THRESHOLD"}}` 가 그대로
+  // 권위 있는 값으로 나왔다. `linkForms` 가 더 이상 LINKED 를 못 내보내므로 여기서 그 값의 유일한
+  // 생산자는 위조뿐이었다. `drift_status` 는 enum 검사조차 없어 아무 문자열이나 통과했다.
+  const { formLifecycleState, createExposureLedger } = await import("../../lib/form-class.mjs");
+  const digest = `sha256:${"ab".repeat(32)}`;
+  const state = formLifecycleState(createExposureLedger(), {
+    form_contract_digest: digest,
+    linking: { equivalence_status: "LINKED", drift: { status: "WITHIN_THRESHOLD" } }
+  });
+  assert.equal(state.equivalence_status, "UNESTABLISHED", "a caller-supplied equivalence status was issued as authoritative");
+  assert.equal(state.drift_status, "NOT_MONITORED", "a caller-supplied drift status was issued as authoritative");
+  // 주장 자체는 사라지지 않는다 -- 인증되지 않았다고 이름 붙여 기록한다.
+  assert.equal(state.unauthenticated_claim.claimed_equivalence_status, "LINKED");
+  assert.equal(state.unauthenticated_claim.claimed_drift_status, "WITHIN_THRESHOLD");
+  assert.match(state.unauthenticated_claim.reason, /AOS_LINKING_UNAUTHENTICATED/u);
+  // 아무 문자열이나 넣어도 마찬가지다: enum 검사가 없던 자리가 닫혔는지 본다.
+  const forged = formLifecycleState(createExposureLedger(), {
+    form_contract_digest: digest,
+    linking: { drift: { status: "TOTALLY_FINE_TRUST_ME" } }
+  });
+  assert.equal(forged.drift_status, "NOT_MONITORED");
+});
+
 test("a form bank record's equivalence status is closed by construction: a perfect linking claim still yields UNESTABLISHED", () => {
   // #585 (this round). This test replaces three that checked individual clauses of a predicate
   // (`isRealLinkingScaffold`) that no longer exists: five review rounds hardened it one field at a
