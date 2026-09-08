@@ -16,11 +16,74 @@
 
 export const GUARDS = [
   {
+    guard: "cycle completion identity survives every exit before bookkeeping",
+    reason: "The durable reservation connects the cycle to its graded administration even when finalization or cycle publication returns an error.",
+    file: "lib/cli.mjs",
+    from: "      && entry.finalization != null",
+    to: "      && false",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "cycle run resumes its graded administration after finalize contention without administering the seed again"
+  },
+  {
+    guard: "cycle artifacts are read only after pending publication",
+    reason: "A successful post-assessment replay produces the result and terminal; reading them before that replay fabricates an infrastructure failure.",
+    file: "lib/cli.mjs",
+    from: "    let postRunLedger;\n    try {\n      postRunLedger = openExposureLedger(readExposureLedgerFile(home));\n    } catch (error) { return fail(io, error.message); }\n    // Opening the ledger may itself publish these files from the signed completion.\n    const result = readJsonIfExists(runPaths(home, runId).result);\n    const terminal = readJsonIfExists(runPaths(home, runId).terminal);\n",
+    to: "    const result = readJsonIfExists(runPaths(home, runId).result);\n    const terminal = readJsonIfExists(runPaths(home, runId).terminal);\n    let postRunLedger;\n    try {\n      postRunLedger = openExposureLedger(readExposureLedgerFile(home));\n    } catch (error) { return fail(io, error.message); }\n    // Opening the ledger may itself publish these files from the signed completion.\n",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "cycle run reads artifacts after a successful post-assessment replay"
+  },
+  {
+    guard: "cycle recovery uses the committed receipt despite later administrations",
+    reason: "An already finalized official administration cannot become practice while the cycle recovers its missing bookkeeping after a later sibling.",
+    file: "lib/cli.mjs",
+    from: "        ...(receipt == null ? {} : {",
+    to: "        ...(true ? {} : {",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "cycle bookkeeping resumes the original receipt after publication failure and a later administration"
+  },
+  {
+    guard: "all replay failures carry the pending path and explicit recovery action",
+    reason: "Publication I/O must reach the recovery context boundary so that both exposure commands and session recover name the retained completion.",
+    file: "lib/store.mjs",
+    from: "      throw exposureRecoveryError(error, file, runId);",
+    to: "      throw error;",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "publication failure retains the completion and names a recovery that succeeds after repair"
+  },
+  {
+    guard: "the permanent failure classifier encloses the entire replay operation",
+    reason: "A terminal conflict arising during publication must be quarantined just like one detected before publication, without disabling every exposure consumer.",
+    file: "lib/store.mjs",
+    from: "      try {\n        replayExposureFinalization(home, file, runId);\n      } catch (error) {",
+    to: "      replayExposureFinalization(home, file, runId);\n      try {\n      } catch (error) {",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "a terminal conflict arising during publication is quarantined by the same replay boundary"
+  },
+  {
+    guard: "pending discovery failures name the recovery directory and action",
+    reason: "Directory enumeration runs before a pending run id is available; an I/O fault there must still carry the completion location and repair action.",
+    file: "lib/store.mjs",
+    from: "    throw exposureRecoveryError(error, join(home, \"exposure-pending-*.json\"), \"<id>\");",
+    to: "    throw error;",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "replay discovery quarantine and ledger parse errors cannot escape recovery context"
+  },
+  {
+    guard: "vanished lock observations share one contention classification",
+    reason: "A release before read and a release before stat are the same contention for both lock resources; neither may enter permanent owner refusal.",
+    file: "lib/store.mjs",
+    from: "      if (error?.code === \"ENOENT\") throw new Error(buildLockedError(\"acquiring\"));",
+    to: "      if (false) throw new Error(buildLockedError(\"acquiring\"));",
+    test: "tests/product/home.test.mjs",
+    name: "a lock released before either observation is the same acquiring contention for both resources"
+  },
+  {
     guard: "permanent pending conflicts are quarantined instead of gating the home",
     reason: "A cancelled terminal left by an older command must quarantine the signed pending and preserve the home for other administrations.",
     file: "lib/store.mjs",
-    from: "      if (/^(?:AOS_EXPOSURE_PENDING_(?:IDENTITY|SIGNATURE|SCHEMA|CONFLICT)|AOS_TERMINAL_ALREADY_COMMITTED)\\b/u.test(error.message)) {",
-    to: "      if (false) {",
+    from: "        if (/^(?:AOS_EXPOSURE_PENDING_(?:IDENTITY|SIGNATURE|SCHEMA|CONFLICT)|AOS_TERMINAL_ALREADY_COMMITTED)\\b/u.test(error.message)",
+    to: "        if (false",
     test: "tests/product/exposure-finalization.test.mjs",
     name: "session cancel with a pending completion and a legacy cancelled terminal cannot wedge the home"
   },
@@ -181,8 +244,8 @@ export const GUARDS = [
     guard: "pending evidence remains durable until all terminal artifacts are committed",
     reason: "Deleting the only signed completion after the ledger transition but before result publication loses the scored run on a process crash.",
     file: "lib/store.mjs",
-    from: "      completed = finalizeExposure(ledger, pending, runId);",
-    to: "      completed = finalizeExposure(ledger, pending, runId);\n    rmSync(file);",
+    from: "  const completed = finalizeExposure(ledger, pending, runId);",
+    to: "  const completed = finalizeExposure(ledger, pending, runId);\n    rmSync(file);",
     name: "process death before during and after the pending write preserves exposure and recovers only committed completions",
     test: "tests/product/exposure-finalization.test.mjs"
   },
@@ -4301,8 +4364,8 @@ export const GUARDS = [
     guard: "cycle run identity",
     reason: "listRuns sorts by name and a run id is a uuid, so taking either end of it records one run's score for every seed",
     file: "lib/cli.mjs",
-    from: 'const runId = listRuns(home).find((id) => !before.has(id)) ?? null;',
-    to: "const runId = listRuns(home)[0];",
+    from: 'runId = listRuns(home).find((id) => !before.has(id)) ?? null;',
+    to: "runId = listRuns(home)[0];",
     test: "tests/product/cycle-command.test.mjs",
     name: "three attended runs of the new instrument are recorded, and the cycle withholds an aggregate rather than borrowing the old one"
   },
@@ -8334,8 +8397,8 @@ export const GUARDS = [
     guard: "assess records every graded administration into the exposure ledger",
     reason: "the write at the one place every graded administration passes through is what makes a bare preview count as exposure; without it the ledger never grows and every replay classifies as a first administration",
     file: "lib/store.mjs",
-    from: "    if (completed.ledger.revision !== ledger.revision) writeJson(exposureLedgerPath(home), completed.ledger);",
-    to: "    if (false) writeJson(exposureLedgerPath(home), completed.ledger);",
+    from: "  if (completed.ledger.revision !== ledger.revision) writeJson(exposureLedgerPath(home), completed.ledger);",
+    to: "  if (false) writeJson(exposureLedgerPath(home), completed.ledger);",
     test: "tests/product/form-class.test.mjs",
     name: "a replayed operational form crosses runs as practice, never as official aggregate evidence"
   },
@@ -9636,6 +9699,7 @@ export const ACCOUNTED_GUARDS = [
   "adapter membership is a published name, not a path shape",
   "advice is answered once",
   "agent-relay event needs its attestation",
+  "all replay failures carry the pending path and explicit recovery action",
   "allowlist-only child environment",
   "an OBSERVED canary cannot be built without a real profile digest to bind",
   "an OBSERVED canary cannot be built without a runtime version actually measured",
@@ -9785,7 +9849,10 @@ export const ACCOUNTED_GUARDS = [
   "credential names a shape rule cannot see are listed",
   "credential names are matched whatever their capitalisation",
   "current verification cannot substitute artifacts for unreadable or absent ledger evidence",
+  "cycle artifacts are read only after pending publication",
+  "cycle completion identity survives every exit before bookkeeping",
   "cycle occasion allocation uses the locked reservation sequence",
+  "cycle recovery uses the committed receipt despite later administrations",
   "cycle run identity",
   "cycle search inside strongly connected components",
   "decisions must reach past one session",
@@ -9950,6 +10017,7 @@ export const ACCOUNTED_GUARDS = [
   "parent writable refusal",
   "parsed truthiness scanner detects each bare write-access use",
   "pending completions replay inside the acquired ledger lock",
+  "pending discovery failures name the recovery directory and action",
   "pending evidence remains durable until all terminal artifacts are committed",
   "pending replay accepts only the implemented completion schema",
   "pending replay derives scoring permission from ledger evidence",
@@ -10177,6 +10245,7 @@ export const ACCOUNTED_GUARDS = [
   "the operator event projection is an allowlist",
   "the operator-typed event set is what the gate covers",
   "the per-task invocation bound is compared",
+  "the permanent failure classifier encloses the entire replay operation",
   "the phrase list names the artifact rows it is supposed to check",
   "the plan's contract version tracks its bytes",
   "the policy digest covers the forbidden rules themselves",
@@ -10293,6 +10362,7 @@ export const ACCOUNTED_GUARDS = [
   "unreadable uses: fails closed",
   "unverified cleanup blocks issuance",
   "uses under with: or env: is an input",
+  "vanished lock observations share one contention classification",
   "variation report derives axis completeness from frozen contracts",
   "verification freezes exposure policy at finalization",
   "verification obtains withholding text from the ledger receipt",

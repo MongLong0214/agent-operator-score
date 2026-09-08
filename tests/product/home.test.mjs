@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import fs, { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
+import { syncBuiltinESMExports } from "node:module";
 import { hostname as osHostname, tmpdir, uptime as osUptime } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -23,6 +24,50 @@ import {
 } from "../../lib/store.mjs";
 
 const scratch = () => mkdtempSync(join(tmpdir(), "aos-home-"));
+
+test("a lock released before either observation is the same acquiring contention for both resources", (t) => {
+  const home = scratch();
+  try {
+    const { runId, paths } = createRun(home, { mode: "TEST" });
+    for (const [lock, acquire, code] of [
+      [join(home, "exposure-ledger.lock"), (body) => withExposureLedgerLock(home, body), "AOS_EXPOSURE_LEDGER_LOCKED"],
+      [join(paths.root, "run.lock"), (body) => withRunLock(home, runId, body), "AOS_RUN_LOCKED"]
+    ]) {
+      for (const observation of ["readFileSync", "statSync"]) {
+        writeFileSync(lock, JSON.stringify({ pid: process.pid }));
+        const original = fs[observation];
+        let intercepted = false;
+        t.mock.method(fs, observation, (path, ...args) => {
+          if (path === lock && !intercepted) {
+            intercepted = true;
+            rmSync(lock);
+          }
+          return original(path, ...args);
+        });
+        syncBuiltinESMExports();
+        assert.throws(() => acquire(() => assert.fail("contender entered the body")), (error) => {
+          assert.ok(error.message.startsWith(code), error.message);
+          assert.match(error.message, /acquiring/u);
+          return true;
+        });
+        assert.equal(intercepted, true);
+        t.mock.restoreAll();
+        syncBuiltinESMExports();
+        assert.equal(acquire(() => "acquired"), "acquired");
+      }
+    }
+    const lock = join(home, "exposure-ledger.lock");
+    symlinkSync(join(home, "absent"), lock);
+    assert.throws(() => withExposureLedgerLock(home, () => assert.fail("entered")), /AOS_EXPOSURE_LEDGER_LOCKED.*acquiring/u);
+    rmSync(lock);
+    mkdirSync(lock);
+    assert.throws(() => withExposureLedgerLock(home, () => assert.fail("entered")), /AOS_EXPOSURE_LOCK_UNAVAILABLE/u);
+  } finally {
+    t.mock.restoreAll();
+    syncBuiltinESMExports();
+    rmSync(home, { recursive: true, force: true });
+  }
+});
 
 test("assessment ended repairs a torn tail and obeys the ordinary event writer limits", () => {
   const home = scratch();

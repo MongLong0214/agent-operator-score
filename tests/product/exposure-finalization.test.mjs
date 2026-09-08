@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import fs, { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { syncBuiltinESMExports } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { generateKeyPairSync } from "node:crypto";
@@ -9,7 +10,7 @@ import { spawnSync } from "node:child_process";
 import { writeJson } from "../../lib/core.mjs";
 import { exposureLedgerTestHooks } from "../../lib/cli.mjs";
 import { classifyAdministration, markRevealed, openExposureLedger, recordExposure, reserveExposure } from "../../lib/form-class.mjs";
-import { commitTerminal, exposureLedgerPath, pendingExposurePath, readEvents, readExposureLedgerFile, runPaths } from "../../lib/store.mjs";
+import { commitTerminal, exposureLedgerPath, pendingExposurePath, readEvents, readExposureLedgerFile, recoverExposureFinalizations, runPaths } from "../../lib/store.mjs";
 import { addAgent, assessAtATerminal, initBare, makePlan, newestRunId, run } from "./helpers.mjs";
 import { finalizeExposure, signExposureFinalization } from "../../lib/exposure-finalization.mjs";
 import { createHandler, mintToken } from "../../lib/dashboard.mjs";
@@ -66,6 +67,292 @@ const assertHomeUsable = async ({ cwd, home, plan }, damagedId) => {
   assert.match(body, /<!doctype html>/iu);
 };
 const jsonOutput = (answer) => JSON.parse(answer.stdout);
+
+test("cycle run resumes its graded administration after finalize contention without administering the seed again", async () => {
+  const context = fixture();
+  const { cwd, home, plan } = context;
+  const lock = join(home, "exposure-ledger.lock");
+  try {
+    run(cwd, ["cycle", "start", "--seed", "5", "--seed", "6", "--seed", "7"], 0);
+    exposureLedgerTestHooks.afterReveal = () => writeJson(lock, { pid: process.pid });
+    const first = await assessAtATerminal(cwd, ["cycle", "run", "--plan", plan]);
+    assert.equal(first.status, 2, first.stderr);
+    const id = newestRunId(cwd);
+    assert.equal(existsSync(pendingExposurePath(home, id)), true);
+    assert.equal(json(join(home, "cycle.json")).runs.length, 0);
+    exposureLedgerTestHooks.afterReveal = null;
+    rmSync(lock);
+    const resumed = await assessAtATerminal(cwd, ["cycle", "run", "--plan", plan]);
+    assert.equal(resumed.status, 3, resumed.stderr);
+    const cycle = json(join(home, "cycle.json"));
+    assert.deepEqual(cycle.runs.map((row) => row.run_id), [id]);
+    assert.equal(cycle.runs[0].exposure_verification, "VERIFIED");
+    assert.equal(cycle.runs[0].failure, null);
+    assert.equal(cycle.runs[0].terminal_committed, true);
+    assert.deepEqual(readdirSync(join(home, "runs")), [id]);
+    const entry = openExposureLedger(readExposureLedgerFile(home)).entries[0];
+    assert.equal(entry.scored, true);
+    assert.equal(entry.administered_class, "OPERATIONAL");
+    assert.equal(entry.finalization.practice_reason, null);
+    const next = await assessAtATerminal(cwd, ["cycle", "run", "--plan", plan]);
+    assert.equal(next.status, 3, next.stderr);
+    assert.match(next.stdout, /seed 0000000000000006/u);
+    assert.equal(json(join(home, "cycle.json")).runs[0].run_id, id);
+  } finally { clean(cwd); }
+});
+
+test("cycle run reads artifacts after a successful post-assessment replay", async (t) => {
+  const { cwd, home, plan } = fixture();
+  const lock = join(home, "exposure-ledger.lock");
+  const original = fs.readdirSync;
+  let released = false;
+  try {
+    run(cwd, ["cycle", "start", "--seed", "5", "--seed", "6", "--seed", "7"], 0);
+    exposureLedgerTestHooks.afterReveal = () => writeJson(lock, { pid: process.pid });
+    t.mock.method(fs, "readdirSync", (path, ...args) => {
+      if (path === join(home, "runs") && existsSync(lock)
+          && original(home).some((name) => /^exposure-pending-.*\.json$/u.test(name))) {
+        rmSync(lock);
+        released = true;
+      }
+      return original(path, ...args);
+    });
+    syncBuiltinESMExports();
+    const answer = await assessAtATerminal(cwd, ["cycle", "run", "--plan", plan]);
+    assert.equal(released, true);
+    assert.equal(answer.status, 3, answer.stderr);
+    const id = newestRunId(cwd);
+    const [recorded] = json(join(home, "cycle.json")).runs;
+    assert.equal(recorded.run_id, id);
+    assert.equal(recorded.exposure_verification, "VERIFIED");
+    assert.equal(recorded.failure, null);
+    assert.equal(recorded.terminal_committed, true);
+  } finally {
+    t.mock.restoreAll();
+    syncBuiltinESMExports();
+    clean(cwd);
+  }
+});
+
+test("publication failure retains the completion and names a recovery that succeeds after repair", async () => {
+  const context = fixture();
+  const { cwd, home } = context;
+  try {
+    const id = await interruptedCompletion(context);
+    const pending = pendingExposurePath(home, id);
+    const paths = runPaths(home, id);
+    mkdirSync(paths.reportHtml);
+    for (const args of [["verify", "--run", id], ["session", "recover", id]]) {
+      const failed = await assessAtATerminal(cwd, args);
+      assert.equal(failed.status, 2, failed.stderr);
+      assert.match(failed.stderr, /EISDIR|ENOTDIR/u);
+      assert.ok(failed.stderr.includes(pending), failed.stderr);
+      assert.ok(failed.stderr.includes(`aos session recover ${id}`), failed.stderr);
+      assert.equal(existsSync(pending), true);
+      assert.equal(existsSync(paths.terminal), false);
+    }
+    const revision = json(exposureLedgerPath(home)).revision;
+    rmSync(paths.reportHtml, { recursive: true });
+    const recovered = await assessAtATerminal(cwd, ["session", "recover", id]);
+    assert.equal(recovered.status, 0, recovered.stderr);
+    assert.equal(existsSync(pending), false);
+    assert.equal(json(exposureLedgerPath(home)).revision, revision);
+    assert.equal(json(paths.terminal).status, "INCOMPLETE");
+    assert.equal(readEvents(home, id).filter((row) => row.event_type === "assessment.ended").length, 1);
+    for (const path of [paths.result, paths.reportMd, paths.reportHtml, paths.card]) assert.ok(readFileSync(path).length > 0);
+  } finally { clean(cwd); }
+});
+
+test("cycle bookkeeping resumes the original receipt after publication failure and a later administration", async (t) => {
+  const { cwd, home, plan } = fixture();
+  try {
+    run(cwd, ["cycle", "start", "--seed", "5", "--seed", "6", "--seed", "7"], 0);
+    const original = fs.renameSync;
+    let interrupted = false;
+    t.mock.method(fs, "renameSync", (from, to) => {
+      if (to === join(home, "cycle.json")) {
+        interrupted = true;
+        throw new Error("AOS_TEST_CYCLE_WRITE");
+      }
+      return original(from, to);
+    });
+    syncBuiltinESMExports();
+    const failed = await assessAtATerminal(cwd, ["cycle", "run", "--plan", plan]);
+    assert.equal(interrupted, true);
+    assert.equal(failed.status, 2, failed.stderr);
+    assert.match(failed.stderr, /AOS_TEST_CYCLE_WRITE/u);
+    t.mock.restoreAll();
+    syncBuiltinESMExports();
+    const id = newestRunId(cwd);
+    assert.equal(existsSync(pendingExposurePath(home, id)), false);
+    assert.equal(json(join(home, "cycle.json")).runs.length, 0);
+    const artifacts = ["result", "terminal", "record"].map((key) => readFileSync(runPaths(home, id)[key], "utf8"));
+    const sibling = await assessAtATerminal(cwd, ["assess", "--seed", "5", "--plan", plan]);
+    assert.equal(sibling.status, 3, sibling.stderr);
+    assert.equal(json(runPaths(home, newestRunId(cwd)).terminal).status, "PRACTICE");
+    const resumed = await assessAtATerminal(cwd, ["cycle", "run", "--plan", plan]);
+    assert.equal(resumed.status, 3, resumed.stderr);
+    const cycle = json(join(home, "cycle.json"));
+    assert.deepEqual(cycle.runs.map((row) => row.run_id), [id]);
+    assert.equal(cycle.runs[0].exposure_verification, "VERIFIED");
+    assert.equal(cycle.runs[0].failure, null);
+    assert.equal(cycle.runs[0].form_classification.official_scoring_permitted, true);
+    assert.equal(readdirSync(join(home, "runs")).length, 2);
+    assert.deepEqual(["result", "terminal", "record"].map((key) => readFileSync(runPaths(home, id)[key], "utf8")), artifacts);
+  } finally {
+    t.mock.restoreAll();
+    syncBuiltinESMExports();
+    clean(cwd);
+  }
+});
+
+test("every replay read and publication failure carries its pending path and recover command", async (t) => {
+  const context = fixture();
+  const { cwd, home } = context;
+  const snapshot = join(cwd, "pending-snapshot");
+  try {
+    const id = await interruptedCompletion(context);
+    const paths = runPaths(home, id);
+    const pending = pendingExposurePath(home, id);
+    const event = join(paths.events, "aos.ndjson");
+    cpSync(home, snapshot, { recursive: true });
+    const faults = [
+      ["readFileSync", exposureLedgerPath(home)], ["readFileSync", pending],
+      ["readFileSync", event],
+      ...[exposureLedgerPath(home), paths.record, paths.result, paths.reportMd,
+        paths.reportHtml, paths.card, event, paths.terminal].map((path) => ["renameSync", path]),
+      ["rmSync", pending]
+    ];
+    for (const [operation, target] of faults) {
+      rmSync(home, { recursive: true });
+      cpSync(snapshot, home, { recursive: true });
+      const original = fs[operation];
+      let reached = false;
+      t.mock.method(fs, operation, (...args) => {
+        if (args[operation === "renameSync" ? 1 : 0] === target) {
+          reached = true;
+          throw Object.assign(new Error(`replay fault at ${operation} ${target}`), { code: "EIO" });
+        }
+        return original(...args);
+      });
+      syncBuiltinESMExports();
+      assert.throws(() => readExposureLedgerFile(home), (error) => {
+        assert.match(error.message, /EIO|replay fault/u);
+        assert.ok(error.message.includes(pending), error.message);
+        assert.ok(error.message.includes(`aos session recover ${id}`), error.message);
+        return true;
+      });
+      assert.equal(reached, true, `${operation} ${target}`);
+      t.mock.restoreAll();
+      syncBuiltinESMExports();
+      assert.equal(readFileSync(pending, "utf8"), readFileSync(join(snapshot, `exposure-pending-${id}.json`), "utf8"));
+      const recovered = await assessAtATerminal(cwd, ["session", "recover", id]);
+      assert.equal(recovered.status, 0, recovered.stderr);
+      assert.equal(existsSync(pending), false);
+      assert.equal(json(paths.terminal).status, "INCOMPLETE");
+      assert.equal(readEvents(home, id).filter((row) => row.event_type === "assessment.ended").length, 1);
+    }
+  } finally {
+    t.mock.restoreAll();
+    syncBuiltinESMExports();
+    clean(cwd);
+  }
+});
+
+test("replay discovery quarantine and ledger parse errors cannot escape recovery context", async (t) => {
+  const context = fixture();
+  const { cwd, home } = context;
+  try {
+    const id = await interruptedCompletion(context);
+    const pending = pendingExposurePath(home, id);
+    const ledger = readFileSync(exposureLedgerPath(home), "utf8");
+    writeFileSync(exposureLedgerPath(home), "not JSON");
+    assert.throws(() => readExposureLedgerFile(home), (error) => {
+      assert.match(error.message, /AOS_MALFORMED_JSON/u);
+      assert.ok(error.message.includes(pending), error.message);
+      assert.ok(error.message.includes(`aos session recover ${id}`), error.message);
+      return true;
+    });
+    assert.equal(existsSync(pending), true);
+    writeFileSync(exposureLedgerPath(home), ledger);
+    const invalid = join(home, "exposure-pending-bad id.json");
+    writeFileSync(invalid, "not JSON");
+    const original = fs.renameSync;
+    t.mock.method(fs, "renameSync", (from, to) => {
+      if (from === invalid) throw Object.assign(new Error("quarantine I/O"), { code: "EACCES" });
+      return original(from, to);
+    });
+    syncBuiltinESMExports();
+    assert.throws(() => readExposureLedgerFile(home), (error) => {
+      assert.match(error.message, /AOS_EXPOSURE_PENDING_QUARANTINE_FAILED/u);
+      assert.ok(error.message.includes(invalid), error.message);
+      assert.match(error.message, /aos session recover/u);
+      return true;
+    });
+    t.mock.restoreAll();
+    syncBuiltinESMExports();
+    const reports = [];
+    recoverExposureFinalizations(home, { report: (message) => reports.push(message) });
+    assert.equal(existsSync(invalid), false);
+    assert.equal(readFileSync(`${invalid}.unreplayable`, "utf8"), "not JSON");
+    assert.equal(reports.length, 1);
+    assert.match(reports[0], /AOS_INVALID_ID run id/u);
+    assert.ok(reports[0].includes(`${invalid}.unreplayable`));
+    // Discovery is shared by automatic and explicit recovery, before a run id can be read.
+    const readDirectory = fs.readdirSync;
+    t.mock.method(fs, "readdirSync", (path, ...args) => {
+      if (path === home) throw Object.assign(new Error("discovery I/O"), { code: "EACCES" });
+      return readDirectory(path, ...args);
+    });
+    syncBuiltinESMExports();
+    assert.throws(() => readExposureLedgerFile(home), (error) => {
+      assert.match(error.message, /discovery I\/O/u);
+      assert.ok(error.message.includes(join(home, "exposure-pending-*.json")), error.message);
+      assert.match(error.message, /aos session recover <id>/u);
+      return true;
+    });
+  } finally {
+    t.mock.restoreAll();
+    syncBuiltinESMExports();
+    clean(cwd);
+  }
+});
+
+test("a terminal conflict arising during publication is quarantined by the same replay boundary", async (t) => {
+  const context = fixture();
+  const { cwd, home } = context;
+  try {
+    const id = await interruptedCompletion(context);
+    const paths = runPaths(home, id);
+    const pending = pendingExposurePath(home, id);
+    const original = fs.renameSync;
+    let published = false;
+    const terminal = { run_id: id, status: "CANCELLED", result_digest: null, committed_at: "2026-09-08T00:00:00.000Z" };
+    t.mock.method(fs, "renameSync", (from, to) => {
+      original(from, to);
+      if (to === join(paths.events, "aos.ndjson")) {
+        published = true;
+        writeJson(paths.terminal, terminal);
+      }
+    });
+    syncBuiltinESMExports();
+    const reports = [];
+    assert.doesNotThrow(() => recoverExposureFinalizations(home, { report: (message) => reports.push(message) }));
+    assert.equal(published, true, "the conflict must arise after the pre-publication terminal check");
+    assert.equal(existsSync(pending), false);
+    assert.equal(existsSync(`${pending}.unreplayable`), true);
+    assert.deepEqual(json(paths.terminal), terminal);
+    assert.equal(reports.length, 1);
+    assert.match(reports[0], /AOS_TERMINAL_ALREADY_COMMITTED/u);
+    assert.ok(reports[0].includes(`${pending}.unreplayable`));
+    assert.equal(json(exposureLedgerPath(home)).entries[0].state, "TERMINAL");
+    assert.doesNotThrow(() => readExposureLedgerFile(home));
+  } finally {
+    t.mock.restoreAll();
+    syncBuiltinESMExports();
+    clean(cwd);
+  }
+});
 
 test("session cancel with a pending completion and a legacy cancelled terminal cannot wedge the home", async () => {
   const context = fixture();
