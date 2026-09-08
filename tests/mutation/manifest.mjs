@@ -8835,6 +8835,16 @@ export const GUARDS = [
     test: "tests/product/form-class.test.mjs",
     name: "formLifecycleState is closed too: a caller's equivalence and drift claims are recorded, never issued"
   }
+,
+  {
+    guard: "a lock file caught mid-acquisition is contended, not unreadable",
+    reason: "\ub77d \ud30c\uc77c\uc740 wx \ub85c \ub9cc\ub4e4\uc5b4\uc9c4 \ub4a4 \ub0b4\uc6a9\uc774 \ucc44\uc6cc\uc9c0\uae30\uae4c\uc9c0 \uc9e7\uac8c 0\ubc14\uc774\ud2b8\ub2e4. \uadf8 \ucc3d\uc744 \ud310\uc815 \ubd88\uac00\ub85c \uc77d\uc73c\uba74 \uc6d0\uc7a5 \ub77d\uc740 \uc0b4\uc544\uc788\ub294 \uc18c\uc720\uc790\ub97c \ub450\uace0 \uc190\uc73c\ub85c \uc9c0\uc6b0\ub77c\ub294 \uc798\ubabb\ub41c fail-closed \ub97c \ub0b4\uace0, \ub7f0 \ub77d\uc740 \uadf8 \ud30c\uc77c\uc744 \uce58\uc6b0\uace0 \ub4e4\uc5b4\uac00 \ub450 writer \uac00 \ub41c\ub2e4",
+    file: "lib/store.mjs",
+    from: "    if (rawHeld !== null && rawHeld.trim() === \"\") {\n      throw new Error(buildLockedError(\"acquiring\"));\n    }",
+    to: "    if (false) {\n      throw new Error(buildLockedError(\"acquiring\"));\n    }",
+    test: "tests/product/home.test.mjs",
+    name: "a lock file caught mid-acquisition is contended, not unreadable"
+  }
 ];
 
 /**
@@ -9052,6 +9062,7 @@ export const ACCOUNTED_GUARDS = [
   "a ledger entry naming a different form contract than this run's own record refuses, rather than silently verifying, this run's exposure",
   "a live audit needs a live snapshot",
   "a live head the audit never covered is reported",
+  "a lock file caught mid-acquisition is contended, not unreadable",
   "a log checked without its observations is not a log that passed",
   "a malformed exposure ledger entry refuses the ledger instead of vanishing from it",
   "a metric's status and its value are one state",

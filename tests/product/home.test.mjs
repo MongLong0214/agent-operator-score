@@ -123,6 +123,30 @@ test("a lock whose owner is gone is broken, not honoured", () => {
   } finally { rmSync(home, { recursive: true, force: true }); }
 });
 
+test("a lock file caught mid-acquisition is contended, not unreadable", () => {
+  // 락 파일은 `openSync(..., "wx")` 로 만들어진 뒤 내용이 채워지기까지 짧게 0바이트다. 그 창에서
+  // 읽으면 "읽을 수 없는 기록" 과 구분되지 않았다. 원장 락은 살아있는 같은 부트의 소유자를 두고
+  // 손으로 지우라는 잘못된 fail-closed 를 냈고, 런 락은 판정 불가 분기를 지나쳐 그 파일을 치우고
+  // 들어가 두 writer 를 만들었다. 빈 파일은 판정 불가가 아니라 소유자가 아직 취득 중이라는 뜻이다.
+  const home = scratch();
+  try {
+    initHome(home);
+    writeFileSync(join(home, "exposure-ledger.lock"), "", "utf8");
+    assert.throws(
+      () => withExposureLedgerLock(home, () => "entered"),
+      /AOS_EXPOSURE_LEDGER_LOCKED/u,
+      "0바이트 원장 락이 경합이 아니라 판정 불가로 처리됐다"
+    );
+    const { runId } = createRun(home, { mode: "TEST" });
+    writeFileSync(join(runPaths(home, runId).root, "run.lock"), "", "utf8");
+    assert.throws(
+      () => withRunLock(home, runId, () => "entered"),
+      /AOS_RUN_LOCKED/u,
+      "0바이트 런 락을 치우고 들어갔다 -- 두 writer 가 된다"
+    );
+  } finally { rmSync(home, { recursive: true, force: true }); }
+});
+
 test("the store never reads the clock at import time", async () => {
   // 샌드박스에서 `os.uptime()` 이 `uv_uptime returned EPERM` 을 던진다. 부트 식별자를 모듈 최상단
   // const 로 계산하던 동안에는 그 예외가 `lib/store.mjs` 의 import 자체를 실패시켰고, store 를 쓰는
