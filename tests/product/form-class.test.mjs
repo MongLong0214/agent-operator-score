@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 
 import {
   EQUIVALENCE_STATUSES,
@@ -12,6 +13,18 @@ import {
   formBankRecord
 } from "../../lib/form-class.mjs";
 import { formManifest } from "../../lib/suite.mjs";
+
+test("form class identities and definitions come from the declaring task model", () => {
+  const model = JSON.parse(readFileSync(new URL("../../contracts/aos-task-model.v2.json", import.meta.url), "utf8"));
+  assert.deepEqual(Object.values(FORM_CLASS_REGISTRY).map(({ class_id, definition }) => ({ class_id, definition })), model.form_classes);
+  assert.deepEqual([...FORM_CLASSES], model.form_classes.map((entry) => entry.class_id));
+});
+
+test("invariance facets come from the interpretation use contract", async () => {
+  const { INVARIANCE_FACETS } = await import("../../lib/form-class.mjs");
+  const contract = JSON.parse(readFileSync(new URL("../../contracts/aos-interpretation-use-argument.v1.json", import.meta.url), "utf8"));
+  assert.deepEqual([...INVARIANCE_FACETS], contract.comparability_rules.find((rule) => rule.rule_id === "invariance-required").facets);
+});
 
 // #585 (this round). Five review rounds hardened a predicate here (`isRealLinkingScaffold`, once a
 // named function in `lib/form-class.mjs`) by requiring one more field each round, and each next
@@ -1378,7 +1391,7 @@ test("held-out passes are closed by construction: they never establish a real tr
 test("every cross-facet comparison is withheld until invariance evidence exists, for each declared facet", async () => {
   const { INVARIANCE_FACETS, comparisonGate } = await import("../../lib/form-class.mjs");
   const { modelIdentityProjection } = await import("../../lib/model-identity.mjs");
-  assert.deepEqual([...INVARIANCE_FACETS], ["language", "interface", "model_runtime", "platform", "experience", "administration_version"]);
+  assert.deepEqual([...INVARIANCE_FACETS], ["language", "interface", "model", "runtime", "harness"]);
   for (const facet of INVARIANCE_FACETS) {
     const gate = comparisonGate({ facet, left_level: "a", right_level: "b" });
     assert.equal(gate.decision, null, `${facet}: no invariance evidence is a null, not a verdict`);
@@ -1390,7 +1403,7 @@ test("every cross-facet comparison is withheld until invariance evidence exists,
   // the same question the same way, from the same contract state.
   const projection = modelIdentityProjection();
   assert.equal(projection.cross_model_comparison, "WITHHELD");
-  assert.equal(comparisonGate({ facet: "model_runtime", left_level: "gpt-x", right_level: "gpt-y" }).comparison, "WITHHELD");
+  assert.equal(comparisonGate({ facet: "model", left_level: "gpt-x", right_level: "gpt-y" }).comparison, "WITHHELD");
 });
 
 test("translation alone is not invariance: a re-expressed form's comparison is withheld outright", async () => {

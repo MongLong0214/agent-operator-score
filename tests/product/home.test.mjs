@@ -6,7 +6,9 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 
 import { cli } from "./helpers.mjs";
+import { MAX_EVENT_LINE_BYTES } from "../../lib/core.mjs";
 import {
+  appendEvent,
   commitTerminal,
   createRun,
   initHome,
@@ -21,6 +23,26 @@ import {
 } from "../../lib/store.mjs";
 
 const scratch = () => mkdtempSync(join(tmpdir(), "aos-home-"));
+
+test("assessment ended repairs a torn tail and obeys the ordinary event writer limits", () => {
+  const home = scratch();
+  try {
+    const { runId, paths } = createRun(home, { mode: "TEST" });
+    const first = appendEvent(home, runId, "aos", { event_type: "assessment.started" });
+    const file = join(paths.events, "aos.ndjson");
+    const prefix = readFileSync(file, "utf8");
+    writeFileSync(file, prefix + '{"torn":');
+    const ended = appendEvent(home, runId, "aos", { event_type: "assessment.ended", payload: { status: "INCOMPLETE" } });
+    const text = readFileSync(file, "utf8");
+    assert.equal(text.endsWith("\n"), true);
+    assert.deepEqual(text.trimEnd().split("\n").map((line) => JSON.parse(line)), [first, ended]);
+    assert.equal(ended.producer_seq, first.producer_seq + 1);
+    for (const event_type of ["assessment.started", "assessment.ended"]) {
+      assert.throws(() => appendEvent(home, runId, "aos", { event_type, event_id: "x".repeat(MAX_EVENT_LINE_BYTES) }), /AOS_INVALID_EVENT_LINE/u);
+      assert.equal(readFileSync(file, "utf8"), text);
+    }
+  } finally { rmSync(home, { recursive: true, force: true }); }
+});
 
 test("--data-dir beats AOS_HOME beats ~/.aos", () => {
   // The explicit flag is what lets a test, or a second profile, run without touching the

@@ -9,9 +9,10 @@ import { spawnSync } from "node:child_process";
 import { writeJson } from "../../lib/core.mjs";
 import { exposureLedgerTestHooks } from "../../lib/cli.mjs";
 import { classifyAdministration, markRevealed, openExposureLedger, recordExposure, reserveExposure } from "../../lib/form-class.mjs";
-import { exposureLedgerPath, readEvents, readExposureLedgerFile, runPaths } from "../../lib/store.mjs";
+import { commitTerminal, exposureLedgerPath, pendingExposurePath, readEvents, readExposureLedgerFile, runPaths } from "../../lib/store.mjs";
 import { addAgent, assessAtATerminal, initBare, makePlan, newestRunId, run } from "./helpers.mjs";
 import { finalizeExposure, signExposureFinalization } from "../../lib/exposure-finalization.mjs";
+import { createHandler, mintToken } from "../../lib/dashboard.mjs";
 
 const json = (file) => JSON.parse(readFileSync(file, "utf8"));
 const fixture = () => {
@@ -25,6 +26,118 @@ const clean = (cwd) => {
   exposureLedgerTestHooks.afterReveal = null;
   rmSync(cwd, { recursive: true, force: true });
 };
+
+const interruptedCompletion = async ({ cwd, home, plan }) => {
+  const lock = join(home, "exposure-ledger.lock");
+  exposureLedgerTestHooks.afterReveal = () => writeJson(lock, { pid: process.pid });
+  const assessed = await assessAtATerminal(cwd, ["assess", "--plan", plan, "--seed", "5"]);
+  assert.equal(assessed.status, 3, assessed.stderr);
+  assert.match(assessed.stderr, /AOS_EXPOSURE_FINALIZATION_PENDING/u);
+  exposureLedgerTestHooks.afterReveal = null;
+  rmSync(lock);
+  const id = newestRunId(cwd);
+  assert.equal(existsSync(pendingExposurePath(home, id)), true);
+  assert.equal(existsSync(runPaths(home, id).terminal), false);
+  return id;
+};
+
+const assertHomeUsable = async ({ cwd, home, plan }, damagedId) => {
+  run(cwd, ["session", "recover", damagedId], 0);
+  const assessed = await assessAtATerminal(cwd, ["assess", "--plan", plan, "--seed", "6"]);
+  assert.equal(assessed.status, 3, assessed.stderr);
+  const healthyId = newestRunId(cwd);
+  assert.notEqual(healthyId, damagedId);
+  assert.equal(json(runPaths(home, healthyId).terminal).status, "INCOMPLETE");
+  const verified = jsonOutput(run(cwd, ["verify", "--run", healthyId, "--json"], 0));
+  assert.equal(verified.state, "verified");
+  run(cwd, ["cycle", "start", "--seed", "11", "--seed", "12", "--seed", "13"], 0);
+  const summary = jsonOutput(run(cwd, ["cycle", "status", "--json"], 1));
+  assert.equal(summary.valid_runs, 0);
+  assert.equal(summary.issued, false);
+  // Exercise the dashboard's real home renderer through its exported request boundary. Socket
+  // binding has its own dashboard tests; no undocumented --once flag exists in the command.
+  const token = mintToken();
+  let status;
+  let body;
+  createHandler({ home, token })({ method: "GET", url: `/?t=${token}`, headers: { host: "localhost" } }, {
+    writeHead: (code) => { status = code; }, end: (text) => { body = text; }
+  });
+  assert.equal(status, 200);
+  assert.match(body, /<!doctype html>/iu);
+};
+const jsonOutput = (answer) => JSON.parse(answer.stdout);
+
+test("session cancel with a pending completion and a legacy cancelled terminal cannot wedge the home", async () => {
+  const context = fixture();
+  const { cwd, home } = context;
+  try {
+    const id = await interruptedCompletion(context);
+    const pending = pendingExposurePath(home, id);
+    const cancelled = await assessAtATerminal(cwd, ["session", "cancel", id]);
+    assert.equal(cancelled.status, 2, cancelled.stderr);
+    assert.match(cancelled.stderr, /AOS_EXPOSURE_FINALIZATION_PENDING/u);
+    assert.ok(cancelled.stderr.includes(pending));
+    assert.ok(cancelled.stderr.includes(`aos session recover ${id}`));
+    assert.equal(existsSync(runPaths(home, id).terminal), false);
+    assert.equal(readEvents(home, id).some((event) => event.event_type === "run.cancelled"), false);
+    // The old documented cancel command committed this terminal. Recovery must also unstick
+    // homes already left in that state, without overwriting the cancellation or publishing a result.
+    const terminal = { run_id: id, status: "CANCELLED", result_digest: null, committed_at: "2026-09-08T00:00:00.000Z" };
+    commitTerminal(home, id, terminal);
+    const ledgerBefore = readFileSync(exposureLedgerPath(home), "utf8");
+    const recovered = await assessAtATerminal(cwd, ["session", "recover", id]);
+    assert.equal(recovered.status, 0, recovered.stderr);
+    assert.match(recovered.stderr, /AOS_EXPOSURE_PENDING_UNREPLAYABLE/u);
+    assert.ok(recovered.stderr.includes(`${pending}.unreplayable`));
+    assert.match(recovered.stderr, /inspect.*remove/iu);
+    assert.equal(existsSync(pending), false);
+    assert.equal(existsSync(`${pending}.unreplayable`), true);
+    assert.equal(readFileSync(exposureLedgerPath(home), "utf8"), ledgerBefore);
+    assert.deepEqual(json(runPaths(home, id).terminal), terminal);
+    assert.equal(existsSync(runPaths(home, id).result), false);
+    await assertHomeUsable(context, id);
+  } finally { clean(cwd); }
+});
+
+test("a pending completion with no reservation is quarantined by path and leaves exposure commands usable", async () => {
+  const context = fixture();
+  const { cwd, home } = context;
+  try {
+    const id = await interruptedCompletion(context);
+    const pending = pendingExposurePath(home, id);
+    const original = readFileSync(pending, "utf8");
+    rmSync(exposureLedgerPath(home));
+    const recovered = await assessAtATerminal(cwd, ["session", "recover", id]);
+    assert.equal(recovered.status, 0, recovered.stderr);
+    assert.match(recovered.stderr, /AOS_EXPOSURE_PENDING_IDENTITY/u);
+    assert.ok(recovered.stderr.includes(`${pending}.unreplayable`));
+    assert.match(recovered.stderr, /inspect.*remove/iu);
+    assert.equal(existsSync(pending), false);
+    assert.equal(readFileSync(`${pending}.unreplayable`, "utf8"), original);
+    assert.equal(existsSync(exposureLedgerPath(home)), false);
+    await assertHomeUsable(context, id);
+  } finally { clean(cwd); }
+});
+
+test("a malformed pending completion is quarantined by path and leaves exposure commands usable", async () => {
+  const context = fixture();
+  const { cwd, home } = context;
+  try {
+    const id = await interruptedCompletion(context);
+    const pending = pendingExposurePath(home, id);
+    writeFileSync(pending, "not JSON");
+    const ledgerBefore = readFileSync(exposureLedgerPath(home), "utf8");
+    const recovered = await assessAtATerminal(cwd, ["session", "recover", id]);
+    assert.equal(recovered.status, 0, recovered.stderr);
+    assert.match(recovered.stderr, /AOS_MALFORMED_JSON/u);
+    assert.ok(recovered.stderr.includes(`${pending}.unreplayable`));
+    assert.match(recovered.stderr, /inspect.*remove/iu);
+    assert.equal(existsSync(pending), false);
+    assert.equal(readFileSync(`${pending}.unreplayable`, "utf8"), "not JSON");
+    assert.equal(readFileSync(exposureLedgerPath(home), "utf8"), ledgerBefore);
+    await assertHomeUsable(context, id);
+  } finally { clean(cwd); }
+});
 
 test("a graded administration survives a held finalize lock and replays on the next ledger open", async () => {
   const { cwd, home, plan } = fixture();

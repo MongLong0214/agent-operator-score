@@ -16,6 +16,60 @@
 
 export const GUARDS = [
   {
+    guard: "permanent pending conflicts are quarantined instead of gating the home",
+    reason: "A cancelled terminal left by an older command must quarantine the signed pending and preserve the home for other administrations.",
+    file: "lib/store.mjs",
+    from: "      if (/^(?:AOS_EXPOSURE_PENDING_(?:IDENTITY|SIGNATURE|SCHEMA|CONFLICT)|AOS_TERMINAL_ALREADY_COMMITTED)\\b/u.test(error.message)) {",
+    to: "      if (false) {",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "session cancel with a pending completion and a legacy cancelled terminal cannot wedge the home"
+  },
+  {
+    guard: "session cancellation refuses a pending measured completion",
+    reason: "Cancelling before recovery must name the pending and its recovery command, without committing a conflicting terminal or cancellation event.",
+    file: "lib/cli.mjs",
+    from: "      if (existsSync(pending)) {",
+    to: "      if (false) {",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "session cancel with a pending completion and a legacy cancelled terminal cannot wedge the home"
+  },
+  {
+    guard: "completion events share NDJSON repair and size validation",
+    reason: "The atomic completion writer must repair torn tails and bound its lines just like ordinary events.",
+    file: "lib/store.mjs",
+    from: "    appendNdjson(file, record, { atomic: true });",
+    to: "    atomicWrite(file, (existsSync(file) ? readFileSync(file, \"utf8\") : \"\") + canonicalJson(record));",
+    test: "tests/product/home.test.mjs",
+    name: "assessment ended repairs a torn tail and obeys the ordinary event writer limits"
+  },
+  {
+    guard: "exposure verification accepts only reader-sealed ledger snapshots",
+    reason: "Even a coherent raw ledger or a frozen copy must pass the reader before it can authorize VERIFIED.",
+    file: "lib/cycle.mjs",
+    from: "  if (!isOpenedExposureLedger(ledger)) {",
+    to: "  if (ledger === null || typeof ledger !== \"object\" || !Array.isArray(ledger.entries)) {",
+    test: "tests/product/cycle.test.mjs",
+    name: "exposure verification requires an opened ledger even when a raw copy is internally coherent"
+  },
+  {
+    guard: "form class definitions are derived from the declaring contract",
+    reason: "The live registry must follow the contract definitions, including the AOS home scope of operational exposure.",
+    file: "lib/form-class.mjs",
+    from: "  [class_id, { ...formClassBehavior[class_id], class_id, definition }])));",
+    to: "  [class_id, { ...formClassBehavior[class_id], class_id, definition: class_id }])));",
+    test: "tests/product/form-class.test.mjs",
+    name: "form class identities and definitions come from the declaring task model"
+  },
+  {
+    guard: "invariance facets include every facet declared by the contract",
+    reason: "A separate support table must not omit a contract facet such as harness while the two authorities disagree silently.",
+    file: "lib/form-class.mjs",
+    from: "export const INVARIANCE_FACETS = Object.freeze([...interpretationUse.comparability_rules.find((rule) => rule.rule_id === \"invariance-required\").facets]);",
+    to: "export const INVARIANCE_FACETS = Object.freeze([...interpretationUse.comparability_rules.find((rule) => rule.rule_id === \"invariance-required\").facets].slice(0, -1));",
+    test: "tests/product/form-class.test.mjs",
+    name: "invariance facets come from the interpretation use contract"
+  },
+  {
     guard: "verification obtains withholding text from the ledger receipt",
     reason: "Editing the working and published artifacts together cannot replace the independently committed reason in the ledger receipt.",
     file: "lib/cli.mjs",
@@ -46,7 +100,7 @@ export const GUARDS = [
     guard: "exposure entry recovery does not gate unrelated commands",
     reason: "A held lock or corrupt ledger beside a real signed pending completion must not disable review, doctor, init, agent list or forms.",
     file: "lib/cli.mjs",
-    from: "    if ([\"assess\", \"cycle\", \"verify\", \"dashboard\"].includes(command)) recoverExposureFinalizations(home);",
+    from: "    if ([\"assess\", \"cycle\", \"verify\", \"dashboard\"].includes(command)) recoverExposureFinalizations(home, { report: (message) => runtimeIo.stderr.write(`${message}\\n`) });",
     to: "    recoverExposureFinalizations(home);",
     test: "tests/product/exposure-finalization.test.mjs",
     name: "unrelated commands remain available with a pending completion and a faulted exposure ledger"
@@ -118,7 +172,7 @@ export const GUARDS = [
     guard: "exposure CLI commands resume pending scored runs before dispatch",
     reason: "Exposure consumers must replay durable completions before reading run artifacts; unrelated commands must not depend on this recovery.",
     file: "lib/cli.mjs",
-    from: "    if ([\"assess\", \"cycle\", \"verify\", \"dashboard\"].includes(command)) recoverExposureFinalizations(home);",
+    from: "    if ([\"assess\", \"cycle\", \"verify\", \"dashboard\"].includes(command)) recoverExposureFinalizations(home, { report: (message) => runtimeIo.stderr.write(`${message}\\n`) });",
     to: "    // exposure entry recovery removed",
     name: "process death before during and after the pending write preserves exposure and recovers only committed completions",
     test: "tests/product/exposure-finalization.test.mjs"
@@ -127,8 +181,8 @@ export const GUARDS = [
     guard: "pending evidence remains durable until all terminal artifacts are committed",
     reason: "Deleting the only signed completion after the ledger transition but before result publication loses the scored run on a process crash.",
     file: "lib/store.mjs",
-    from: "    const completed = finalizeExposure(ledger, readJson(file), runId);",
-    to: "    const completed = finalizeExposure(ledger, readJson(file), runId);\n    rmSync(file);",
+    from: "      completed = finalizeExposure(ledger, pending, runId);",
+    to: "      completed = finalizeExposure(ledger, pending, runId);\n    rmSync(file);",
     name: "process death before during and after the pending write preserves exposure and recovers only committed completions",
     test: "tests/product/exposure-finalization.test.mjs"
   },
@@ -172,7 +226,7 @@ export const GUARDS = [
     guard: "pending completions replay inside the acquired ledger lock",
     reason: "The acquired writer lock must serialize recovery with every reservation, reveal and terminal update.",
     file: "lib/store.mjs",
-    from: "        replayExposureFinalizations(home);",
+    from: "        replayExposureFinalizations(home, report);",
     to: "        // replay removed",
     test: "tests/product/exposure-finalization.test.mjs",
     name: "a graded administration survives a held finalize lock and replays on the next ledger open"
@@ -199,7 +253,7 @@ export const GUARDS = [
     guard: "pending replay accepts only the implemented completion schema",
     reason: "A signed payload from an unsupported generation cannot be interpreted under this completion protocol.",
     file: "lib/exposure-finalization.mjs",
-    from: "  if (payload.schema_id !== \"aos-exposure-finalization.v1\") {",
+    from: "  if (payload.schema_id !== EXPOSURE_FINALIZATION_SCHEMA_ID) {",
     to: "  if (false) {",
     test: "tests/product/exposure-finalization.test.mjs",
     name: "an unrecognised signed pending schema cannot be replayed"
@@ -8724,8 +8778,8 @@ export const GUARDS = [
     guard: "the exposure ledger's read-modify-write is held under an exclusive lock",
     reason: "aos assess reads, classifies and rewrites the whole ledger file on every administration; two processes racing that unlocked whole-file update can each write back a ledger missing the other's administration",
     file: "lib/store.mjs",
-    from: "export function withExposureLedgerLock(home, body) {\n  return withLock(\n    join(paths(home).root, \"exposure-ledger.lock\"),",
-    to: "export function withExposureLedgerLock(home, body) {\n  if (true) return body();\n  return withLock(\n    join(paths(home).root, \"exposure-ledger.lock\"),",
+    from: "export function withExposureLedgerLock(home, body, { report = reportExposureRecovery } = {}) {\n  return withLock(\n    join(paths(home).root, \"exposure-ledger.lock\"),",
+    to: "export function withExposureLedgerLock(home, body, { report = reportExposureRecovery } = {}) {\n  if (true) return body();\n  return withLock(\n    join(paths(home).root, \"exposure-ledger.lock\"),",
     test: "tests/product/home.test.mjs",
     name: "two writers cannot hold the exposure ledger lock"
   },
@@ -9717,6 +9771,7 @@ export const ACCOUNTED_GUARDS = [
   "comparisonGate requires the DIF report's own declared inputs, not only its verdict",
   "comparisonGate withholds caller-reported DIF",
   "comparisonGate withholds every cross-facet comparison by construction",
+  "completion events share NDJSON repair and size validation",
   "completion requires an authority to check the prerequisites against",
   "composite action discovery",
   "confidence calibration does not reward raw confidence",
@@ -9777,6 +9832,7 @@ export const ACCOUNTED_GUARDS = [
   "explicit keys are keys",
   "exposure CLI commands resume pending scored runs before dispatch",
   "exposure entry recovery does not gate unrelated commands",
+  "exposure verification accepts only reader-sealed ledger snapshots",
   "exposure verification leaves missing eligibility evidence unknown",
   "exposure verification rederives scored-once eligibility",
   "exposureVerification's VERIFIED answer is the ledger's own administered_class, not merely that some entry exists under this run's id",
@@ -9787,6 +9843,7 @@ export const ACCOUNTED_GUARDS = [
   "fingerprint compare",
   "flow-mapping uses",
   "form binding task identity is recomputed",
+  "form class definitions are derived from the declaring contract",
   "form variation report counts oracle branches",
   "formLifecycleState excludes an abandoned reservation from retirement",
   "formLifecycleState issues neither equivalence nor drift from a caller's object",
@@ -9807,6 +9864,7 @@ export const ACCOUNTED_GUARDS = [
   "interpreter inherits its own findings",
   "interpreter is part of the identity",
   "interpreter startup paths are a forbidden class",
+  "invariance facets include every facet declared by the contract",
   "invocation identity provenance",
   "issuance needs STRICT",
   "issuance needs a passing canary with evidence",
@@ -9896,6 +9954,7 @@ export const ACCOUNTED_GUARDS = [
   "pending replay accepts only the implemented completion schema",
   "pending replay derives scoring permission from ledger evidence",
   "pending signatures are verified against the reserved public key",
+  "permanent pending conflicts are quarantined instead of gating the home",
   "phase A collaboration earns no transfer credit",
   "phase permissions are pinned, not only phase names",
   "phases are a contract",
@@ -9979,6 +10038,7 @@ export const ACCOUNTED_GUARDS = [
   "secret-shaped material is not a model name",
   "secret-value scan",
   "self-report authority prohibition",
+  "session cancellation refuses a pending measured completion",
   "session ledger byte identity",
   "settle reads the cleanup failures",
   "single observation per probe",

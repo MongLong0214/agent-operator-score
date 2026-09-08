@@ -15,7 +15,8 @@ import {
   runValidity,
   stabilityOf
 } from "../../lib/cycle.mjs";
-import { ADMINISTRATION_CLASSIFICATION_SCHEMA_ID, markRevealed, openExposureLedger, recordExposure, reserveExposure } from "../../lib/form-class.mjs";
+import { sha256Value } from "../../lib/core.mjs";
+import { EXPOSURE_LEDGER_GENESIS_DIGEST, ADMINISTRATION_CLASSIFICATION_SCHEMA_ID, markRevealed, openExposureLedger, recordExposure, reserveExposure } from "../../lib/form-class.mjs";
 
 // #585 item 1 (this round). `runIdFor`/`formDigestFor` are the one derivation every fixture below
 // uses, so a run and the ledger entry meant to back it genuinely share an identity the way `assess`
@@ -23,7 +24,7 @@ import { ADMINISTRATION_CLASSIFICATION_SCHEMA_ID, markRevealed, openExposureLedg
 // `reserveExposure`/`recordExposure` commit under `administration_id`, and (when one is attached at
 // all) on the cached `form_classification`.
 const runIdFor = (seed) => `run-${seed}`;
-const formDigestFor = (seed) => `form-digest-${seed}`;
+const formDigestFor = (seed) => `sha256:${sha256Value(seed)}`;
 
 // A minimal but genuinely tagged classification, the shape `classifyAdministration` actually
 // returns. It no longer authorizes VERIFIED on its own -- see the tests below -- but `runValidity`
@@ -38,12 +39,7 @@ const classification = (seed, permitted, overrides = {}) => ({
   ...overrides
 });
 
-// #585 item 1 (this round). The ledger entry `exposureVerification` now looks up by
-// `administration_id === run.run_id`. Only the four fields that function actually reads are given
-// values here (`administration_id`, `form_contract_digest`, `state`, `administered_class`); a
-// dedicated integration test further down builds a real one through `reserveExposure` and
-// `recordExposure` (lib/form-class.mjs) instead of by hand, to prove those functions and this one
-// actually agree on the shape.
+// Fixture inputs go through the same reservation, reveal, terminal and reader boundaries as assess.
 const ledgerEntry = (seed, { administeredClass = "OPERATIONAL", administrationId = runIdFor(seed), formContractDigest = formDigestFor(seed), state = "TERMINAL" } = {}) => ({
   administration_id: administrationId,
   form_contract_digest: formContractDigest,
@@ -53,7 +49,16 @@ const ledgerEntry = (seed, { administeredClass = "OPERATIONAL", administrationId
   prior_scored_count: 0,
   administered_class: administeredClass
 });
-const ledgerOf = (entries) => ({ entries });
+const ledgerOf = (entries) => {
+  let ledger = openExposureLedger(undefined);
+  for (const row of entries) {
+    const input = { ...row, form_id: "fixture-form", run_id: row.administration_id, occurred_at: "2026-01-01T00:00:00.000Z" };
+    ledger = reserveExposure(ledger, input).ledger;
+    if (row.state !== "RESERVED") ledger = markRevealed(ledger, input).ledger;
+    if (row.state === "TERMINAL") ledger = recordExposure(ledger, { ...input, scored: row.administered_class === "OPERATIONAL" }).ledger;
+  }
+  return openExposureLedger(ledger);
+};
 
 const cycleOf = (seeds = ["1", "2", "3"]) =>
   createCycle({ profileDigest: "sha256:profile", suiteMajor: 1, scorerMajor: 1, seeds });
@@ -74,6 +79,20 @@ const runOf = (seed, over = {}) => ({
 });
 
 const withRuns = (runs, seeds = ["1", "2", "3"], options = {}) => runs.reduce((cycle, run) => recordRun(cycle, run, options), cycleOf(seeds));
+
+test("exposure verification requires an opened ledger even when a raw copy is internally coherent", () => {
+  const seed = "1";
+  const entry = { form_id: "form", form_contract_digest: `sha256:${"8".repeat(64)}`, declared_class: "OPERATIONAL",
+    administration_id: runIdFor(seed), run_id: runIdFor(seed), occurred_at: "2026-01-01T00:00:00.000Z" };
+  const reserved = reserveExposure(undefined, entry).ledger;
+  const revealed = markRevealed(reserved, entry).ledger;
+  const ledger = openExposureLedger(recordExposure(revealed, { ...entry, administered_class: "OPERATIONAL", scored: true }).ledger);
+  const run = { ...runOf(seed), form_contract_digest: entry.form_contract_digest };
+  assert.deepEqual(exposureVerification(run, { ledger }), { decision: true, status: "VERIFIED" });
+  for (const raw of [JSON.parse(JSON.stringify(ledger)), { ...ledger }, Object.freeze({ entries: ledger.entries })]) {
+    assert.deepEqual(exposureVerification(run, { ledger: raw }), { decision: null, status: "UNVERIFIED" });
+  }
+});
 
 test("the seeds are fixed when the cycle is created", () => {
   // A cycle that could draw a fresh seed later is one whose owner can retry until the scenario
@@ -271,13 +290,13 @@ test("a hand-written cycle.json -- internally consistent, no ledger entry behind
     }
   };
   const empty = openExposureLedger(undefined);
-  const unrelatedLedger = reserveExposure(empty, {
+  const unrelatedLedger = openExposureLedger(reserveExposure(empty, {
     form_id: "some-other-form",
     form_contract_digest: `sha256:${"a".repeat(64)}`,
     declared_class: "OPERATIONAL",
     administration_id: "a-completely-different-administration",
     occurred_at: "2026-01-01T00:00:00.000Z"
-  }).ledger;
+  }).ledger);
 
   const withNoLedgerAtAll = exposureVerification(run);
   assert.deepEqual(withNoLedgerAtAll, { decision: null, status: "UNVERIFIED" }, "no ledger available must not promote the stored record");
@@ -296,11 +315,7 @@ test("a hand-written cycle.json -- internally consistent, no ledger entry behind
 });
 
 test("exposureVerification builds VERIFIED from a real ledger entry, made through reserveExposure and recordExposure, not by hand", () => {
-  // Everything above uses a hand-rolled ledger entry naming only the four fields
-  // `exposureVerification` reads. This proves the real functions that ever write such an entry --
-  // `reserveExposure` then `recordExposure` (lib/form-class.mjs), exactly as `lib/cli.mjs`'s
-  // `assess` calls them -- produce something this function actually accepts as VERIFIED, and that a
-  // seed the ledger never saw stays UNVERIFIED even sitting right beside one it did.
+  // The production transitions and the reader must agree on a completed administration.
   const runId = "run-real-ledger";
   const formContractDigest = `sha256:${"7".repeat(64)}`;
   const reserved = reserveExposure(openExposureLedger(undefined), {
@@ -323,17 +338,17 @@ test("exposureVerification builds VERIFIED from a real ledger entry, made throug
   });
 
   const run = { run_id: runId, form_contract_digest: formContractDigest };
-  assert.deepEqual(exposureVerification(run, { ledger: finalized.ledger }), { decision: true, status: "VERIFIED" });
+  assert.deepEqual(exposureVerification(run, { ledger: openExposureLedger(finalized.ledger) }), { decision: true, status: "VERIFIED" });
 
   // A different run, one the ledger never reserved or finalized anything for, stays UNVERIFIED
   // even though it is checked against the very same ledger object.
   const neverAdministered = { run_id: "run-never-administered", form_contract_digest: formContractDigest };
-  assert.deepEqual(exposureVerification(neverAdministered, { ledger: finalized.ledger }), { decision: null, status: "UNVERIFIED" });
+  assert.deepEqual(exposureVerification(neverAdministered, { ledger: openExposureLedger(finalized.ledger) }), { decision: null, status: "UNVERIFIED" });
 
   // And a run naming a different form contract digest than the one the ledger actually recorded
   // under this exact administration id is refused, not silently trusted.
   const wrongDigest = { run_id: runId, form_contract_digest: `sha256:${"9".repeat(64)}` };
-  assert.deepEqual(exposureVerification(wrongDigest, { ledger: finalized.ledger }), { decision: false, status: "REFUSED" });
+  assert.deepEqual(exposureVerification(wrongDigest, { ledger: openExposureLedger(finalized.ledger) }), { decision: false, status: "REFUSED" });
 });
 
 test("exposure verification rederives scored-once eligibility despite an OPERATIONAL verdict on a replay", () => {
@@ -357,8 +372,14 @@ test("exposure verification rederives scored-once eligibility despite an OPERATI
   }
   for (const field of ["prior_exposure_count", "prior_scored_count"]) {
     for (const value of [undefined, null, -1, "0", 1]) {
-      const row = { ...ledgerEntry("1"), [field]: value };
-      assert.equal(exposureVerification(runOf("1"), { ledger: ledgerOf([row]) }).decision, value === 1 ? false : null,
+      // Deliberately rebuild a coherent chain over incomplete eligibility metadata. This keeps
+      // the eligibility guard reachable after the reader seal, within the stated unkeyed-chain limit.
+      const raw = structuredClone(ledgerOf([ledgerEntry("1")]));
+      raw.entries[0][field] = value;
+      if (value === undefined) delete raw.entries[0][field];
+      const { chain_digest: _digest, ...content } = raw.entries[0];
+      raw.head_digest = raw.entries[0].chain_digest = `sha256:${sha256Value({ previous_digest: EXPOSURE_LEDGER_GENESIS_DIGEST, entry: content })}`;
+      assert.equal(exposureVerification(runOf("1"), { ledger: openExposureLedger(raw) }).decision, value === 1 ? false : null,
         "missing or malformed prior exposure is unknown, not an observed refusal");
     }
   }
