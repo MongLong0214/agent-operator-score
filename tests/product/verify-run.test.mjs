@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { canonicalJson } from "../../lib/core.mjs";
 import { contractFileDigests, evaluate, shippedEcdContract } from "../../lib/ecd-contract.mjs";
 import { buildResult } from "../../lib/result-schema.mjs";
+import { createExposureLedger } from "../../lib/form-class.mjs";
 import { probeAgentCapabilities, detectedCapabilityRecord } from "../../lib/capability-probe.mjs";
 import { capabilityDigestOf, delegationOracle, routeOracleDigest, routeOracleEvidenceId } from "../../lib/routing-oracle.mjs";
 import { addAgent, initBare, makePlan, newestRunId, run } from "./helpers.mjs";
@@ -447,6 +448,42 @@ test("a stored result is recomputed from its own record", () => {
     const verified = run(cwd, ["verify", "--run", runId]);
     assert.match(verified.stdout, /PASS\trecompute/);
     assert.equal(/FAIL/.test(verified.stdout), false, verified.stdout);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("current result verification cannot replace missing or corrupt exposure evidence with the run record", () => {
+  const { cwd, runId, recordPath } = assessedPractice();
+  const ledgerPath = join(cwd, ".aos", "exposure-ledger.json");
+  try {
+    const intact = readFileSync(ledgerPath, "utf8");
+    run(cwd, ["verify", "--run", runId]);
+    for (const removeReason of [false, true]) {
+      if (removeReason) {
+        const record = JSON.parse(readFileSync(recordPath, "utf8"));
+        delete record.practice_withholding;
+        writeFileSync(recordPath, JSON.stringify(record));
+      }
+      for (const damage of ["missing", "empty", "json", "chain", "unreadable"]) {
+        rmSync(ledgerPath, { recursive: true, force: true });
+        if (damage === "empty") writeFileSync(ledgerPath, JSON.stringify(createExposureLedger()));
+        if (damage === "json") writeFileSync(ledgerPath, "{");
+        if (damage === "chain") {
+          const raw = JSON.parse(intact);
+          raw.entries[0].score = 12345;
+          writeFileSync(ledgerPath, JSON.stringify(raw));
+        }
+        if (damage === "unreadable") mkdirSync(ledgerPath);
+        const missing = damage === "missing" || damage === "empty";
+        const checked = run(cwd, ["verify", "--run", runId, "--json"], missing ? 4 : 5);
+        const report = JSON.parse(checked.stdout);
+        assert.equal(report.state, missing ? "unresolved" : "contradicted", "missing or corrupt exposure must never verify through the run record");
+        const exposure = report.checks.find((check) => check.check === "exposure-ledger");
+        assert.equal(exposure.decision, missing ? null : false);
+        assert.equal(report.checks.find((check) => check.check === "recompute").decision, null);
+      }
+    }
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }

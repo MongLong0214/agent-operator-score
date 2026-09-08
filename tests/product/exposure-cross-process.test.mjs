@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
-import { spawn } from "node:child_process";
+import { fork, spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -48,6 +48,74 @@ function spawnAos(bin, args, { cwd, env }) {
 
 // ---------------------------------------------------------------------------------------------
 // A. Parallel same-form (25.1)
+
+test("two cycle processes sharing a snapshot publish distinct reserved occasion identifiers", { timeout: 120000 }, async () => {
+  const cwd = mkdtempSync(join(tmpdir(), "aos-cycle-occasion-race-"));
+  const home = join(cwd, ".aos");
+  const children = [];
+  try {
+    run(cwd, ["init"]);
+    addAgent(cwd, "solo");
+    const plan = makePlan(cwd, { default: "solo" });
+    run(cwd, ["cycle", "start", "--seed", "a1", "--seed", "a2", "--seed", "a3"]);
+    const cycleId = JSON.parse(readFileSync(join(home, "cycle.json"), "utf8")).cycle_id;
+    const start = () => {
+      const child = fork(join(root, "tests/product/exposure-cycle-race-harness.mjs"), ["cycle", "run", "--plan", plan], {
+        cwd, env: { ...process.env, AOS_HOME: home }, stdio: ["ignore", "pipe", "pipe", "ipc"]
+      });
+      let output = "";
+      child.stdout.on("data", (chunk) => { output += chunk; });
+      child.stderr.on("data", (chunk) => { output += chunk; });
+      const waiting = new Map();
+      const seen = new Set();
+      child.on("message", ({ stage }) => { seen.add(stage); waiting.get(stage)?.(); });
+      const done = new Promise((resolve) => child.on("close", (code, signal) => resolve({ code, signal, output })));
+      const stage = async (name) => {
+        if (!seen.has(name)) {
+          await Promise.race([
+            new Promise((resolve) => waiting.set(name, resolve)),
+            done.then((result) => assert.fail(`cycle process exited before ${name}: ${JSON.stringify(result)}`))
+          ]);
+        }
+      };
+      const processRun = { child, stage, done };
+      children.push(processRun);
+      return processRun;
+    };
+    const a = start();
+    const b = start();
+    await Promise.all([a.stage("snapshot"), b.stage("snapshot")]);
+    a.child.send("reserve");
+    await a.stage("reserved");
+    b.child.send("reserve");
+    await b.stage("reserved");
+    // Both processes now hold the same cycle/seed snapshot and distinct durable reservations.
+    // Finish B first so its reveal/finalize cannot collide with A's short ledger lock sections.
+    b.child.send("finish");
+    const resultB = await b.done;
+    a.child.send("finish");
+    const resultA = await a.done;
+    for (const result of [resultA, resultB]) {
+      assert.equal(result.signal, null, result.output);
+      assert.equal(result.code, 3, result.output);
+    }
+    const ledger = openExposureLedger(ledgerOf(home));
+    assert.equal(ledger.entries.length, 2);
+    assert.deepEqual(ledger.entries.map((entry) => entry.sequence_position), [1, 2]);
+    assert.equal(new Set(ledger.entries.map((entry) => entry.occasion_id)).size, 2, "concurrent cycle occasions must be distinct despite sharing the unlocked snapshot");
+    for (const entry of ledger.entries) {
+      assert.equal(entry.state, "TERMINAL");
+      assert.equal(entry.occasion_id, `occasion-${cycleId}-${entry.sequence_position}`, "occasion identity must come from the locked reservation");
+      const result = JSON.parse(readFileSync(join(home, "runs", entry.administration_id, "result.json"), "utf8"));
+      const occasions = [...new Set(result.observations.map((row) => row.facet_record?.occasion_id).filter((id) => id != null))];
+      assert.deepEqual(occasions, [entry.occasion_id], "published occasion must match this run's own reserved entry");
+    }
+  } finally {
+    for (const { child } of children) if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+    await Promise.all(children.map(({ done }) => done));
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
 
 test("25.1: two OS processes racing the identical form never both land an official reservation", async () => {
   const cwd = mkdtempSync(join(tmpdir(), "aos-parallel-same-form-"));

@@ -876,15 +876,14 @@ test("a small linking sample never passes: the decision stays null and names the
   assert.equal(scaffold.reasons.some((reason) => reason.includes("AOS_LINKING_SAMPLE_BELOW_MINIMUM")), true);
 });
 
-test("a complete, well-formed calibration is closed by construction: it stays UNESTABLISHED and its claim is recorded, unauthenticated; drift and disjoint anchors are unaffected", async () => {
+test("caller linking findings stay unauthenticated in both directions; disjoint anchors still fail", async () => {
   // #585 (this round). This is the exact scenario every review round's forgery, and this test
   // itself before this round, was built to reach: every floor met, every digest present, drift
   // within the registered threshold. `linkForms` never sets `equivalence_decision: true` /
   // `equivalence_status: "LINKED"` from this branch any more, whatever the caller's numbers say --
   // AOS has no trust root for the study behind them. What those numbers implied is recorded on
-  // `unauthenticated_claim` instead. DRIFTED and FAILED are unaffected: they grant nothing an
-  // authorized verdict would, so they stay exactly the negative, non-authorizing answers they
-  // always were.
+  // `unauthenticated_claim` instead. A negative finding also needs an authenticated study.
+  // Disjoint anchors still fail the structural check without making an observation claim.
   const { linkForms } = await import("../../lib/form-class.mjs");
   const { left, right, anchors, empirical } = linkingFixtures();
   const complete = {
@@ -903,11 +902,14 @@ test("a complete, well-formed calibration is closed by construction: it stays UN
   assert.match(wouldHaveLinked.unauthenticated_claim.reason, /AOS_LINKING_UNAUTHENTICATED/);
 
   const drifted = linkForms({ ...complete, response_patterns: { ...empirical, anchor_deltas: { ...empirical.anchor_deltas, "C3.RD.01": 0.4 } } });
-  assert.equal(drifted.equivalence_decision, false);
-  assert.equal(drifted.equivalence_status, "DRIFTED");
+  assert.equal(drifted.equivalence_decision, null, "caller drift must remain unknown");
+  assert.equal(drifted.equivalence_status, "UNESTABLISHED");
   assert.equal(drifted.claim_stage_ceiling, "PROFILE_BOUND");
-  assert.equal(drifted.drift.status, "EXCEEDED");
-  assert.equal(drifted.unauthenticated_claim, null, "DRIFTED is not a suppressed authorization; there is nothing to record");
+  assert.equal(drifted.drift.status, "NOT_MONITORED");
+  assert.equal(drifted.drift.maximum_observed_delta, null);
+  assert.equal(drifted.unauthenticated_claim.claimed_equivalence_status, "DRIFTED");
+  assert.equal(drifted.unauthenticated_claim.maximum_observed_delta, 0.4);
+  assert.match(drifted.unauthenticated_claim.reason, /AOS_LINKING_UNAUTHENTICATED/);
   const disjoint = linkForms({ ...complete, anchor_ids: ["C9.XX.01", "C1.GF.01", "C2.SC.01"], response_patterns: empirical });
   assert.equal(disjoint.equivalence_decision, false);
   assert.equal(disjoint.equivalence_status, "FAILED");
@@ -1020,8 +1022,9 @@ test("a caller-supplied drift threshold is ignored in both directions; only the 
     response_patterns: { ...empirical, anchor_deltas: { ...empirical.anchor_deltas, "C3.RD.01": 0.4 } },
     drift_thresholds: { maximum_anchor_delta: 999 }
   });
-  assert.equal(widened.equivalence_status, "DRIFTED", "a caller threshold of 999 must not turn a genuine drift into LINKED");
-  assert.equal(widened.equivalence_decision, false);
+  assert.equal(widened.equivalence_status, "UNESTABLISHED");
+  assert.equal(widened.equivalence_decision, null);
+  assert.equal(widened.unauthenticated_claim.claimed_equivalence_status, "DRIFTED", "the registered threshold still governs the caller claim");
   // And a caller narrowing the threshold must not turn a comparison genuinely within the
   // registered threshold into a refusal either -- the caller's field is ignored, not merged with
   // the registered one in either direction. #585 (this round): the comparison genuinely within the
@@ -1111,10 +1114,47 @@ test("an abandoned reservation is not counted as an administration by practiceAn
     administration_id: "admin-practice-abandoned-1", occurred_at: "2026-09-06T10:00:00.000Z"
   });
   const analysis = practiceAnalysis(reserved.ledger, { form_contract_digest: digest });
-  assert.equal(analysis.same_form_exposure_count, 0, "an abandoned reservation was counted as an administration");
+  assert.equal(analysis.same_form_exposure_count, null, "an abandoned reservation supplied no administration to analyse");
   assert.equal(analysis.practice_contaminated, null, "nothing was administered, so there is nothing to analyse -- not a clean bill");
   assert.equal(analysis.generalizability_evidence_eligible, null);
   assert.deepEqual(analysis.administrations, []);
+});
+
+test("practice analysis leaves unadministered counts unknown and records observed zero familiarity", async () => {
+  const { createExposureLedger, markRevealed, practiceAnalysis, recordExposure, reserveExposure } = await import("../../lib/form-class.mjs");
+  const form = { form_id: "practice-absence", form_contract_digest: `sha256:${"ca".repeat(32)}`, declared_class: "OPERATIONAL" };
+  const empty = createExposureLedger();
+  const reserved = reserveExposure(empty, { ...form, administration_id: "unrevealed", occurred_at: "2026-01-01T00:00:00.000Z" }).ledger;
+  for (const ledger of [empty, reserved]) {
+    const analysis = practiceAnalysis(ledger, form);
+    assert.equal(analysis.similar_form_exposure_count, null, "unadministered similar-form exposure is unknown");
+    assert.equal(analysis.oracle_familiarity_count, null, "unadministered oracle familiarity is unknown");
+    assert.equal(analysis.same_form_exposure_count, null, "unadministered same-form exposure is unknown");
+    assert.equal(analysis.practice_contaminated, null);
+  }
+  const similar = reserveExposure(reserved, { ...form, form_contract_digest: `sha256:${"cb".repeat(32)}`, administration_id: "similar-unrevealed", occurred_at: "2026-01-01T00:00:01.000Z" }).ledger;
+  const revealed = markRevealed(similar, { administration_id: "unrevealed", occurred_at: "2026-01-01T00:00:02.000Z" }).ledger;
+  const once = practiceAnalysis(revealed, form);
+  assert.equal(once.same_form_exposure_count, 1);
+  assert.equal(once.similar_form_exposure_count, 0, "an unrevealed similar form is not exposure");
+  assert.equal(once.oracle_familiarity_count, 0);
+  assert.equal(once.practice_contaminated, false, "AOS-recorded absence of prior exposure remains a negative observation");
+  const different = recordExposure(revealed, { ...form, form_contract_digest: `sha256:${"cc".repeat(32)}`, occurred_at: "2026-01-01T00:00:03.000Z" }).ledger;
+  assert.equal(practiceAnalysis(different, form).similar_form_exposure_count, 1);
+});
+
+test("an incomplete phase A preserves unknown collaborative success", async () => {
+  const { assessTransfer } = await import("../../lib/form-class.mjs");
+  assert.equal(assessTransfer().phase_a, null);
+  for (const phaseA of [{}, { collaborative_success: null }, { collaborative_success: "false" }]) {
+    const report = assessTransfer({ phase_a: phaseA });
+    assert.equal(report.phase_a.collaborative_success, null, "missing phase A success must remain unknown");
+    assert.equal(report.phase_a.contributes_to_transfer_decision, false);
+    assert.equal(report.near_transfer, null);
+  }
+  for (const success of [true, false]) {
+    assert.equal(assessTransfer({ phase_a: { collaborative_success: success } }).phase_a.collaborative_success, success);
+  }
 });
 
 test("speed-only improvement is an indicator on the record, never a skill gain", async () => {
@@ -1372,7 +1412,7 @@ test("translation alone is not invariance: a re-expressed form's comparison is w
   assert.equal(foreignLevels.comparison, "WITHHELD");
 });
 
-test("a small DIF sample never turns a comparison on, and detected DIF refuses it", async () => {
+test("DIF findings stay unauthenticated in both directions and incomplete studies stay withheld", async () => {
   const { comparisonGate, DIF_RUNNER_INTERFACE, DIF_RUNNER_REPORT_SCHEMA_ID } = await import("../../lib/form-class.mjs");
   assert.equal(DIF_RUNNER_INTERFACE.schema_id, "aos-dif-runner-interface.v1");
   assert.equal(DIF_RUNNER_INTERFACE.version, "1.0.0");
@@ -1411,8 +1451,11 @@ test("a small DIF sample never turns a comparison on, and detected DIF refuses i
   assert.equal(passed.unauthenticated_claim.claimed_comparison, "PERMITTED");
   assert.equal(passed.unauthenticated_claim.reported_dif_detected, false);
   const detected = comparisonGate({ facet: "language", left_level: "ko", right_level: "en", invariance_evidence: evidence({ dif_detected: true }) });
-  assert.equal(detected.decision, false, "detected DIF is a contradiction, not an absence");
-  assert.equal(detected.comparison, "REFUSED");
+  assert.equal(detected.decision, null, "caller DIF must remain unknown");
+  assert.equal(detected.comparison, "WITHHELD");
+  assert.equal(detected.unauthenticated_claim.claimed_comparison, "REFUSED");
+  assert.equal(detected.unauthenticated_claim.reported_dif_detected, true);
+  assert.match(detected.reasons.join(" "), /AOS_COMPARISON_UNAUTHENTICATED/);
   // An undeclared level is not an equal one: two silences do not compare.
   const undeclared = comparisonGate({ facet: "language", left_level: null, right_level: null });
   assert.equal(undeclared.comparison, "WITHHELD");
@@ -1578,6 +1621,36 @@ test("an administration revealed but never finalized is exposure a later attempt
     form_id: "aos-operational-crash", form_contract_digest: digest, declared_class: "OPERATIONAL"
   });
   assert.equal(thirdAttempt.refusal_code, "AOS_FORM_ALREADY_EXPOSED");
+});
+
+test("a terminal exposure requires a committed reveal transition", async () => {
+  const { createExposureLedger, markRevealed, openExposureLedger, recordExposure, reserveExposure } = await import("../../lib/form-class.mjs");
+  const form = { form_id: "reveal-required", form_contract_digest: `sha256:${"dd".repeat(32)}`, declared_class: "OPERATIONAL", administration_id: "reveal-required" };
+  const reserved = reserveExposure(createExposureLedger(), { ...form, occurred_at: "2026-01-01T00:00:00.000Z" });
+  const terminalInput = { ...form, occurred_at: "2026-01-01T00:00:02.000Z" };
+  assert.throws(() => recordExposure(reserved.ledger, terminalInput), /AOS_EXPOSURE_NOT_REVEALED/, "RESERVED must not finalize without a reveal");
+  assert.equal(reserved.entry.revealed_at, null);
+  const revealed = markRevealed(reserved.ledger, { administration_id: form.administration_id, occurred_at: "2026-01-01T00:00:01.000Z" });
+  const terminal = recordExposure(revealed.ledger, terminalInput);
+  assert.equal(openExposureLedger(terminal.ledger).entries[0].revealed_at, revealed.entry.revealed_at);
+  assert.equal(terminal.entry.content_revealed, true);
+});
+
+test("opening a chained terminal exposure requires reveal evidence", async () => {
+  const { createExposureLedger, markRevealed, openExposureLedger, recordExposure, reserveExposure } = await import("../../lib/form-class.mjs");
+  const { sha256Value } = await import("../../lib/core.mjs");
+  const form = { form_id: "reveal-evidence", form_contract_digest: `sha256:${"de".repeat(32)}`, declared_class: "OPERATIONAL", administration_id: "reveal-evidence" };
+  let ledger = reserveExposure(createExposureLedger(), { ...form, occurred_at: "2026-01-01T00:00:00.000Z" }).ledger;
+  ledger = markRevealed(ledger, { administration_id: form.administration_id, occurred_at: "2026-01-01T00:00:01.000Z" }).ledger;
+  ledger = recordExposure(ledger, { ...form, occurred_at: "2026-01-01T00:00:02.000Z" }).ledger;
+  for (const patch of [{ revealed_at: null }, { content_revealed: false }, { terminal_at: null }]) {
+    const raw = structuredClone(ledger);
+    Object.assign(raw.entries[0], patch);
+    const { chain_digest: ignored, ...payload } = raw.entries[0];
+    raw.entries[0].chain_digest = `sha256:${sha256Value({ previous_digest: createExposureLedger().head_digest, entry: payload })}`;
+    raw.head_digest = raw.entries[0].chain_digest;
+    assert.throws(() => openExposureLedger(raw), /AOS_EXPOSURE_ENTRY_CORRUPT/, "terminal reveal evidence must be present even in a coherent chain");
+  }
 });
 
 test("the terminal transition updates the reserved entry in place; exactly one entry per administration", async () => {

@@ -8094,7 +8094,7 @@ export const GUARDS = [
     from: "  if (!nonEmpty(leftLevel) || !nonEmpty(rightLevel)) {",
     to: "  if (false) {",
     test: "tests/product/form-class.test.mjs",
-    name: "a small DIF sample never turns a comparison on, and detected DIF refuses it"
+    name: "DIF findings stay unauthenticated in both directions and incomplete studies stay withheld"
   },
   {
     guard: 'legacy card carries the NOT COMPARABLE marker',
@@ -8439,7 +8439,7 @@ export const GUARDS = [
     guard: "exposureVerification's VERIFIED answer is the ledger's own administered_class, not merely that some entry exists under this run's id",
     reason: "#585 item 1 (round 2). A ledger row keyed to this run's administration id can exist and still not be an official administration -- WARMUP and PRACTICE administrations are recorded into the same ledger -- so an entry's mere presence is not the same fact as the ledger having permitted official scoring",
     file: "lib/cycle.mjs",
-    from: "  const ledgerPermitted = entry.administered_class === \"OPERATIONAL\";",
+    from: "  const ledgerPermitted = entry.declared_class === \"OPERATIONAL\" &&\n    entry.prior_exposure_count === 0 && entry.prior_scored_count === 0 &&\n    entry.administered_class === \"OPERATIONAL\";",
     to: "  const ledgerPermitted = true;",
     test: "tests/product/cycle.test.mjs",
     name: "exposureVerification names the third state a permitted run and a pre-ledger run used to share"
@@ -8520,7 +8520,7 @@ export const GUARDS = [
     from: "  const anchors = Array.isArray(evidence.anchor_opportunity_ids) ? evidence.anchor_opportunity_ids : [];\n  const responses = evidence.responses_per_group;\n  const statistics = evidence.per_anchor_statistics;\n  // A slot is not an observation and a property is not a statistic: thirty `null` entries per group\n  // satisfied the length check alone, and an empty `{}` per anchor satisfied `hasOwnProperty` alone,\n  // so a report could name its declared inputs and outputs with no real response and no computed\n  // statistic behind any of them and still reach the verdict below. Each response now has to be an\n  // actual observation (not `null`/`undefined`), and each anchor's statistics an actual non-empty\n  // computed record.\n  const evidenceComplete = anchors.length > 0 &&\n    responses !== null && typeof responses === \"object\" &&\n    [leftLevel, rightLevel].every((level) => Array.isArray(responses[level]) &&\n      responses[level].length >= DIF_RUNNER_INTERFACE.minimum_sample_per_group &&\n      responses[level].every((response) => response !== null && response !== undefined)) &&\n    statistics !== null && typeof statistics === \"object\" &&\n    anchors.every((anchor) => {\n      const perAnchor = statistics[anchor];\n      return Object.prototype.hasOwnProperty.call(statistics, anchor) &&\n        perAnchor !== null && typeof perAnchor === \"object\" && Object.keys(perAnchor).length > 0;\n    });\n  if (!evidenceComplete) {\n    return gateAnswer(facet, leftLevel, rightLevel, null, \"WITHHELD\",\n      [\"AOS_COMPARISON_EVIDENCE_INCOMPLETE the report names no anchor opportunities, no per-group response data, or no per-anchor statistics; a sample count and a verdict are not the study its own interface requires\"]);\n  }",
     to: "",
     test: "tests/product/form-class.test.mjs",
-    name: "a small DIF sample never turns a comparison on, and detected DIF refuses it"
+    name: "DIF findings stay unauthenticated in both directions and incomplete studies stay withheld"
   },
   {
     guard: "an unadjudicable lock is refused rather than reclaimed",
@@ -8682,7 +8682,7 @@ export const GUARDS = [
     from: "      responses[level].every((response) => response !== null && response !== undefined)) &&",
     to: "      true) &&",
     test: "tests/product/form-class.test.mjs",
-    name: "a small DIF sample never turns a comparison on, and detected DIF refuses it"
+    name: "DIF findings stay unauthenticated in both directions and incomplete studies stay withheld"
   },
   {
     guard: "comparisonGate requires each anchor's per-anchor statistics to be an actual non-empty record",
@@ -8691,7 +8691,7 @@ export const GUARDS = [
     from: "        perAnchor !== null && typeof perAnchor === \"object\" && Object.keys(perAnchor).length > 0;",
     to: "        true;",
     test: "tests/product/form-class.test.mjs",
-    name: "a small DIF sample never turns a comparison on, and detected DIF refuses it"
+    name: "DIF findings stay unauthenticated in both directions and incomplete studies stay withheld"
   },
   {
     guard: "the form manifest schema moved with its equivalence vocabulary",
@@ -8776,10 +8776,10 @@ export const GUARDS = [
     guard: "linkForms records a caller's numbers as an unauthenticated claim, never as a decision",
     reason: "#585 (this round). Five review rounds hardened a predicate over caller-supplied linking evidence one field at a time, and each next round's forgery satisfied the new field -- no predicate over fields the caller controls can certify a study that did not happen. This is the branch every one of those forgeries, and this file's own retired `completeForgedLinking`, was built to reach: every floor met, drift within threshold. It is closed by construction now; what the caller's numbers claimed is recorded on `unauthenticated_claim` instead of authorizing `decision`/`status`.",
     file: "lib/form-class.mjs",
-    from: "        unauthenticatedClaim = deepFreeze({\n          claimed_equivalence_status: \"LINKED\",\n          claimed_method: { method: method.method, method_version: method.method_version },\n          maximum_observed_delta: observedMaximumDelta,\n          reason: \"AOS_LINKING_UNAUTHENTICATED AOS has no trust root for externally-produced linking studies -- no signed study, no attested producer, no data AOS itself recorded -- so a complete, well-formed calibration is recorded as an unauthenticated claim and never converted into a LINKED verdict\"\n        });",
+    from: "      unauthenticatedClaim = deepFreeze({\n        claimed_equivalence_status: observedMaximumDelta <= threshold ? \"LINKED\" : \"DRIFTED\",\n        claimed_method: { method: method.method, method_version: method.method_version },\n        maximum_observed_delta: observedMaximumDelta,\n        reason: \"AOS_LINKING_UNAUTHENTICATED AOS has no trust root for externally-produced linking studies; positive and negative findings remain unauthenticated claims\"\n      });",
     to: "        decision = true;\n        status = \"LINKED\";\n        driftStatus = \"WITHIN_THRESHOLDS\";",
     test: "tests/product/form-class.test.mjs",
-    name: "a complete, well-formed calibration is closed by construction: it stays UNESTABLISHED and its claim is recorded, unauthenticated; drift and disjoint anchors are unaffected"
+    name: "caller linking findings stay unauthenticated in both directions; disjoint anchors still fail"
   },
   {
     guard: "a form bank record's equivalence status is UNESTABLISHED by construction",
@@ -8803,10 +8803,10 @@ export const GUARDS = [
     guard: "comparisonGate withholds every cross-facet comparison by construction",
     reason: "#585 (this round). `isRealLinkingScaffold` is deleted outright, so nothing in this file checks a decision or a relation to a form any more; this name is repurposed (see the comment on the first guard of this round's batch) for `comparisonGate`'s own closed branch -- the complete, well-formed DIF report every declared input present, adequate samples per group, no detected differential functioning -- reaches. AOS did not run the study, so it stays WITHHELD however completely the report is shaped; the report's own reported verdict is recorded on `unauthenticated_claim` instead of authorizing `comparison`.",
     file: "lib/form-class.mjs",
-    from: "  return gateAnswer(facet, leftLevel, rightLevel, null, \"WITHHELD\",\n    [\"AOS_COMPARISON_UNAUTHENTICATED AOS has no trust root for externally-produced DIF studies -- no signed study, no attested producer, no data AOS itself recorded -- so a complete study reporting no detected differential functioning is recorded as an unauthenticated claim and never converted into a PERMITTED verdict\"],\n    deepFreeze({ claimed_comparison: \"PERMITTED\", reported_dif_detected: evidence.dif_detected }));",
+    from: "  return gateAnswer(facet, leftLevel, rightLevel, null, \"WITHHELD\",\n    [\"AOS_COMPARISON_UNAUTHENTICATED AOS has no trust root for externally-produced DIF studies; positive and negative findings remain unauthenticated claims\"],\n    deepFreeze({ claimed_comparison: evidence.dif_detected ? \"REFUSED\" : \"PERMITTED\", reported_dif_detected: evidence.dif_detected }));",
     to: "  return gateAnswer(facet, leftLevel, rightLevel, true, \"PERMITTED\", []);",
     test: "tests/product/form-class.test.mjs",
-    name: "a small DIF sample never turns a comparison on, and detected DIF refuses it"
+    name: "DIF findings stay unauthenticated in both directions and incomplete studies stay withheld"
   },
   {
     guard: "phase A collaboration earns no transfer credit",
@@ -8844,6 +8844,141 @@ export const GUARDS = [
     to: "    if (false) {\n      throw new Error(buildLockedError(\"acquiring\"));\n    }",
     test: "tests/product/home.test.mjs",
     name: "a lock file caught mid-acquisition is contended, not unreadable"
+  },
+  {
+    guard: "exposure verification rederives scored-once eligibility",
+    reason: "A coherent hash chain does not certify a stored classification; prior exposure must defeat OPERATIONAL even when the exported builders wrote that verdict.",
+    file: "lib/cycle.mjs",
+    from: "  const ledgerPermitted = entry.declared_class === \"OPERATIONAL\" &&\n    entry.prior_exposure_count === 0 && entry.prior_scored_count === 0 &&\n    entry.administered_class === \"OPERATIONAL\";",
+    to: "  const ledgerPermitted = entry.administered_class === \"OPERATIONAL\";",
+    test: "tests/product/cycle.test.mjs",
+    name: "exposure verification rederives scored-once eligibility despite an OPERATIONAL verdict on a replay"
+  },
+  {
+    guard: "terminal exposure requires a committed REVEALED state",
+    reason: "A reservation cannot manufacture a reveal by finalizing; the reveal transition must already be committed.",
+    file: "lib/form-class.mjs",
+    from: "    if (reserved.state !== \"REVEALED\") {",
+    to: "    if (false) {",
+    test: "tests/product/form-class.test.mjs",
+    name: "a terminal exposure requires a committed reveal transition"
+  },
+  {
+    guard: "opening terminal exposure requires its reveal evidence",
+    reason: "A recomputed chain can still encode a terminal entry with no reveal evidence; opening the artifact checks state consistency too.",
+    file: "lib/form-class.mjs",
+    from: "  return entry.content_revealed === true && isRealInstant(entry.revealed_at) &&\n    (entry.state === \"REVEALED\" ? entry.terminal_at === null : isRealInstant(entry.terminal_at));",
+    to: "  return true;",
+    test: "tests/product/form-class.test.mjs",
+    name: "opening a chained terminal exposure requires reveal evidence"
+  },
+  {
+    guard: "current verification cannot fall back when exposure evidence is unavailable",
+    reason: "Missing, unreadable and corrupt ledgers cannot become a verified current result through the editable run record.",
+    file: "lib/cli.mjs",
+    from: "    } catch (error) {\n      add(\"exposure-ledger\", false, error.message);\n      add(\"recompute\", CHECK_NOT_CHECKED, \"AOS_EXPOSURE_UNVERIFIED exposure evidence could not be read\");\n      return false;\n    }\n    if (ledgerEntry === undefined || ledgerEntry.state !== \"TERMINAL\") {\n      add(\"exposure-ledger\", CHECK_NOT_CHECKED, \"AOS_EXPOSURE_UNVERIFIED no completed exposure entry exists for this current result\");\n      add(\"recompute\", CHECK_NOT_CHECKED, \"AOS_EXPOSURE_UNVERIFIED withholding cannot be reconstructed without exposure evidence\");\n      return false;\n    }\n    const recordReason",
+    to: "    } catch {\n      ledgerEntry = undefined;\n    }\n    const recordReason",
+    test: "tests/product/verify-run.test.mjs",
+    name: "current result verification cannot replace missing or corrupt exposure evidence with the run record"
+  },
+  {
+    guard: "linkForms withholds caller-reported drift",
+    reason: "Caller drift is an unauthenticated observation claim even though the reported result is negative.",
+    file: "lib/form-class.mjs",
+    from: "      unauthenticatedClaim = deepFreeze({\n        claimed_equivalence_status: observedMaximumDelta <= threshold ? \"LINKED\" : \"DRIFTED\",\n        claimed_method: { method: method.method, method_version: method.method_version },\n        maximum_observed_delta: observedMaximumDelta,\n        reason: \"AOS_LINKING_UNAUTHENTICATED AOS has no trust root for externally-produced linking studies; positive and negative findings remain unauthenticated claims\"\n      });",
+    to: "      unauthenticatedClaim = deepFreeze({\n        claimed_equivalence_status: observedMaximumDelta <= threshold ? \"LINKED\" : \"DRIFTED\",\n        claimed_method: { method: method.method, method_version: method.method_version },\n        maximum_observed_delta: observedMaximumDelta,\n        reason: \"AOS_LINKING_UNAUTHENTICATED AOS has no trust root for externally-produced linking studies; positive and negative findings remain unauthenticated claims\"\n      });\n      if (observedMaximumDelta > threshold) {\n        decision = false;\n        status = \"DRIFTED\";\n        driftStatus = \"EXCEEDED\";\n        maximumDelta = observedMaximumDelta;\n        unauthenticatedClaim = null;\n      }",
+    test: "tests/product/form-class.test.mjs",
+    name: "caller linking findings stay unauthenticated in both directions; disjoint anchors still fail"
+  },
+  {
+    guard: "comparisonGate withholds caller-reported DIF",
+    reason: "A caller-authored negative cannot establish that a DIF study actually happened; both directions stay withheld.",
+    file: "lib/form-class.mjs",
+    from: "  if (typeof evidence.dif_detected !== \"boolean\") {",
+    to: "  if (evidence.dif_detected === true) return gateAnswer(facet, leftLevel, rightLevel, false, \"REFUSED\", []);\n  if (typeof evidence.dif_detected !== \"boolean\") {",
+    test: "tests/product/form-class.test.mjs",
+    name: "DIF findings stay unauthenticated in both directions and incomplete studies stay withheld"
+  },
+  {
+    guard: "unadministered practice analysis keeps same_form_exposure_count unknown",
+    reason: "With no administered row this analysis has no observation from which to report this numeric count.",
+    file: "lib/form-class.mjs",
+    from: "    same_form_exposure_count: rows.length === 0 ? null : rows.length,",
+    to: "    same_form_exposure_count: rows.length === 0 ? 0 : rows.length,",
+    test: "tests/product/form-class.test.mjs",
+    name: "practice analysis leaves unadministered counts unknown and records observed zero familiarity"
+  },
+  {
+    guard: "unadministered practice analysis keeps similar_form_exposure_count unknown",
+    reason: "With no administered row this analysis has no observation from which to report this numeric count.",
+    file: "lib/form-class.mjs",
+    from: "    similar_form_exposure_count: rows.length === 0 ? null : administeredEntries(opened.entries).filter((entry) => entry.form_id === rows[0].form_id && entry.form_contract_digest !== formContractDigest).length,",
+    to: "    similar_form_exposure_count: rows.length === 0 ? 0 : administeredEntries(opened.entries).filter((entry) => entry.form_id === rows[0].form_id && entry.form_contract_digest !== formContractDigest).length,",
+    test: "tests/product/form-class.test.mjs",
+    name: "practice analysis leaves unadministered counts unknown and records observed zero familiarity"
+  },
+  {
+    guard: "unadministered practice analysis keeps oracle_familiarity_count unknown",
+    reason: "With no administered row this analysis has no observation from which to report this numeric count.",
+    file: "lib/form-class.mjs",
+    from: "    oracle_familiarity_count: rows.length === 0 ? null : rows.at(-1).prior_exposure_count,",
+    to: "    oracle_familiarity_count: rows.length === 0 ? 0 : rows.at(-1).prior_exposure_count,",
+    test: "tests/product/form-class.test.mjs",
+    name: "practice analysis leaves unadministered counts unknown and records observed zero familiarity"
+  },
+  {
+    guard: "practice analysis excludes unrevealed similar forms",
+    reason: "A similar form reserved but never revealed cannot count as familiarity once the target form is administered.",
+    file: "lib/form-class.mjs",
+    from: "    similar_form_exposure_count: rows.length === 0 ? null : administeredEntries(opened.entries).filter((entry) => entry.form_id === rows[0].form_id && entry.form_contract_digest !== formContractDigest).length,",
+    to: "    similar_form_exposure_count: rows.length === 0 ? null : opened.entries.filter((entry) => entry.form_id === rows[0].form_id && entry.form_contract_digest !== formContractDigest).length,",
+    test: "tests/product/form-class.test.mjs",
+    name: "practice analysis leaves unadministered counts unknown and records observed zero familiarity"
+  },
+  {
+    guard: "incomplete phase A keeps collaborative success unknown",
+    reason: "An empty phase-A object carries no success observation and cannot produce false.",
+    file: "lib/form-class.mjs",
+    from: "    phase_a: phaseA === null ? null : { collaborative_success: typeof phaseA.collaborative_success === \"boolean\" ? phaseA.collaborative_success : null, contributes_to_transfer_decision: false },",
+    to: "    phase_a: phaseA === null ? null : { collaborative_success: phaseA.collaborative_success === true, contributes_to_transfer_decision: false },",
+    test: "tests/product/form-class.test.mjs",
+    name: "an incomplete phase A preserves unknown collaborative success"
+  },
+  {
+    guard: "cycle occasion allocation uses the locked reservation sequence",
+    reason: "Two processes can share the cycle snapshot; only their locked reservations allocate distinct occasion positions.",
+    file: "lib/form-class.mjs",
+    from: "    occasion_id: nonEmpty(cycleId) ? `occasion-${cycleId}-${opened.entries.length + 1}` : null,",
+    to: "    occasion_id: nonEmpty(cycleId) ? `occasion-${cycleId}-${1}` : null,",
+    test: "tests/product/exposure-cross-process.test.mjs",
+    name: "two cycle processes sharing a snapshot publish distinct reserved occasion identifiers"
+  },
+  {
+    guard: "published cycle occasion comes from its reserved entry",
+    reason: "Publishing a caller occasion instead of the reserved occasion disconnects the result from its own administration.",
+    file: "lib/cli.mjs",
+    from: "        // Both facts come from the same reservation committed under the ledger lock.\n        occasion_id: reservedExposureEntry?.occasion_id ?? null,",
+    to: "        // Both facts come from the same reservation committed under the ledger lock.\n        occasion_id: options.administration?.occasion_id ?? null,",
+    test: "tests/product/exposure-cross-process.test.mjs",
+    name: "two cycle processes sharing a snapshot publish distinct reserved occasion identifiers"
+  },
+  {
+    guard: "terminal cycle occasion preserves its reserved identity",
+    reason: "Finalization must preserve the same occasion the reservation allocated and the observations published.",
+    file: "lib/cli.mjs",
+    from: "        occasion_id: reservedExposureEntry?.occasion_id ?? null,\n        occurred_at: new Date().toISOString(),",
+    to: "        occasion_id: administrationContext?.occasion_id ?? null,\n        occurred_at: new Date().toISOString(),",
+    test: "tests/product/exposure-cross-process.test.mjs",
+    name: "two cycle processes sharing a snapshot publish distinct reserved occasion identifiers"
+  },
+  {
+    guard: "exposure verification leaves missing eligibility evidence unknown",
+    reason: "A stored row without prior exposure evidence cannot turn missing counts into a negative observation.",
+    file: "lib/cycle.mjs",
+    from: "  if (typeof entry.declared_class !== \"string\" ||\n      !Number.isInteger(entry.prior_exposure_count) || entry.prior_exposure_count < 0 ||\n      !Number.isInteger(entry.prior_scored_count) || entry.prior_scored_count < 0) {\n    return Object.freeze({ decision: null, status: \"UNVERIFIED\" });\n  }",
+    to: "  // Eligibility evidence check removed.",
+    test: "tests/product/cycle.test.mjs",
+    name: "exposure verification rederives scored-once eligibility despite an OPERATIONAL verdict on a replay"
   }
 ];
 
@@ -9343,6 +9478,7 @@ export const ACCOUNTED_GUARDS = [
   "comparisonGate requires each DIF response to be an actual observation, not a null slot",
   "comparisonGate requires each anchor's per-anchor statistics to be an actual non-empty record",
   "comparisonGate requires the DIF report's own declared inputs, not only its verdict",
+  "comparisonGate withholds caller-reported DIF",
   "comparisonGate withholds every cross-facet comparison by construction",
   "completion requires an authority to check the prerequisites against",
   "composite action discovery",
@@ -9356,6 +9492,8 @@ export const ACCOUNTED_GUARDS = [
   "credential env refusal",
   "credential names a shape rule cannot see are listed",
   "credential names are matched whatever their capitalisation",
+  "current verification cannot fall back when exposure evidence is unavailable",
+  "cycle occasion allocation uses the locked reservation sequence",
   "cycle run identity",
   "cycle search inside strongly connected components",
   "decisions must reach past one session",
@@ -9398,6 +9536,8 @@ export const ACCOUNTED_GUARDS = [
   "excluded issues present in the snapshot",
   "execution plan cycle detection",
   "explicit keys are keys",
+  "exposure verification leaves missing eligibility evidence unknown",
+  "exposure verification rederives scored-once eligibility",
   "exposureVerification's VERIFIED answer is the ledger's own administered_class, not merely that some entry exists under this run's id",
   "facet coverage preserves evidence digests",
   "facet evidence enters through the observation issuance boundary",
@@ -9420,6 +9560,7 @@ export const ACCOUNTED_GUARDS = [
   "hot-file single owner",
   "identity-before-resolver ordering",
   "incomplete evidence never reported clean",
+  "incomplete phase A keeps collaborative success unknown",
   "independent checks survive a non-canonical plan",
   "interpreter inherits its own findings",
   "interpreter is part of the identity",
@@ -9442,6 +9583,7 @@ export const ACCOUNTED_GUARDS = [
   "linkForms enforces the anchor minimum the method interface declares, not a second literal",
   "linkForms records a caller's numbers as an unauthenticated claim, never as a decision",
   "linkForms refuses to LINK on an unregistered method or method_version",
+  "linkForms withholds caller-reported drift",
   "linkForms's drift threshold is read from the registered method, never a caller-supplied one",
   "linking without empirical evidence stays unestablished",
   "local reference redirection",
@@ -9485,6 +9627,7 @@ export const ACCOUNTED_GUARDS = [
   "openExposureLedger recomputes the transition digest chain over every stored entry",
   "openExposureLedger refuses two stored entries claiming one administration_id",
   "openExposureLedger refuses two stored entries claiming one revision",
+  "opening terminal exposure requires its reveal evidence",
   "operator decision window",
   "operator event authority is the matrix's, not the caller's",
   "operator event authority matrix",
@@ -9506,6 +9649,7 @@ export const ACCOUNTED_GUARDS = [
   "phase permissions are pinned, not only phase names",
   "phases are a contract",
   "positive-observation cap guard",
+  "practice analysis excludes unrevealed similar forms",
   "practice occasions retain their occasion facet",
   "practiceAnalysis excludes an abandoned reservation from same-form exposure",
   "prepareScenario materializes content only after REVEALED is durable, never before",
@@ -9539,6 +9683,7 @@ export const ACCOUNTED_GUARDS = [
   "provider credential formats are recognised",
   "provider/task network separation",
   "public write-access lookup has its required name",
+  "published cycle occasion comes from its reserved entry",
   "pull request produced the commit",
   "quoted keys are keys",
   "rate denominator floor",
@@ -9612,6 +9757,8 @@ export const ACCOUNTED_GUARDS = [
   "tag containment cites the ancestry test for each tag it answered about",
   "tag containment is derived against the repository's tags",
   "task-initiated network is NOT_OBSERVED",
+  "terminal cycle occasion preserves its reserved identity",
+  "terminal exposure requires a committed REVEALED state",
   "the PATH rule is part of the digest",
   "the adapter's own config directory is declared, not typed twice",
   "the after-snapshot exception is bound to the branch the audit was submitted from",
@@ -9818,6 +9965,9 @@ export const ACCOUNTED_GUARDS = [
   "trend dedupe",
   "trusted-file integrity re-check",
   "trusted-process import prohibition",
+  "unadministered practice analysis keeps oracle_familiarity_count unknown",
+  "unadministered practice analysis keeps same_form_exposure_count unknown",
+  "unadministered practice analysis keeps similar_form_exposure_count unknown",
   "uncalibrated perfect forms do not establish generalizability",
   "uncertainty interval and coverage counts are headline phrases",
   "undecided items are in neither denominator",

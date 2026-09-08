@@ -15,7 +15,7 @@ import {
   runValidity,
   stabilityOf
 } from "../../lib/cycle.mjs";
-import { ADMINISTRATION_CLASSIFICATION_SCHEMA_ID, openExposureLedger, recordExposure, reserveExposure } from "../../lib/form-class.mjs";
+import { ADMINISTRATION_CLASSIFICATION_SCHEMA_ID, markRevealed, openExposureLedger, recordExposure, reserveExposure } from "../../lib/form-class.mjs";
 
 // #585 item 1 (this round). `runIdFor`/`formDigestFor` are the one derivation every fixture below
 // uses, so a run and the ledger entry meant to back it genuinely share an identity the way `assess`
@@ -48,6 +48,9 @@ const ledgerEntry = (seed, { administeredClass = "OPERATIONAL", administrationId
   administration_id: administrationId,
   form_contract_digest: formContractDigest,
   state,
+  declared_class: "OPERATIONAL",
+  prior_exposure_count: 0,
+  prior_scored_count: 0,
   administered_class: administeredClass
 });
 const ledgerOf = (entries) => ({ entries });
@@ -307,7 +310,8 @@ test("exposureVerification builds VERIFIED from a real ledger entry, made throug
     administration_id: runId,
     occurred_at: "2026-01-01T00:00:00.000Z"
   });
-  const finalized = recordExposure(reserved.ledger, {
+  const revealed = markRevealed(reserved.ledger, { administration_id: runId, occurred_at: "2026-01-01T00:00:01.000Z" });
+  const finalized = recordExposure(revealed.ledger, {
     form_id: "FAM-1",
     form_contract_digest: formContractDigest,
     declared_class: "OPERATIONAL",
@@ -330,6 +334,34 @@ test("exposureVerification builds VERIFIED from a real ledger entry, made throug
   // under this exact administration id is refused, not silently trusted.
   const wrongDigest = { run_id: runId, form_contract_digest: `sha256:${"9".repeat(64)}` };
   assert.deepEqual(exposureVerification(wrongDigest, { ledger: finalized.ledger }), { decision: false, status: "REFUSED" });
+});
+
+test("exposure verification rederives scored-once eligibility despite an OPERATIONAL verdict on a replay", () => {
+  const form = { form_id: "scored-once", form_contract_digest: `sha256:${"6".repeat(64)}`, declared_class: "OPERATIONAL" };
+  let ledger = openExposureLedger(undefined);
+  for (const id of ["first", "second"]) {
+    ledger = reserveExposure(ledger, { ...form, administration_id: id, occurred_at: "2026-01-01T00:00:00.000Z" }).ledger;
+    ledger = markRevealed(ledger, { administration_id: id, occurred_at: "2026-01-01T00:00:01.000Z" }).ledger;
+    ledger = recordExposure(ledger, { ...form, administration_id: id, administered_class: "OPERATIONAL", scored: true, occurred_at: "2026-01-01T00:00:02.000Z" }).ledger;
+  }
+  const opened = openExposureLedger(ledger);
+  assert.equal(opened.entries[1].prior_exposure_count, 1);
+  assert.equal(opened.entries[1].administered_class, "OPERATIONAL");
+  assert.deepEqual(exposureVerification({ run_id: "second", form_contract_digest: form.form_contract_digest }, { ledger: opened }),
+    { decision: false, status: "REFUSED" }, "a repeated exposure cannot verify through its stored OPERATIONAL verdict");
+  assert.deepEqual(exposureVerification({ run_id: "first", form_contract_digest: form.form_contract_digest }, { ledger: opened }),
+    { decision: true, status: "VERIFIED" }, "later exposure must not retroactively disqualify the first administration");
+  for (const declared of ["WARMUP", "PRACTICE", "TRANSFER"]) {
+    const row = { ...ledgerEntry("1"), declared_class: declared };
+    assert.equal(exposureVerification(runOf("1"), { ledger: ledgerOf([row]) }).decision, false);
+  }
+  for (const field of ["prior_exposure_count", "prior_scored_count"]) {
+    for (const value of [undefined, null, -1, "0", 1]) {
+      const row = { ...ledgerEntry("1"), [field]: value };
+      assert.equal(exposureVerification(runOf("1"), { ledger: ledgerOf([row]) }).decision, value === 1 ? false : null,
+        "missing or malformed prior exposure is unknown, not an observed refusal");
+    }
+  }
 });
 
 test("a stored classification that disagrees with the ledger's own verdict is refused, never trusted over it", () => {
