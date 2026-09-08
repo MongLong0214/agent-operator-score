@@ -352,3 +352,68 @@ test("the command stores where it was told and nowhere else", () => {
     rmSync(home, { recursive: true, force: true });
   }
 });
+
+test("a ledger lock from a previous boot is reclaimed, not refused forever", () => {
+  // Found by review of this branch and reproduced before the fix. The unadjudicable branch refused
+  // every lock it could not place on THIS boot, which put the two cases the wrong way round:
+  //
+  //   same boot, dead pid   -> reclaimed   (asserted by the test above) -- yet a pid can be reused
+  //                                         within a boot, so "dead" here is a guess
+  //   previous boot         -> refused     -- yet the writer provably cannot be alive, because the
+  //                                         pid space was replaced when the boot instant changed
+  //
+  // The stated reason for refusing is that a genuinely dead owner may have died mid-transaction and
+  // left the resource half-written. That cannot happen to this resource: every ledger write goes
+  // through `atomicWrite` (`lib/core.mjs`), which writes a temp file, fsyncs it, renames it and
+  // fsyncs the directory. There is no half-written ledger to protect.
+  //
+  // Measured before the fix: two consecutive attempts both ended in AOS_EXPOSURE_LOCK_UNAVAILABLE
+  // and nothing cleared the file, so the home stayed wedged until an operator deleted a path no
+  // message names. A fail-closed that fires where the danger cannot occur is not a safety property.
+  const home = scratch();
+  try {
+    initHome(home);
+    const lockPath = join(home, "exposure-ledger.lock");
+    writeFileSync(lockPath, JSON.stringify({
+      schema_id: "aos-resource-lock.v1",
+      pid: 999999,
+      host: osHostname(),
+      // A whole boot earlier: the shape a SIGKILL leaves behind when the machine is then rebooted,
+      // since withLock's finally never runs on SIGKILL.
+      boot_instant: (Date.now() / 1000 - osUptime()) - 100000,
+      nonce: "0".repeat(24),
+      created_at: new Date().toISOString()
+    }), "utf8");
+    assert.equal(withExposureLedgerLock(home, () => "recovered"), "recovered",
+      "a lock from a previous boot -- whose writer cannot be alive -- wedged the ledger permanently");
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("a ledger lock this process cannot place at all is still refused", () => {
+  // The narrowing above must not become "reclaim anything that is not this boot". These three stay
+  // closed because nothing about them says the writer is gone: another host may still be running
+  // it, an unreadable record says nothing, and a record with no boot instant cannot be placed on
+  // any boot. Only "provably an earlier boot on this host" is reclaimable.
+  const cases = [
+    ["another host", { host: "some-other-machine", boot_instant: (Date.now() / 1000 - osUptime()) - 100000 }],
+    ["no boot instant", { host: osHostname() }],
+    ["boot instant from the future", { host: osHostname(), boot_instant: (Date.now() / 1000 - osUptime()) + 100000 }]
+  ];
+  for (const [name, extra] of cases) {
+    const home = scratch();
+    try {
+      initHome(home);
+      writeFileSync(join(home, "exposure-ledger.lock"), JSON.stringify({
+        schema_id: "aos-resource-lock.v1", pid: 999999, nonce: "0".repeat(24),
+        created_at: new Date().toISOString(), ...extra
+      }), "utf8");
+      assert.throws(() => withExposureLedgerLock(home, () => "recovered"),
+        /AOS_EXPOSURE_LOCK_UNAVAILABLE/,
+        `an unadjudicable lock (${name}) was reclaimed; only a provably earlier boot on this host may be`);
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  }
+});
