@@ -91,7 +91,7 @@ export const GUARDS = [
     guard: "empty lock contention expires instead of becoming permanent",
     reason: "An abandoned empty lock must permit both resources to recover after the legacy acquisition grace.",
     file: "lib/store.mjs",
-    from: "    if (emptyHeld && Date.now() - statSync(lockPath).mtimeMs < 5_000) {",
+    from: "    if (emptyHeld && Date.now() - heldMtimeMs < 5_000) {",
     to: "    if (emptyHeld) {",
     test: "tests/product/home.test.mjs",
     name: "abandoned empty locks are recovered for both resources after the acquisition grace"
@@ -9074,7 +9074,7 @@ export const GUARDS = [
     guard: "fresh empty locks receive a bounded acquisition grace",
     reason: "A fresh legacy empty lock receives transient contention during its acquisition grace for both protected resources.",
     file: "lib/store.mjs",
-    from: "    if (emptyHeld && Date.now() - statSync(lockPath).mtimeMs < 5_000) {",
+    from: "    if (emptyHeld && Date.now() - heldMtimeMs < 5_000) {",
     to: "    if (false) {",
     test: "tests/product/home.test.mjs",
     name: "a lock file caught mid-acquisition is contended, not unreadable"
