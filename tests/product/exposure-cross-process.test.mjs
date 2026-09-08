@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { addAgent, makePlan, run } from "./helpers.mjs";
 import { classifyAdministration, openExposureLedger } from "../../lib/form-class.mjs";
 import { formManifest } from "../../lib/suite.mjs";
+import { readExposureLedgerFile } from "../../lib/store.mjs";
 
 // ---------------------------------------------------------------------------------------------
 // #585 governing directive 25: cross-process concurrency and crash recovery.
@@ -142,8 +143,10 @@ test("25.1: two OS processes racing the identical form never both land an offici
     if (runIds.length !== 2) {
       assert.fail(`expected both processes to create their own run; observed run ids ${JSON.stringify(runIds)} (exit codes ${a.code}, ${b.code})`);
     }
+    // Both writers have exited. The next open must finish any graded completion that deferred
+    // its terminal lock, before the assertions read the original runs' public artifacts.
+    const ledger = openExposureLedger(readExposureLedgerFile(home));
     const terminals = new Map(runIds.map((id) => [id, terminalOf(home, id)]));
-    const ledger = ledgerOf(home);
 
     // "Official" is legible from outside only as the run's own terminal status: a bare `aos assess`
     // (not `aos cycle run`) always writes `administered_class: "PRACTICE"` into the ledger entry
@@ -228,11 +231,7 @@ test("25.4: four OS processes administering four different forms against one led
     const plan = makePlan(cwd, { default: "solo" });
     const env = { ...process.env, AOS_HOME: home };
     const baseSeeds = ["00000000000000d0", "00000000000000d1", "00000000000000d2", "00000000000000d3"];
-    // Spare, never-before-used seeds a slot switches to if its first form gets contaminated by lock
-    // contention (see below) -- never reused as a retry of the SAME seed, because the ledger's own
-    // exposed-without-terminal rule (the same one suite C exercises deliberately) means a seed whose
-    // reservation or reveal already collided with another process's lock hold can no longer reach a
-    // clean official administration under that seed, whatever is retried next.
+    // Spare seeds are used only when an attempt fails before producing a graded completion.
     const sparePool = ["00000000000000d4", "00000000000000d5", "00000000000000d6", "00000000000000d7", "00000000000000d8", "00000000000000d9"];
 
     // Staggered by 150ms between spawns rather than fired all at once: at 0 lag the reservation
@@ -244,21 +243,8 @@ test("25.4: four OS processes administering four different forms against one led
     // each reservation's open-write-close to land outside the previous one's sub-millisecond hold
     // under an unloaded machine.
     //
-    // Under `npm test`'s own parallelism (many other test files spawning their own child processes
-    // at the same time -- not sharing this test's lock file, but competing for the same CPUs) the
-    // 150ms gap is sometimes not enough: observed twice in development, reproducibly under
-    // full-suite load. Two distinct shapes showed up, and only one of them is safe to retry under
-    // the same seed:
-    //   - a collision at RESERVATION time writes nothing at all (`AOS_EXPOSURE_LEDGER_LOCKED`,
-    //     INTERNAL_ERROR, no ledger row) -- retrying the identical seed is exactly as clean a first
-    //     attempt as before;
-    //   - a collision at the FINALIZE lock (after this administration's own reservation and reveal
-    //     already committed) leaves that row stuck RESERVED/REVEALED forever -- the exact orphan
-    //     suite C injects deliberately, except this time produced by ordinary scheduling noise
-    //     rather than a kill signal. Retrying that seed again cannot produce a clean official
-    //     administration; classifyAdministration will call it AOS_FORM_EXPOSED_WITHOUT_TERMINAL
-    //     every time. So a contaminated seed is abandoned (its trace stays on disk and is checked
-    //     below) and the slot moves on to a fresh seed from `sparePool` instead.
+    // CPU scheduling can still collide before grading. Only those failures need a new
+    // attempt; a deferred graded completion keeps its original run and seed until replay.
     const takeSpare = () => {
       const seed = sparePool.shift();
       assert.ok(seed !== undefined, "ran out of spare seeds while working around lock contention -- something is colliding far more than this suite expects");
@@ -271,16 +257,19 @@ test("25.4: four OS processes administering four different forms against one led
       for (let attempt = 1; attempt <= 4; attempt += 1) {
         const result = await spawnAos(cli, ["assess", "--plan", plan, "--seed", seed], { cwd, env });
         const reportMatch = result.stdout.match(/runs[\\/](run-[0-9a-f-]+)[\\/]report\.html/u);
-        const runId = reportMatch ? reportMatch[1] : null;
+        const pendingMatch = result.stderr.match(/AOS_EXPOSURE_FINALIZATION_PENDING (run-[0-9a-f-]+)/u);
+        const runId = reportMatch?.[1] ?? pendingMatch?.[1] ?? null;
+        if (pendingMatch !== null) {
+          attempts.push({ seed, result, runId, status: "PENDING" });
+          return { seed, runId, attempts };
+        }
         const terminal = runId !== null ? terminalOf(home, runId) : null;
         attempts.push({ seed, result, runId, status: terminal?.status ?? null });
         if (terminal !== null && (terminal.status === "ISSUED" || terminal.status === "INCOMPLETE")) {
           return { seed, runId, attempts };
         }
-        // Either no run id was printed at all (a refusal before the success-path printing, e.g. a
-        // reservation-time lock collision) or the run completed but was not official (a
-        // finalize-time collision contaminated this exact seed, or something else classified it
-        // PRACTICE). Either way this seed's slot is done; move to a fresh one.
+        // No durable graded completion belongs to this slot: a pre-grading refusal or a
+        // non-official result. Keep its trace, and try a fresh seed.
         seed = takeSpare();
         await new Promise((resolveWait) => setTimeout(resolveWait, 100 * attempt));
       }
@@ -303,7 +292,7 @@ test("25.4: four OS processes administering four different forms against one led
     // below rather than silently ignored.
     assert.ok(runIds.length >= baseSeeds.length, `expected at least ${baseSeeds.length} run directories; got ${runIds.length}`);
 
-    const ledger = ledgerOf(home);
+    const ledger = openExposureLedger(readExposureLedgerFile(home));
     const adminIds = ledger.entries.map((entry) => entry.administration_id);
     assert.equal(new Set(adminIds).size, ledger.entries.length, "administration ids in the ledger must be unique, whatever else landed there");
 
@@ -313,15 +302,16 @@ test("25.4: four OS processes administering four different forms against one led
       const rows = ledger.entries.filter((entry) => entry.administration_id === slot.runId);
       assert.equal(rows.length, 1, `successful run ${slot.runId} does not have exactly one ledger row`);
       assert.equal(rows[0].state, "TERMINAL");
+      assert.ok(["ISSUED", "INCOMPLETE"].includes(terminalOf(home, slot.runId).status), "a deferred original run must recover its own successful terminal");
       assert.equal(rows[0].form_contract_digest, formManifest(slot.seed).form_contract_digest, "the ledger row for a successful run must name the exact form its own seed produces");
     }
     const successfulDigests = new Set(slots.map((slot) => formManifest(slot.seed).form_contract_digest));
     assert.equal(successfulDigests.size, baseSeeds.length, "the four successful administrations must be four distinct forms, none substituted or dropped");
 
     // Every run id on disk that is NOT one of the four successes is accounted for one of two ways:
-    // cleanly refused before any ledger row existed (INTERNAL_ERROR naming the lock), or contaminated
-    // by a lock collision at finalize and left orphaned in the exact RESERVED/REVEALED shape suite C
-    // documents -- never a third, unexplained shape, and never itself official.
+    // cleanly refused before any ledger row existed (INTERNAL_ERROR naming the lock), or
+    // interrupted before grading. A graded pending run already belongs to its original slot;
+    // finalize contention must never abandon it in favour of a spare seed.
     for (const id of runIds) {
       if (successfulRunIds.includes(id)) continue;
       const rows = ledger.entries.filter((entry) => entry.administration_id === id);

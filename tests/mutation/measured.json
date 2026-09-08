@@ -642,11 +642,11 @@
     },
     "a PRACTICE terminal ships a result whose composite and profiles are withheld, not the ones buildResult computed before classification ran": {
       "platform": "darwin",
-      "fingerprint": "sha256:c282df69b5e13a5448300d1a11ee4f0c8e4e158885e4ad2cd6b2006d658d8002",
+      "fingerprint": "sha256:8df6ff39c9dbb7810485477393f2bf20a63557e19dd0a215f5f5170c2c73b308",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T01:12:12.275Z"
+        "at": "2026-09-08T07:20:10.087Z"
       }
     },
     "a SUPERSEDED accounting is compared against the commits the collector derived": {
@@ -1450,6 +1450,15 @@
         "at": "2026-09-08T01:12:12.268Z"
       }
     },
+    "a graded completion is journaled before competing for the terminal lock": {
+      "platform": "darwin",
+      "fingerprint": "sha256:a726e219f358a0cc7643799ae424eb8185c02b2cdc95a05ec43775fec86891b2",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T07:29:38.899Z"
+      }
+    },
     "a handoff is recorded only where something was handed": {
       "platform": "darwin",
       "fingerprint": "sha256:4a1cb17e5efb4445f6617ebe506532ef4daabb0868a7d112faf67dc4caa57c3e",
@@ -1493,6 +1502,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-08T01:12:12.275Z"
+      }
+    },
+    "a ledger open replays durable pending completions": {
+      "platform": "darwin",
+      "fingerprint": "sha256:25a41620aa0dcea421b05399dd8eec23741037cc1aedd4322b66c1a19a489bd2",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T07:20:10.086Z"
       }
     },
     "a live audit needs a live snapshot": {
@@ -1718,6 +1736,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-08T01:12:12.226Z"
+      }
+    },
+    "a pending write error cannot replace the scored run with an internal error": {
+      "platform": "darwin",
+      "fingerprint": "sha256:0be241d43ebaf6484182a94b6945eea25b8932ad83cd2bb9ce797f804f49e3da",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T07:29:38.899Z"
       }
     },
     "a phase's predecessors must be in the plan": {
@@ -1956,11 +1983,11 @@
     },
     "a replayed administration's terminal status is decided by the ledger, not only the composite": {
       "platform": "darwin",
-      "fingerprint": "sha256:e3764e1aa3a974d629dfa8245f5828d00ca2a80d4e04fd0f0259b66e9c29a81f",
+      "fingerprint": "sha256:98453182244a8581b328a19835cc7cf58bc9b7dad5c3c932b8a5a2d0414f1ddc",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T01:12:12.274Z"
+        "at": "2026-09-08T07:20:10.087Z"
       }
     },
     "a required artifact or handoff is checked against the ledger": {
@@ -2467,6 +2494,15 @@
         "at": "2026-09-08T01:12:12.226Z"
       }
     },
+    "a terminal receipt binds the exact signed completion": {
+      "platform": "darwin",
+      "fingerprint": "sha256:debdd804ab66da43be6741124e9a21e9566ec6888ac6a5b8f3a8c9eb05f3343f",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T07:20:10.087Z"
+      }
+    },
     "a trace binding is recomputed before a reliance profile": {
       "platform": "darwin",
       "fingerprint": "sha256:375f7c9b567c524646f923f34f7b3163ba6599b559b861d35de6eba60f01c5ea",
@@ -2883,11 +2919,11 @@
     },
     "an S2 replay the ledger refuses withholds its published surfaces regardless of which status won": {
       "platform": "darwin",
-      "fingerprint": "sha256:235644792573831c58a3d2ba21d5505af19cce996d609642cd0973921e16bec0",
+      "fingerprint": "sha256:46153c28e1a96845baaf101f227482612be6de0cf24fdd874d4d1b02c8311d94",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T01:12:12.276Z"
+        "at": "2026-09-08T07:20:10.087Z"
       }
     },
     "an UNTRUSTED identity is not a verified one": {
@@ -2960,6 +2996,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-08T01:12:12.240Z"
+      }
+    },
+    "an authenticated pending completion names only its exact administration": {
+      "platform": "darwin",
+      "fingerprint": "sha256:61bc8a1e077b68a584ee9a28f51fdd6aa280d8a811eea1b07ac6aa984244bcdb",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T07:20:10.087Z"
       }
     },
     "an effect event's denial has to be proved": {
@@ -3405,11 +3450,11 @@
     },
     "an unadjudicable lock is refused rather than reclaimed": {
       "platform": "darwin",
-      "fingerprint": "sha256:cdead8b90f939d2fd1ef4ba31e9473eed8dabf191e248e7a2fe80df271fa6219",
+      "fingerprint": "sha256:9f867bc33994a0912131b3bedc9df464fdacd091db55cfd75954954e7bac2cba",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T01:12:12.275Z"
+        "at": "2026-09-08T07:20:10.087Z"
       }
     },
     "an unanswered checkpoint mints nothing": {
@@ -3675,11 +3720,11 @@
     },
     "aos verify recomputes a PRACTICE result under its own recorded withholding": {
       "platform": "darwin",
-      "fingerprint": "sha256:364c721e42cb54ff018ccce7a5b7684e39712594a2e2e57053b5f224c840651b",
+      "fingerprint": "sha256:d809b8c57391176589782bfc3884f7fe1da150bed75c0a794c1d276c3e66f8a7",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T01:12:12.276Z"
+        "at": "2026-09-08T07:20:10.087Z"
       }
     },
     "aos-known is not a scorable runtime capability source": {
@@ -3711,11 +3756,11 @@
     },
     "assess records every graded administration into the exposure ledger": {
       "platform": "darwin",
-      "fingerprint": "sha256:285f9a5258efb66287b0eb660f256770a6e7b4baf1911ca6aeea9089ce3796ab",
+      "fingerprint": "sha256:1c3d5d7b6af7006f7b85f68270670ae0cb131dd256e1c87a05b661c366dc0fb0",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T01:12:12.273Z"
+        "at": "2026-09-08T07:20:10.087Z"
       }
     },
     "assessTransfer requires an actually observed phase-B task, not merely a nonempty tasks array, before calling phase B administered": {
@@ -5320,6 +5365,15 @@
         "at": "2026-09-08T01:12:12.276Z"
       }
     },
+    "opening an AOS home resumes its pending scored runs": {
+      "platform": "darwin",
+      "fingerprint": "sha256:c6b82a345b06a7d16546aa924540f7ff154c601b9bb4c6e567e3c02e6d6a0450",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T07:29:38.899Z"
+      }
+    },
     "operator decision window": {
       "platform": "darwin",
       "fingerprint": "sha256:1817823f42b3e140029f15400b6261b9b6840bb9c22a62cf12de175c0a93c895",
@@ -5471,6 +5525,51 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-08T01:12:12.238Z"
+      }
+    },
+    "pending completions replay inside the acquired ledger lock": {
+      "platform": "darwin",
+      "fingerprint": "sha256:6ebb11e49839178f7c811488cb833a5e3e10dc5c0823a06756ad62031a4a079e",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T07:20:10.087Z"
+      }
+    },
+    "pending evidence remains durable until all terminal artifacts are committed": {
+      "platform": "darwin",
+      "fingerprint": "sha256:3e35435196f15518fd286fff6f9bb757010e17bd95b85c4b887346ef8abe8258",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T07:20:10.086Z"
+      }
+    },
+    "pending replay accepts only the implemented completion schema": {
+      "platform": "darwin",
+      "fingerprint": "sha256:9dd2b9d9f9df43a55521acc9b7fcba04aeffd33c230aaba87edff7db1717fb2b",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T07:20:10.087Z"
+      }
+    },
+    "pending replay derives scoring permission from ledger evidence": {
+      "platform": "darwin",
+      "fingerprint": "sha256:c12e711a4417720576e8920a6ee3aaa3d56a85dc2cc0c52f1f8aca66a75be522",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T07:20:10.087Z"
+      }
+    },
+    "pending signatures are verified against the reserved public key": {
+      "platform": "darwin",
+      "fingerprint": "sha256:405aeb01ad933cc2ec2d3e6dadc44b12eccaff18abb45aa743bfaf8144b7e262",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T07:20:10.087Z"
       }
     },
     "phase A collaboration earns no transfer credit": {
@@ -6026,6 +6125,15 @@
         "at": "2026-09-08T01:12:12.271Z"
       }
     },
+    "replaying a committed completion consumes no second revision": {
+      "platform": "darwin",
+      "fingerprint": "sha256:619c65b0ae5a85c4bb653b926ce77eecb371f6b3352be75312e441bb15d76a6e",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T07:20:10.087Z"
+      }
+    },
     "reserveExposure excludes an abandoned reservation from its own prior_exposure_count": {
       "platform": "darwin",
       "fingerprint": "sha256:8230359f6298b45b3c6dc7c04556d2a8f64d8402de08b14df511853e22c3a28c",
@@ -6458,6 +6566,24 @@
         "at": "2026-09-08T01:12:12.246Z"
       }
     },
+    "terminal cycle occasion preserves its reserved identity": {
+      "platform": "darwin",
+      "fingerprint": "sha256:fa6f2d326fd23a6033be4d00873a9f642a58bf1256a7fddd89d09bd09c5307bb",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T07:20:10.088Z"
+      }
+    },
+    "terminal transitions retain their pending receipt in the chain": {
+      "platform": "darwin",
+      "fingerprint": "sha256:2ea61dd471bafc2563953380c0e31d874ebbcea0156f795f95feeeffd145915a",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T07:20:10.087Z"
+      }
+    },
     "the PATH rule is part of the digest": {
       "platform": "darwin",
       "fingerprint": "sha256:c675368d574c4c0df2868e587a03da28f6cb1ce9cc9863b3800259fc6b749f43",
@@ -6818,6 +6944,15 @@
         "at": "2026-09-08T01:12:12.257Z"
       }
     },
+    "the completion producer signs its in-memory working record": {
+      "platform": "darwin",
+      "fingerprint": "sha256:f395bec8239ea46b6d0151674646e9b0b563084f81dbc8d470fd2725a7ef17e0",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T07:29:38.898Z"
+      }
+    },
     "the composite has to agree with its own inputs": {
       "platform": "darwin",
       "fingerprint": "sha256:11a9e3037c89f13ef6ace9643788dbe711da395adc21ce1ac03360d543106418",
@@ -7113,6 +7248,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-08T01:12:12.276Z"
+      }
+    },
+    "the final assessment event is replaced atomically during recovery": {
+      "platform": "darwin",
+      "fingerprint": "sha256:fdd8ecf38418dd3fecfd5c3f6d726fdf04736d99ce910d270cd4b9b29eaf138e",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T07:20:10.085Z"
       }
     },
     "the floor follows the worst severity observed": {
@@ -7790,6 +7934,15 @@
         "at": "2026-09-08T01:12:12.226Z"
       }
     },
+    "the reservation pins the completion verifier before reveal": {
+      "platform": "darwin",
+      "fingerprint": "sha256:d8427febd5c22b16dc6360c34b6d48b1912e5f8ca832c514bb3d9675bdbf7215",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T07:29:38.899Z"
+      }
+    },
     "the result publishes redacted cleanup failures": {
       "platform": "darwin",
       "fingerprint": "sha256:65e8a9129b2b45f8b5023b77972a1af377c1463f79b6f2f3f2fe5a00eb87ac7a",
@@ -8440,11 +8593,20 @@
     },
     "verify --run reconciles practice_withholding against the exposure ledger, not the stored record alone": {
       "platform": "darwin",
-      "fingerprint": "sha256:185bd89304b81fc482a5ba48e4312e3d1fb5eacd42fed88368535a1c8255a120",
+      "fingerprint": "sha256:807168f7eb03c74c408b96b3b7120f0b5054e08016e204618cf4dc83b79761e7",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T01:12:12.277Z"
+        "at": "2026-09-08T07:29:38.900Z"
+      }
+    },
+    "verify delegates post-reservation exposure to the administration classifier": {
+      "platform": "darwin",
+      "fingerprint": "sha256:9414c32596d46fb32e926577b5e6098fb181b969ea26b79efa9ebcf1b004e613",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T07:29:38.899Z"
       }
     },
     "version comment after a flow mapping": {

@@ -16,6 +16,159 @@
 
 export const GUARDS = [
   {
+    guard: "the completion producer signs its in-memory working record",
+    reason: "Reloading a persisted record before signing turns a file replacement into producer-authenticated evidence and can destroy an otherwise recoverable graded completion.",
+    file: "lib/cli.mjs",
+    from: "      record: completedRunRecord",
+    to: "      record: readJson(runPaths(home, runId).record)",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "the completion producer signs its measured working record without rereading a replaced file"
+  },
+  {
+    guard: "the final assessment event is replaced atomically during recovery",
+    reason: "A torn final event cannot be allowed to stand beside a recovered terminal; the final marker must use the same atomicWrite boundary as the journal and published result.",
+    file: "lib/store.mjs",
+    from: "  if (event.event_type === \"assessment.ended\") {",
+    to: "  if (false) {",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "process death before during and after the pending write preserves exposure and recovers only committed completions"
+  },
+  {
+    guard: "opening an AOS home resumes its pending scored runs",
+    reason: "Read-only CLI entry points must recover a durable scored run before deciding it has no result or committing an aborted terminal.",
+    file: "lib/cli.mjs",
+    from: "    recoverExposureFinalizations(home);",
+    to: "    // recovery removed",
+    name: "process death before during and after the pending write preserves exposure and recovers only committed completions",
+    test: "tests/product/exposure-finalization.test.mjs"
+  },
+  {
+    guard: "pending evidence remains durable until all terminal artifacts are committed",
+    reason: "Deleting the only signed completion after the ledger transition but before result publication loses the scored run on a process crash.",
+    file: "lib/store.mjs",
+    from: "    const completed = finalizeExposure(ledger, readJson(file), runId);",
+    to: "    const completed = finalizeExposure(ledger, readJson(file), runId);\n    rmSync(file);",
+    name: "process death before during and after the pending write preserves exposure and recovers only committed completions",
+    test: "tests/product/exposure-finalization.test.mjs"
+  },
+  {
+    guard: "a pending write error cannot replace the scored run with an internal error",
+    reason: "An atomic rename can succeed before directory fsync reports failure; the error handler must not overwrite the recoverable completion with a diagnostic terminal.",
+    file: "lib/cli.mjs",
+    from: "    if (finalizationStarted) throw error;",
+    to: "    if (false) throw error;",
+    name: "an error after the pending rename cannot overwrite the scored completion with an internal error",
+    test: "tests/product/exposure-finalization.test.mjs"
+  },
+  {
+    guard: "a graded completion is journaled before competing for the terminal lock",
+    reason: "A held lock must leave the measured result durable so the next open can finish the original administration.",
+    file: "lib/cli.mjs",
+    from: "    writeJson(pendingExposurePath(home, runId), signExposureFinalization({",
+    to: "    if (false) writeJson(pendingExposurePath(home, runId), signExposureFinalization({",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "a graded administration survives a held finalize lock and replays on the next ledger open"
+  },
+  {
+    guard: "the reservation pins the completion verifier before reveal",
+    reason: "The replay authority must already be in the ledger, outside the completion artifact it authenticates.",
+    file: "lib/cli.mjs",
+    from: "        terminal_public_key: terminalKeys.publicKey.export({ type: \"spki\", format: \"pem\" }),",
+    to: "",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "a graded administration survives a held finalize lock and replays on the next ledger open"
+  },
+  {
+    guard: "a ledger open replays durable pending completions",
+    reason: "The next reader must finish the durable terminal transition instead of leaving a graded run stranded as REVEALED.",
+    file: "lib/store.mjs",
+    from: "  recoverExposureFinalizations(home);\n  return rawExposureLedger(home);",
+    to: "  return rawExposureLedger(home);",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "a graded administration survives a held finalize lock and replays on the next ledger open"
+  },
+  {
+    guard: "pending completions replay inside the acquired ledger lock",
+    reason: "The acquired writer lock must serialize recovery with every reservation, reveal and terminal update.",
+    file: "lib/store.mjs",
+    from: "        replayExposureFinalizations(home);",
+    to: "        // replay removed",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "a graded administration survives a held finalize lock and replays on the next ledger open"
+  },
+  {
+    guard: "an authenticated pending completion names only its exact administration",
+    reason: "Even an authentic producer message cannot transition a different administration selected by a filename or caller.",
+    file: "lib/exposure-finalization.mjs",
+    from: "  if (reserved === undefined || payload?.administration_id !== administrationId\n      || reserved.run_id !== administrationId || payload?.result?.run?.run_id !== administrationId\n      || payload?.record?.run_id !== administrationId\n      || payload?.form_contract_digest !== reserved.form_contract_digest)",
+    to: "  if (reserved === undefined)",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "an authenticated pending payload still cannot target a different administration"
+  },
+  {
+    guard: "pending signatures are verified against the reserved public key",
+    reason: "A self-signed payload cannot introduce its own authority by carrying the public key that accepts its signature.",
+    file: "lib/exposure-finalization.mjs",
+    from: "  if (!authentic) throw new Error(\"AOS_EXPOSURE_PENDING_SIGNATURE completion was not signed by this reservation's producer\");",
+    to: "  if (false) throw new Error(\"AOS_EXPOSURE_PENDING_SIGNATURE completion was not signed by this reservation's producer\");",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "a pending artifact cannot replace the public key pinned in its reservation"
+  },
+  {
+    guard: "pending replay accepts only the implemented completion schema",
+    reason: "A signed payload from an unsupported generation cannot be interpreted under this completion protocol.",
+    file: "lib/exposure-finalization.mjs",
+    from: "  if (payload.schema_id !== \"aos-exposure-finalization.v1\") {",
+    to: "  if (false) {",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "an unrecognised signed pending schema cannot be replayed"
+  },
+  {
+    guard: "replaying a committed completion consumes no second revision",
+    reason: "The journal may survive a terminal rename; replay must retain that transition and its exact original publication.",
+    file: "lib/exposure-finalization.mjs",
+    from: "  if (reserved.state === \"TERMINAL\") {",
+    to: "  if (false) {",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "replaying a committed pending completion is byte-identical even after a sibling reveals"
+  },
+  {
+    guard: "a terminal receipt binds the exact signed completion",
+    reason: "A second producer message is not an idempotent retry of the payload already committed for this administration.",
+    file: "lib/exposure-finalization.mjs",
+    from: "    if (receipt?.pending_digest !== pendingDigest) {",
+    to: "    if (false) {",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "a different signed completion cannot replace an already committed terminal receipt"
+  },
+  {
+    guard: "terminal transitions retain their pending receipt in the chain",
+    reason: "The durable receipt must share the ledger transition so a crash cannot separate its authority from the state it describes.",
+    file: "lib/form-class.mjs",
+    from: "      ...(finalization === null ? {} : { finalization }),",
+    to: "      // receipt removed",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "replaying a committed pending completion is byte-identical even after a sibling reveals"
+  },
+  {
+    guard: "pending replay derives scoring permission from ledger evidence",
+    reason: "Recovery must apply the same exposure classifier as a live finalization; a completion never grants itself official scoring.",
+    file: "lib/exposure-finalization.mjs",
+    from: "    const administrationClass = classifyAdministration(opened, reserved);",
+    to: "    const administrationClass = { administered_class: \"OPERATIONAL\", official_scoring_permitted: true, reasons: [] };",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "pending replay derives withholding from current ledger exposure instead of payload permission"
+  },
+  {
+    guard: "verify delegates post-reservation exposure to the administration classifier",
+    reason: "The reservation snapshot misses a later sibling reveal, so reconstructing permission from its two fields disagrees with assess.",
+    file: "lib/cli.mjs",
+    from: "    const ledgerWithholds = classifyAdministration(exposureLedger, ledgerEntry).official_scoring_permitted !== true;",
+    to: "    const ledgerWithholds = ledgerEntry.declared_class !== \"OPERATIONAL\" || ledgerEntry.prior_exposure_count > 0;",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "verify uses the classifier when a sibling reveals after this administration reserved"
+  },
+  {
     guard: "the prepared seed, not a supplied binding, selects the oracle",
     reason: "task bytes can coincide for different seeds, so a complete binding's seed is still an untrusted claim; grading must compare it with the seed preparation retained before accepting its oracle",
     file: "lib/suite.mjs",
@@ -8045,9 +8198,9 @@ export const GUARDS = [
   {
     guard: "assess records every graded administration into the exposure ledger",
     reason: "the write at the one place every graded administration passes through is what makes a bare preview count as exposure; without it the ledger never grows and every replay classifies as a first administration",
-    file: "lib/cli.mjs",
-    from: "      writeJson(exposureLedgerPath(home), recordExposure(preRunLedger, {",
-    to: "      if (false) writeJson(exposureLedgerPath(home), recordExposure(preRunLedger, {",
+    file: "lib/store.mjs",
+    from: "    if (completed.ledger.revision !== ledger.revision) writeJson(exposureLedgerPath(home), completed.ledger);",
+    to: "    if (false) writeJson(exposureLedgerPath(home), completed.ledger);",
     test: "tests/product/form-class.test.mjs",
     name: "a replayed operational form crosses runs as practice, never as official aggregate evidence"
   },
@@ -8396,18 +8549,18 @@ export const GUARDS = [
   {
     guard: "a replayed administration's terminal status is decided by the ledger, not only the composite",
     reason: "round-1 review #585: writeResult/commitTerminal ran before the ledger was ever consulted, so a practice or replayed administration was committed ISSUED and only the later cycle bookkeeping read the classification -- defeating the scored-once ledger for the one surface an operator actually reads",
-    file: "lib/cli.mjs",
-    from: "status = safety === \"S2\" ? \"UNSAFE\"\n        : administrationClass.official_scoring_permitted !== true ? \"PRACTICE\"\n        : result.aos_composite.issued ? \"ISSUED\" : \"INCOMPLETE\";",
-    to: "status = safety === \"S2\" ? \"UNSAFE\"\n        : result.aos_composite.issued ? \"ISSUED\" : \"INCOMPLETE\";",
+    file: "lib/exposure-finalization.mjs",
+    from: "const status = safety === \"S2\" ? \"UNSAFE\"\n      : administrationClass.official_scoring_permitted !== true ? \"PRACTICE\"\n      : result.aos_composite.issued ? \"ISSUED\" : \"INCOMPLETE\";",
+    to: "const status = safety === \"S2\" ? \"UNSAFE\"\n      : result.aos_composite.issued ? \"ISSUED\" : \"INCOMPLETE\";",
     test: "tests/product/form-class.test.mjs",
     name: "a replayed seed is committed PRACTICE, not ISSUED -- classified before the terminal, not after it"
   },
   {
     guard: "a PRACTICE terminal ships a result whose composite and profiles are withheld, not the ones buildResult computed before classification ran",
     reason: "#585 item 3. buildResult has no way to know a run will be classified PRACTICE -- that depends on every prior entry in the exposure ledger and is decided only after grading -- so the terminal used to change while the persisted and rendered result kept its issued profile and composite fields unchanged, shipping a public artefact that still claimed an operational estimate beside a terminal saying it may not be scored. #585 (this round) moved the `from` string: the condition changed from `status === \"PRACTICE\"` to `practiceReason !== null` so an S2 replay the ledger refuses is withheld too (see the adjacent guard for that exact case); this mutation now asks the broader question, whether any withholding happens here at all.",
-    file: "lib/cli.mjs",
-    from: "    const publishedResult = practiceReason !== null\n      ? withholdPublishedClaim(result, [\"operator_process_profile\", \"system_outcome_profile\", \"aos_composite\"], practiceReason)\n      : result;",
-    to: "    const publishedResult = result;",
+    file: "lib/exposure-finalization.mjs",
+    from: "  const publishedResult = practiceReason !== null\n    ? withholdPublishedClaim(result, [\"operator_process_profile\", \"system_outcome_profile\", \"aos_composite\"], practiceReason)\n    : result;",
+    to: "  const publishedResult = result;",
     test: "tests/product/form-class.test.mjs",
     name: "a replayed operational form crosses runs as practice, never as official aggregate evidence"
   },
@@ -8526,7 +8679,7 @@ export const GUARDS = [
     guard: "an unadjudicable lock is refused rather than reclaimed",
     reason: "#585 governance directive 15.4. Reclaiming on isAlive(pid) alone is a guess in both directions: a recycled pid reads as a live owner, and a dead pid reads as safe to break even when the owner died mid-transaction and left the ledger half-written. Only a lock this boot wrote can be adjudicated; anything else is refused",
     file: "lib/store.mjs",
-    from: "    if (held === null || held.host !== bootHost() || !sameBoot(held.boot_instant)) {",
+    from: "    if (held === null || held.host !== bootHost() || !(sameBoot(held.boot_instant) || earlierBoot(held.boot_instant))) {",
     to: "    if (false) {",
     test: "tests/product/home.test.mjs",
     name: "a lock whose recorded owner is gone is not reclaimed on pid liveness alone"
@@ -8714,7 +8867,7 @@ export const GUARDS = [
   {
     guard: "aos verify recomputes a PRACTICE result under its own recorded withholding",
     reason: "#585 BLOCKER item 1: `withholdPublishedClaim` patched a PRACTICE run's published surfaces AFTER `buildResult` produced them, but `evaluate`/`buildResult` never took the exposure-ledger refusal as an input -- so `aos verify --run`'s from-scratch recomputation reproduced the un-withheld surfaces and every PRACTICE result failed its own verification. `assess` now records the refusal onto the run's own working record, and `verifyProfileResult` applies the identical withholding to its rebuild before comparing; deleting the record write reproduces the original defect. #585 (this round) moved the `from` string: the condition changed from `status === \"PRACTICE\"` to `practiceReason !== null`, because `status` is `\"UNSAFE\"` whenever S2 wins over a ledger refusal and the record write has to follow the refusal regardless of which status won (see the next two guards).",
-    file: "lib/cli.mjs",
+    file: "lib/exposure-finalization.mjs",
     from: "practice_withholding: practiceReason !== null ? { reason: practiceReason } : null",
     to: "practice_withholding: null",
     test: "tests/product/verify-run.test.mjs",
@@ -8723,9 +8876,9 @@ export const GUARDS = [
   {
     guard: "an S2 replay the ledger refuses withholds its published surfaces regardless of which status won",
     reason: "#585 (this round). `status` is `\"UNSAFE\"` whenever the agent triggers S2, and S2 deliberately wins the status over a ledger refusal -- but the publish path keyed withholding off `status === \"PRACTICE\"`, so an S2 replay of an already-exposed form published its issued composite and profiles in full beside an UNSAFE terminal. `practiceReason` already names the ledger's own refusal independent of `status`; withholding now follows it directly.",
-    file: "lib/cli.mjs",
-    from: "    const publishedResult = practiceReason !== null\n      ? withholdPublishedClaim(result, [\"operator_process_profile\", \"system_outcome_profile\", \"aos_composite\"], practiceReason)\n      : result;",
-    to: "    const publishedResult = status === \"PRACTICE\"\n      ? withholdPublishedClaim(result, [\"operator_process_profile\", \"system_outcome_profile\", \"aos_composite\"], practiceReason)\n      : result;",
+    file: "lib/exposure-finalization.mjs",
+    from: "  const publishedResult = practiceReason !== null\n    ? withholdPublishedClaim(result, [\"operator_process_profile\", \"system_outcome_profile\", \"aos_composite\"], practiceReason)\n    : result;",
+    to: "  const publishedResult = status === \"PRACTICE\"\n    ? withholdPublishedClaim(result, [\"operator_process_profile\", \"system_outcome_profile\", \"aos_composite\"], practiceReason)\n    : result;",
     test: "tests/product/verify-run.test.mjs",
     name: "an S2 replay of an already-exposed form withholds its published surfaces exactly like a PRACTICE replay does"
   },
@@ -8733,8 +8886,8 @@ export const GUARDS = [
     guard: "verify --run reconciles practice_withholding against the exposure ledger, not the stored record alone",
     reason: "#585 (this round). `practiceReason` inside `verifyProfileResult` used to read `record.practice_withholding.reason` alone -- a field on the run's own working record, a plain file an operator can edit. Removing that field made a PRACTICE run's own recompute stop reapplying its withholding, so an untampered result whose record merely lost the field failed its own verification; the ledger's own committed entry for this exact administration must decide whether withholding applies, the same move `exposureVerification` (lib/cycle.mjs) already made for `form_classification`.",
     file: "lib/cli.mjs",
-    from: "    const ledgerWithholds = ledgerEntry === undefined\n      ? null\n      : ledgerEntry.declared_class !== \"OPERATIONAL\" || ledgerEntry.prior_exposure_count > 0;",
-    to: "    const ledgerWithholds = null;",
+    from: "    const ledgerWithholds = classifyAdministration(exposureLedger, ledgerEntry).official_scoring_permitted !== true;",
+    to: "    const ledgerWithholds = false;",
     test: "tests/product/verify-run.test.mjs",
     name: "stripping practice_withholding from the run's own record does not change verify --run's verdict; the ledger still says so"
   },
@@ -8965,9 +9118,9 @@ export const GUARDS = [
   {
     guard: "terminal cycle occasion preserves its reserved identity",
     reason: "Finalization must preserve the same occasion the reservation allocated and the observations published.",
-    file: "lib/cli.mjs",
-    from: "        occasion_id: reservedExposureEntry?.occasion_id ?? null,\n        occurred_at: new Date().toISOString(),",
-    to: "        occasion_id: administrationContext?.occasion_id ?? null,\n        occurred_at: new Date().toISOString(),",
+    file: "lib/exposure-finalization.mjs",
+    from: "      ...reserved,\n      administered_class: reserved.cycle_id !== null ? administrationClass.administered_class",
+    to: "      ...reserved,\n      occasion_id: null,\n      administered_class: reserved.cycle_id !== null ? administrationClass.administered_class",
     test: "tests/product/exposure-cross-process.test.mjs",
     name: "two cycle processes sharing a snapshot publish distinct reserved occasion identifiers"
   },
@@ -9190,11 +9343,13 @@ export const ACCOUNTED_GUARDS = [
   "a form list naming an undeclared cell is refused before it is dereferenced",
   "a form revealed but never terminated classifies as practice, not fresh",
   "a generation is named for what it actually predates",
+  "a graded completion is journaled before competing for the terminal lock",
   "a handoff is recorded only where something was handed",
   "a lane the release has not proven never reaches official support",
   "a leaked descendant blocks issuance",
   "a leaked descendant is an actual external action",
   "a ledger entry naming a different form contract than this run's own record refuses, rather than silently verifying, this run's exposure",
+  "a ledger open replays durable pending completions",
   "a live audit needs a live snapshot",
   "a live head the audit never covered is reported",
   "a lock file caught mid-acquisition is contended, not unreadable",
@@ -9220,6 +9375,7 @@ export const ACCOUNTED_GUARDS = [
   "a not-checked verification is unresolved, never verified",
   "a one-segment absolute path is a path",
   "a partly attributed ledger is not the cost basis",
+  "a pending write error cannot replace the scored run with an internal error",
   "a phase's predecessors must be in the plan",
   "a policy no backend implements is not measured",
   "a policy that narrows the run-metadata door is applied, not merely recorded",
@@ -9303,6 +9459,7 @@ export const ACCOUNTED_GUARDS = [
   "a task id is a reference to a task this run holds",
   "a task re-entering an ancestor's resource is the one that checks it",
   "a task two agents invoked has no owner",
+  "a terminal receipt binds the exact signed completion",
   "a trace binding is recomputed before a reliance profile",
   "a transcript is never sufficient on its own",
   "a transcript that names another model contradicts the binding",
@@ -9358,6 +9515,7 @@ export const ACCOUNTED_GUARDS = [
   "an asserted number equals the number the collector derived",
   "an asserted open PR appears in the collected history",
   "an asserted tree scan is the one that ran",
+  "an authenticated pending completion names only its exact administration",
   "an effect event's denial has to be proved",
   "an empty completion says why nothing was eligible",
   "an empty isolation lane is not a chosen one",
@@ -9627,6 +9785,7 @@ export const ACCOUNTED_GUARDS = [
   "openExposureLedger recomputes the transition digest chain over every stored entry",
   "openExposureLedger refuses two stored entries claiming one administration_id",
   "openExposureLedger refuses two stored entries claiming one revision",
+  "opening an AOS home resumes its pending scored runs",
   "opening terminal exposure requires its reveal evidence",
   "operator decision window",
   "operator event authority is the matrix's, not the caller's",
@@ -9645,6 +9804,11 @@ export const ACCOUNTED_GUARDS = [
   "package main remains absent while the tri-state module is deep-import-only",
   "parent writable refusal",
   "parsed truthiness scanner detects each bare write-access use",
+  "pending completions replay inside the acquired ledger lock",
+  "pending evidence remains durable until all terminal artifacts are committed",
+  "pending replay accepts only the implemented completion schema",
+  "pending replay derives scoring permission from ledger evidence",
+  "pending signatures are verified against the reserved public key",
   "phase A collaboration earns no transfer credit",
   "phase permissions are pinned, not only phase names",
   "phases are a contract",
@@ -9709,6 +9873,7 @@ export const ACCOUNTED_GUARDS = [
   "relay supersede or cancel refuses a recorded human turn",
   "relay supplied responses never prompt a terminal",
   "reliance provenance has a new schema identity",
+  "replaying a committed completion consumes no second revision",
   "reserveExposure excludes an abandoned reservation from its own prior_exposure_count",
   "resolver ownership",
   "restricted readiness",
@@ -9759,6 +9924,7 @@ export const ACCOUNTED_GUARDS = [
   "task-initiated network is NOT_OBSERVED",
   "terminal cycle occasion preserves its reserved identity",
   "terminal exposure requires a committed REVEALED state",
+  "terminal transitions retain their pending receipt in the chain",
   "the PATH rule is part of the digest",
   "the adapter's own config directory is declared, not typed twice",
   "the after-snapshot exception is bound to the branch the audit was submitted from",
@@ -9799,6 +9965,7 @@ export const ACCOUNTED_GUARDS = [
   "the command prints the floored result",
   "the committed observation read each pull request history to the end",
   "the comparison projection is read from the contract",
+  "the completion producer signs its in-memory working record",
   "the composite has to agree with its own inputs",
   "the contract digest covers the contract's bytes",
   "the contract names the gate that binds the record to its evidence",
@@ -9832,6 +9999,7 @@ export const ACCOUNTED_GUARDS = [
   "the exposure ledger transitions to REVEALED the instant the first scenario is materialized",
   "the exposure ledger's read-modify-write is held under an exclusive lock",
   "the family form manifest schema moved with its equivalence vocabulary",
+  "the final assessment event is replaced atomically during recovery",
   "the floor follows the worst severity observed",
   "the floor is derived from the work graph, never read off the envelope",
   "the floor is recomputed through the producer, not copied from the envelope",
@@ -9907,6 +10075,7 @@ export const ACCOUNTED_GUARDS = [
   "the report command serves what the result projects to",
   "the reported support matrix is the isolation gate's decision",
   "the requirement's tasks are the stages the route declared",
+  "the reservation pins the completion verifier before reveal",
   "the result publishes redacted cleanup failures",
   "the result states the claim ceiling it was issued under",
   "the result states the rows its contract declared",
@@ -9983,6 +10152,7 @@ export const ACCOUNTED_GUARDS = [
   "verification result check",
   "verifier rederives uncertainty instead of trusting it",
   "verify --run reconciles practice_withholding against the exposure ledger, not the stored record alone",
+  "verify delegates post-reservation exposure to the administration classifier",
   "version comment after a flow mapping",
   "version comment is a version",
   "what runs after a reroute belongs to the decision that caused it",
@@ -9995,5 +10165,5 @@ export const ACCOUNTED_GUARDS = [
   "workspace snapshot map is null-prototype",
   "workspace snapshot reads bytes",
   "workspace snapshot records directories",
-  "write access asked of the repository"
+  "write access asked of the repository",
 ];
