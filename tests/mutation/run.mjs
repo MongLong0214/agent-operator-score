@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { GUARDS } from "./manifest.mjs";
+import { mutationSummary } from "./coverage.mjs";
 import { sha256Bytes } from "../../lib/digest.mjs";
 
 // Breaks each named guard in turn and reports whether the test that claims to hold it notices.
@@ -76,7 +77,7 @@ try {
     }
     const path = join(worktree, entry.file);
     const original = readFileSync(path, "utf8");
-    if (!original.includes(entry.from)) {
+    if (original.split(entry.from).length !== 2) {
       // Should be impossible: mutation-manifest.test.mjs fails the ordinary suite for this. It is
       // still reported as its own outcome, because counting it as a kill would be the one bug that
       // makes this whole file lie in the reassuring direction.
@@ -84,6 +85,19 @@ try {
       continue;
     }
     writeFileSync(path, original.replace(entry.from, entry.to));
+    // JSON and prose guards are not JavaScript modules. Parse JSON as JSON; prose is exercised
+    // by its witness. JavaScript mutants must pass node --check before a test can earn a kill.
+    const syntax = entry.file.endsWith(".mjs")
+      ? run("node", ["--check", path])
+      : entry.file.endsWith(".json")
+        ? run("node", ["--input-type=module", "-e", "import {readFileSync} from 'node:fs'; JSON.parse(readFileSync(process.argv[1], 'utf8'));", path])
+        : { status: 0 };
+    if (syntax.status !== 0) {
+      writeFileSync(path, original);
+      results.push({ ...entry, outcome: "INVALID-MUTANT", failing: [], noise: syntax.stderr });
+      console.log(`INVALID-MUTANT ${entry.guard}`);
+      continue;
+    }
     // The reporter is named, not inherited. This file reads TAP, and Node's default reporter for a
     // non-terminal changed between the version this is developed on and the one CI runs, so every
     // mutation came back with no `not ok` lines at all and was reported as a crash. Fifteen guards
@@ -123,7 +137,7 @@ try {
 }
 
 const killed = results.filter((entry) => entry.outcome === "killed");
-console.log(`\n${killed.length}/${results.length} guards are load-bearing.`);
+for (const line of mutationSummary(results)) console.log(line);
 
 // What this lane measured, written down so the lane that cannot measure it can require it.
 //
@@ -158,6 +172,8 @@ const fingerprint = (entry) => sha256Bytes(Buffer.from(JSON.stringify([
 const ledger = existsSync(ledgerPath) ? JSON.parse(readFileSync(ledgerPath, "utf8")) : { schema: LEDGER_SCHEMA, measured: {} };
 for (const entry of results.filter((one) => one.outcome === "killed")) {
   ledger.measured[entry.guard] = {
+    ...(entry.pending_issue ? { pending_issue: entry.pending_issue } : {}),
+    ...(entry.reachable_from ? { reachable_from: entry.reachable_from } : {}),
     platform: process.platform,
     fingerprint: fingerprint(entry),
     // Provenance for a reader, not a credential: see the note above.

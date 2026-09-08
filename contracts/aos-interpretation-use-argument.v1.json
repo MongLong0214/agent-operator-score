@@ -1,6 +1,6 @@
 {
   "schema": "aos-interpretation-use-argument.v1",
-  "contract_version": "1.9.0",
+  "contract_version": "1.10.0",
   "claim_stages": [
     {
       "stage_id": "RUN_DIAGNOSTIC",
@@ -99,7 +99,10 @@
         "interface",
         "model",
         "runtime",
-        "harness"
+        "harness",
+        "platform",
+        "domain_familiarity",
+        "administration_version"
       ],
       "statement": "Two results whose declared level differs on any of these facets may not be compared directly until measurement-invariance or DIF evidence supports the comparison.",
       "status": "UNESTABLISHED",

@@ -16,6 +16,125 @@
 
 export const GUARDS = [
   {
+    guard: "release-required platform cannot disappear from the comparison domain",
+    reason: "Round 13: release-required platform cannot disappear from the comparison domain. The named behavioral witness distinguishes the broken outcome from the preserved outcome.",
+    file: "lib/form-class.mjs",
+    from: "export const INVARIANCE_FACETS = Object.freeze([...interpretationUse.comparability_rules.find((rule) => rule.rule_id === \"invariance-required\").facets]);",
+    to: "export const INVARIANCE_FACETS = Object.freeze([...interpretationUse.comparability_rules.find((rule) => rule.rule_id === \"invariance-required\").facets].filter((facet) => facet !== \"platform\"));",
+    test: "tests/product/form-class.test.mjs",
+    name: "every cross-facet comparison is withheld until invariance evidence exists, for each declared facet",
+    pending_issue: "#563, #586"
+  },
+  {
+    guard: "the exposure boundary supplies recovery for every refusal",
+    reason: "Round 13: the exposure boundary supplies recovery for every refusal. The named behavioral witness distinguishes the broken outcome from the preserved outcome.",
+    file: "lib/store.mjs",
+    from: "    throw new ExposureAccessError(error, home);",
+    to: "    throw error;",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "every exposure access failure carries the shared recovery entry even for an unnamed future fault"
+  },
+  {
+    guard: "exposure repair requires acknowledged stopped writers",
+    reason: "Round 13: exposure repair requires acknowledged stopped writers. The named behavioral witness distinguishes the broken outcome from the preserved outcome.",
+    file: "lib/store.mjs",
+    from: "if (writersStopped !== true) throw new Error",
+    to: "if (false) throw new Error",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "foreign-host exposure contention preserves the scored completion and names an executable recovery"
+  },
+  {
+    guard: "exposure repair preserves a live recorded owner",
+    reason: "Round 13: exposure repair preserves a live recorded owner. The named behavioral witness distinguishes the broken outcome from the preserved outcome.",
+    file: "lib/store.mjs",
+    from: "if (Number.isInteger(held?.pid) && isAlive(held.pid)) throw new Error",
+    to: "if (false) throw new Error",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "acknowledged exposure repair still refuses a live owner and preserves every artifact"
+  },
+  {
+    guard: "the named exposure repair command actually recovers the pending completion",
+    reason: "Round 13: the named exposure repair command actually recovers the pending completion. The named behavioral witness distinguishes the broken outcome from the preserved outcome.",
+    file: "lib/cli.mjs",
+    from: "    const repaired = repairExposureLock(home, { writersStopped: getOption(options, \"writers-stopped\", false) === true });",
+    to: "    const repaired = { preserved: null };",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "foreign-host exposure contention preserves the scored completion and names an executable recovery"
+  },
+  {
+    guard: "assess preserves context for every finalization refusal",
+    reason: "Round 13: assess preserves context for every finalization refusal. The named behavioral witness distinguishes the broken outcome from the preserved outcome.",
+    file: "lib/cli.mjs",
+    from: "      // The entire publication phase has three outcomes: published, retained pending, or",
+    to: "      if (!error.message.startsWith(\"AOS_EXPOSURE_LEDGER_LOCKED\")) throw error;\n      // The entire publication phase has three outcomes: published, retained pending, or",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "foreign-host exposure contention preserves the scored completion and names an executable recovery"
+  },
+  {
+    guard: "quarantined publication is checked before reading its absent artifacts",
+    reason: "Round 13: quarantined publication is checked before reading its absent artifacts. The named behavioral witness distinguishes the broken outcome from the preserved outcome.",
+    file: "lib/cli.mjs",
+    from: "if (!existsSync(runPaths(home, runId).result) || !existsSync(runPaths(home, runId).terminal)) {",
+    to: "if (false) {",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "assess publication names its own quarantined completion instead of reading missing artifacts"
+  },
+  {
+    guard: "both lock acquisition attempts classify publication contention",
+    reason: "Round 13: both lock acquisition attempts classify publication contention. The named behavioral witness distinguishes the broken outcome from the preserved outcome.",
+    file: "lib/store.mjs",
+    from: "    const contention = new Error(buildLockedError(\"acquiring\"), { cause: error });",
+    to: "    const contention = error;",
+    test: "tests/product/home.test.mjs",
+    name: "a contender winning stale-lock reclamation is named contention for both resources"
+  },
+  {
+    guard: "shared history excludes unrevealed same-form reservations",
+    reason: "Round 13: shared history excludes unrevealed same-form reservations. The named behavioral witness distinguishes the broken outcome from the preserved outcome.",
+    file: "lib/form-class.mjs",
+    from: "prior_same_form_id_count: administeredEntries(opened.entries).filter",
+    to: "prior_same_form_id_count: opened.entries.filter",
+    test: "tests/product/form-class.test.mjs",
+    name: "an abandoned reservation does not durably inflate the next reservation's own prior_exposure_count",
+    reachable_from: ["lib/cli.mjs"]
+  },
+  {
+    guard: "all cycle surfaces name counted exposure-unverified seeds",
+    reason: "Round 13: all cycle surfaces name counted exposure-unverified seeds. The named behavioral witness distinguishes the broken outcome from the preserved outcome.",
+    file: "lib/cycle.mjs",
+    from: "...(decision?.valid_runs_exposure_unverified ?? []).map((seed) =>",
+    to: "...([]).map((seed) =>",
+    test: "tests/product/exposure-finalization.test.mjs",
+    name: "cycle text and dashboard name the same counted seeds whose exposure was never verified"
+  },
+  {
+    guard: "a reveal-spent cycle names its bounded replacement command",
+    reason: "Round 13: a reveal-spent cycle names its bounded replacement command. The named behavioral witness distinguishes the broken outcome from the preserved outcome.",
+    file: "lib/cycle.mjs",
+    from: ".filter((entry) => entry.reason === \"AOS_FORM_EXPOSED_WITHOUT_TERMINAL\")",
+    to: ".filter((entry) => false)",
+    test: "tests/product/exposure-cross-process.test.mjs",
+    name: "25.3: a hard crash after the reveal commit, before terminal, refuses the same form to a later attempt with the named blocker"
+  },
+  {
+    guard: "mutation totals separate pending library witnesses from command coverage",
+    reason: "Round 13: mutation totals separate pending library witnesses from command coverage. The named behavioral witness distinguishes the broken outcome from the preserved outcome.",
+    file: "tests/mutation/coverage.mjs",
+    from: "results.filter((entry) => !entry.pending_issue)",
+    to: "results",
+    test: "tests/product/mutation-manifest.test.mjs",
+    name: "mutation totals keep pending library witnesses out of command coverage"
+  },
+  {
+    guard: "every verification selector alternative must still select a test",
+    reason: "Round 13: every verification selector alternative must still select a test. The named behavioral witness distinguishes the broken outcome from the preserved outcome.",
+    file: "package.json",
+    from: "same seed produces|same form replays|generator reads nothing",
+    to: "retired selector witness|same form replays|generator reads nothing",
+    test: "tests/product/verification-scripts.test.mjs",
+    name: "every verification script pattern alternative selects an actual test in its own files"
+  },
+  {
     guard: "cycle completion identity survives every exit before bookkeeping",
     reason: "The durable reservation connects the cycle to its graded administration even when finalization or cycle publication returns an error.",
     file: "lib/cli.mjs",
@@ -115,6 +234,7 @@ export const GUARDS = [
     name: "exposure verification requires an opened ledger even when a raw copy is internally coherent"
   },
   {
+    pending_issue: "#563, #586",
     guard: "form class definitions are derived from the declaring contract",
     reason: "The live registry must follow the contract definitions, including the AOS home scope of operational exposure.",
     file: "lib/form-class.mjs",
@@ -124,6 +244,7 @@ export const GUARDS = [
     name: "form class identities and definitions come from the declaring task model"
   },
   {
+    pending_issue: "#563, #586",
     guard: "invariance facets include every facet declared by the contract",
     reason: "A separate support table must not omit a contract facet such as harness while the two authorities disagree silently.",
     file: "lib/form-class.mjs",
@@ -280,8 +401,8 @@ export const GUARDS = [
     guard: "a ledger open replays durable pending completions",
     reason: "The next reader must finish the durable terminal transition instead of leaving a graded run stranded as REVEALED.",
     file: "lib/store.mjs",
-    from: "  recoverExposureFinalizations(home);\n  return rawExposureLedger(home);",
-    to: "  return rawExposureLedger(home);",
+    from: "    recoverExposureFinalizations(home);\n    const ledger = rawExposureLedger(home);",
+    to: "    const ledger = rawExposureLedger(home);",
     test: "tests/product/exposure-finalization.test.mjs",
     name: "a graded administration survives a held finalize lock and replays on the next ledger open"
   },
@@ -340,6 +461,7 @@ export const GUARDS = [
     name: "a different signed completion cannot replace an already committed terminal receipt"
   },
   {
+    reachable_from: ["lib/cli.mjs", "lib/store.mjs", "lib/cycle.mjs"],
     guard: "terminal transitions retain their pending receipt in the chain",
     reason: "The durable receipt must share the ledger transition so a crash cannot separate its authority from the state it describes.",
     file: "lib/form-class.mjs",
@@ -8376,6 +8498,7 @@ export const GUARDS = [
     name: "no population data permits PROFILE_BOUND but leaves uncertainty and generalizability withheld"
   },
   {
+    reachable_from: ["lib/cli.mjs", "lib/store.mjs", "lib/cycle.mjs"],
     guard: "a prior exposure reclassifies an operational administration as practice",
     reason: "the scored-once policy is this branch: an OPERATIONAL administration of a form the ledger has already seen must become practice, or an abandoned-and-reopened cycle scores the same form twice",
     file: "lib/form-class.mjs",
@@ -8412,6 +8535,7 @@ export const GUARDS = [
     name: "a replayed operational form crosses runs as practice, never as official aggregate evidence"
   },
   {
+    pending_issue: "#563, #586",
     guard: "linking without empirical evidence stays unestablished",
     reason: "the null initialisation is the honest default the whole scaffold rests on; started at LINKED, two forms that were merely generated differently ship an equivalence nobody measured",
     file: "lib/form-class.mjs",
@@ -8421,6 +8545,7 @@ export const GUARDS = [
     name: "different seeds alone never link two forms: equivalence stays unestablished with the missing evidence named"
   },
   {
+    pending_issue: "#563, #586",
     guard: "a small linking sample is not a smaller yes",
     reason: "without the sample floor a two-response study links two forms; the branch must divert an inadequate sample to null before any delta is compared to a threshold",
     file: "lib/form-class.mjs",
@@ -8430,6 +8555,7 @@ export const GUARDS = [
     name: "a small linking sample never passes: the decision stays null and names the floor"
   },
   {
+    pending_issue: "#563, #586",
     guard: "a cross-facet comparison without invariance evidence is withheld",
     reason: "this return is the withholding: without it a translated or re-expressed form compares as if invariance had been shown, which is the exact overclaim the DIF gate exists to stop",
     file: "lib/form-class.mjs",
@@ -8439,6 +8565,7 @@ export const GUARDS = [
     name: "every cross-facet comparison is withheld until invariance evidence exists, for each declared facet"
   },
   {
+    pending_issue: "#563, #586",
     guard: "an undeclared facet level does not compare as equal",
     reason: "two silences are equal as strings and incomparable as facts; without this branch two undeclared levels fall through to the same-level case and compare as PERMITTED",
     file: "lib/form-class.mjs",
@@ -8820,6 +8947,7 @@ export const GUARDS = [
     name: "a stored classification that disagrees with the ledger's own verdict is refused, never trusted over it"
   },
   {
+    pending_issue: "#563, #586",
     guard: "assessTransfer requires an actually observed phase-B task, not merely a nonempty tasks array, before calling phase B administered",
     reason: "#585 item 1 (round 2). tasks: [{}] cleared the old tasks.length > 0 check and reported OBSERVED / SINGLE_OCCASION with all four transfer answers still null, because the array held a slot with none of the fields any output actually reads (relatedness, delayed, passed, independent_verification_observed are all undefined on {})",
     file: "lib/form-class.mjs",
@@ -8829,6 +8957,7 @@ export const GUARDS = [
     name: "a phase B task array holding only empty objects is not an observation either: status stays UNESTABLISHED"
   },
   {
+    reachable_from: ["lib/cli.mjs", "lib/store.mjs", "lib/cycle.mjs"],
     guard: "a malformed exposure ledger entry refuses the ledger instead of vanishing from it",
     reason: "priorEntries filters on form_contract_digest, so an entry that lost or malformed that field silently fell out of every filter and read as a form never administered, permitting an already-exposed form a second official scoring. #585 round 3 extended this same condition to also require revision and chain_digest, which is why the `from` string below now spans those checks too -- the guard is unchanged, the line it mutates grew",
     file: "lib/form-class.mjs",
@@ -8841,8 +8970,8 @@ export const GUARDS = [
     guard: "the exposure ledger's read-modify-write is held under an exclusive lock",
     reason: "aos assess reads, classifies and rewrites the whole ledger file on every administration; two processes racing that unlocked whole-file update can each write back a ledger missing the other's administration",
     file: "lib/store.mjs",
-    from: "export function withExposureLedgerLock(home, body, { report = reportExposureRecovery } = {}) {\n  return withLock(\n    join(paths(home).root, \"exposure-ledger.lock\"),",
-    to: "export function withExposureLedgerLock(home, body, { report = reportExposureRecovery } = {}) {\n  if (true) return body();\n  return withLock(\n    join(paths(home).root, \"exposure-ledger.lock\"),",
+    from: "export function withExposureLedgerLock(home, body, { report = reportExposureRecovery } = {}) {\n  return exposureAccess(home, () => withLock(",
+    to: "export function withExposureLedgerLock(home, body, { report = reportExposureRecovery } = {}) {\n  if (true) return body();\n  return exposureAccess(home, () => withLock(",
     test: "tests/product/home.test.mjs",
     name: "two writers cannot hold the exposure ledger lock"
   },
@@ -8856,6 +8985,7 @@ export const GUARDS = [
     name: "recordRun does not crash on a refusal decided before exposure classification runs"
   },
   {
+    pending_issue: "#563, #586",
     guard: "linkForms enforces the anchor minimum the method interface declares, not a second literal",
     reason: "the method declares minimum_anchor_count: 3 but the guard checked only for zero anchors, so one anchor read as a complete set and reached LINKED, removing the claim-stage ceiling on evidence the method never certified as enough. #585: the floor now counts distinct anchors (`distinctAnchorCount`), not the raw array, which is why the `from` string names that variable instead of `anchorIds.length` -- see the next guard for the duplicate-anchor defect that made this necessary. #585 NIT item 4 moved the floor's source from the fixed `LINKING_METHOD_INTERFACE` to `(methodContract ?? LINKING_METHOD_INTERFACE)` -- the same fallback the drift threshold already used -- so the `from` string carries that too",
     file: "lib/form-class.mjs",
@@ -8865,6 +8995,7 @@ export const GUARDS = [
     name: "fewer anchors than the method declares never links, whatever the samples and deltas say"
   },
   {
+    pending_issue: "#563, #586",
     guard: "comparisonGate requires the DIF report's own declared inputs, not only its verdict",
     reason: "the report's interface declares anchor_opportunity_ids, responses_per_group and per_anchor_statistics, and comparisonGate checked none of them, so a report naming only its schema, sample counts and dif_detected: false permitted the strongest comparison the gate can make. #585: the completeness check grew further to also require each response be an actual observation (not a null slot) and each anchor's statistics be an actual non-empty computed record (not an empty object satisfying hasOwnProperty alone) -- see the next guard for that exact defect",
     file: "lib/form-class.mjs",
@@ -8910,6 +9041,7 @@ export const GUARDS = [
     name: "the reserved exposure entry exists on disk before prepareScenario reveals any scenario content"
   },
   {
+    reachable_from: ["lib/cli.mjs", "lib/store.mjs", "lib/cycle.mjs"],
     guard: "recordExposure finalizes onto the reserved entry instead of appending a second one",
     reason: "without this branch a run that reserved before revealing still falls through to the bare-append path at finalize time, leaving two ledger rows for one administration -- exactly the double-counting the reservation exists to prevent, reproduced by the mechanism meant to close it",
     file: "lib/form-class.mjs",
@@ -8919,6 +9051,7 @@ export const GUARDS = [
     name: "the terminal transition updates the reserved entry in place; exactly one entry per administration"
   },
   {
+    reachable_from: ["lib/cli.mjs", "lib/store.mjs", "lib/cycle.mjs"],
     guard: "a form revealed but never terminated classifies as practice, not fresh",
     reason: "#585 round 2 governing directive I4: a RESERVED or REVEALED entry with no terminal is exposure a crash cannot erase, so without this branch a second administration attempt of the same form_contract_digest falls through to OPERATIONAL and the agent is scored on a form it has already seen",
     file: "lib/form-class.mjs",
@@ -8937,6 +9070,7 @@ export const GUARDS = [
     name: "a v0.2 result whose exposure the ledger never verified is refused from the official aggregate"
   },
   {
+    pending_issue: "#563, #586",
     guard: "linkForms refuses to LINK on an unregistered method or method_version",
     reason: "directive 22.4: any non-empty method and method_version used to be accepted as a real calibration, so a caller could name a method nobody built a contract for and still reach LINKED; without this check an unregistered pair evaluates anchors, samples and drift as though a certified method had produced them",
     file: "lib/form-class.mjs",
@@ -8946,6 +9080,7 @@ export const GUARDS = [
     name: "an unregistered linking method never reaches LINKED, whatever the rest of the evidence says"
   },
   {
+    pending_issue: "#563, #586",
     guard: "linkForms's drift threshold is read from the registered method, never a caller-supplied one",
     reason: "directive 22.5: a caller-supplied drift_thresholds field used to override the registered method's own threshold, so passing maximum_anchor_delta: 999 could turn a genuinely drifting comparison into LINKED; the registered method's contract is the only source a real loosening can come from",
     file: "lib/form-class.mjs",
@@ -8955,6 +9090,7 @@ export const GUARDS = [
     name: "a caller-supplied drift threshold is ignored in both directions; only the registered threshold decides"
   },
   {
+    reachable_from: ["lib/cli.mjs", "lib/store.mjs", "lib/cycle.mjs"],
     guard: "openExposureLedger refuses two stored entries claiming one administration_id",
     reason: "#585 round 3, governing directive 19 item 4: two entries sharing one administration_id would let markRevealed and recordExposure's update path silently transition whichever findIndex meets first; without this check a duplicated administration_id -- even inside an otherwise internally consistent transition digest chain, which does not by itself change when an id is merely repeated -- is read back as two ordinary rows",
     file: "lib/form-class.mjs",
@@ -8964,6 +9100,7 @@ export const GUARDS = [
     name: "two stored exposure entries sharing one administration_id are refused, even with an internally consistent chain"
   },
   {
+    reachable_from: ["lib/cli.mjs", "lib/store.mjs", "lib/cycle.mjs"],
     guard: "openExposureLedger refuses two stored entries claiming one revision",
     reason: "#585 round 3, governing directive 19 item 1: each committed transition consumes exactly one ledger revision, so two entries sharing a revision means some transition was never really applied to the row that claims it; without this check a duplicated revision is silently accepted, even though the gap/decrease check below it happens to also refuse most such ledgers -- with a different message, which is what the witness test's specific assertion catches",
     file: "lib/form-class.mjs",
@@ -8973,6 +9110,7 @@ export const GUARDS = [
     name: "duplicating a revision across two stored exposure entries is refused"
   },
   {
+    reachable_from: ["lib/cli.mjs", "lib/store.mjs", "lib/cycle.mjs"],
     guard: "openExposureLedger recomputes the transition digest chain over every stored entry",
     reason: "#585 round 3, governing directive 19 item 2: an entry's chain_digest folds in the one before it, so a field altered inside an already-committed entry, a reordering, a deleted middle entry or an inserted one all change what this recomputation produces; without this per-entry comparison the only thing left to notice a mid-sequence tamper is the head digest binding, which does independently catch it here (any change cascades to the end) but with a different message -- the reason the witness test asserts the chain-specific text rather than the generic corrupt prefix",
     file: "lib/form-class.mjs",
@@ -8982,6 +9120,7 @@ export const GUARDS = [
     name: "tampering a committed exposure entry's form contract digest breaks the transition digest chain"
   },
   {
+    reachable_from: ["lib/cli.mjs", "lib/store.mjs", "lib/cycle.mjs"],
     guard: "openExposureLedger binds the ledger to its last entry's digest as head_digest",
     reason: "#585 round 3, governing directive 19 item 3: the per-entry chain alone does not catch a truncated tail whose revision counter was patched down to match what remains -- the remaining prefix is a genuinely valid shorter chain on its own -- so head_digest, bound to the last entry actually on record, is the check that still refuses it",
     file: "lib/form-class.mjs",
@@ -8991,6 +9130,7 @@ export const GUARDS = [
     name: "truncating the tail of the exposure ledger is refused even if the revision counter is patched to match"
   },
   {
+    pending_issue: "#563, #586",
     guard: "practiceAnalysis excludes an abandoned reservation from same-form exposure",
     reason: "a RESERVED row whose content was never revealed is not an administration -- classifyAdministration already excludes it, but practiceAnalysis counted it anyway, making a nonempty row set out of a form nobody was ever shown and turning practice_contaminated false / generalizability_evidence_eligible true for an administration that never occurred",
     file: "lib/form-class.mjs",
@@ -9000,6 +9140,7 @@ export const GUARDS = [
     name: "an abandoned reservation is not counted as an administration by practiceAnalysis"
   },
   {
+    pending_issue: "#563, #586",
     guard: "formLifecycleState excludes an abandoned reservation from retirement",
     reason: "the same abandoned-reservation row that practiceAnalysis and classifyAdministration exclude must not retire a form here either, or one ledger disagrees with itself: OPERATIONAL and officially permitted from classifyAdministration's side, RETIRED_FROM_OFFICIAL_USE with exposure_count 1 from this API's side, over the exact same row",
     file: "lib/form-class.mjs",
@@ -9009,6 +9150,7 @@ export const GUARDS = [
     name: "an abandoned reservation does not retire the form in formLifecycleState either"
   },
   {
+    pending_issue: "#563, #586",
     guard: "linkForms counts distinct anchors, not raw array length, against the declared minimum",
     reason: "the anchors this scaffold actually reports (anchor_ids: sortedUnique(anchorIds)) are deduplicated, so checking the raw array length let a caller repeat one shared anchor up to the declared minimum, satisfy the floor on a single distinct anchor, and reach LINKED on evidence the registered method never certified as enough",
     file: "lib/form-class.mjs",
@@ -9018,6 +9160,7 @@ export const GUARDS = [
     name: "repeating one shared anchor to reach the count never satisfies the anchor minimum"
   },
   {
+    pending_issue: "#563, #586",
     guard: "an empty phase B task array does not read as an observed transfer occasion",
     reason: "an empty tasks array is presence of the phase B container, not evidence in it -- transferDecision already answers null for every output on an empty array, but status/uncertainty keyed off whether phase_b was non-null at all, so this exact shape reported OBSERVED with uncertainty SINGLE_OCCASION while all four transfer answers stayed null",
     file: "lib/form-class.mjs",
@@ -9027,6 +9170,7 @@ export const GUARDS = [
     name: "an empty phase B task array is not an observation: every output stays null and the status stays UNESTABLISHED"
   },
   {
+    pending_issue: "#563, #586",
     guard: "comparisonGate requires each DIF response to be an actual observation, not a null slot",
     reason: "the length check on responses_per_group[level] counted array slots, not observations, so thirty null entries per group satisfied it and a caller-supplied dif_detected:false then permitted the strongest comparison the gate can make on responses nobody actually recorded",
     file: "lib/form-class.mjs",
@@ -9036,6 +9180,7 @@ export const GUARDS = [
     name: "DIF findings stay unauthenticated in both directions and incomplete studies stay withheld"
   },
   {
+    pending_issue: "#563, #586",
     guard: "comparisonGate requires each anchor's per-anchor statistics to be an actual non-empty record",
     reason: "the completeness check only asked whether each anchor had a property in per_anchor_statistics, so an empty {} per anchor satisfied hasOwnProperty alone and a caller-supplied dif_detected:false then permitted the comparison on statistics nobody actually computed",
     file: "lib/form-class.mjs",
@@ -9090,20 +9235,22 @@ export const GUARDS = [
     name: "stripping practice_withholding from the run's own record does not change verify --run's verdict; the ledger still says so"
   },
   {
+    reachable_from: ["lib/cli.mjs", "lib/store.mjs", "lib/cycle.mjs"],
     guard: "reserveExposure excludes an abandoned reservation from its own prior_exposure_count",
     reason: "#585 BLOCKER item 3, fourth site: `reserveExposure` computed `prior_exposure_count` from the unfiltered prior rows, so a RESERVED-never-revealed row was durably recorded as prior exposure on the very next reservation for the same form, forever -- disagreeing with `classifyAdministration`'s own exclusion of the identical row. Routed through the same `administeredEntries` predicate the other three sites already use.",
     file: "lib/form-class.mjs",
-    from: "  // at reservation time and never recomputed.\n  const priorAdministered = administeredEntries(prior);",
-    to: "  // at reservation time and never recomputed.\n  const priorAdministered = prior;",
+    from: "    duration_ms: null,\n    ...exposureHistory(opened, formContractDigest, formId, occurred)",
+    to: "    duration_ms: null,\n    ...exposureHistory(opened, formContractDigest, formId, occurred),\n    prior_exposure_count: priorEntries(opened, formContractDigest).length",
     test: "tests/product/form-class.test.mjs",
     name: "an abandoned reservation does not durably inflate the next reservation's own prior_exposure_count"
   },
   {
+    reachable_from: ["lib/cli.mjs", "lib/store.mjs", "lib/cycle.mjs"],
     guard: "recordExposure's bare-append path excludes an abandoned reservation from prior_exposure_count too",
     reason: "#585 BLOCKER item 3, fifth site found while auditing every unfiltered reader of priorEntries: `recordExposure`'s direct, one-shot append path (no reservation) is a second constructor for the same `prior_exposure_count` field and carried the identical unfiltered count. Routed through the same shared `administeredEntries` predicate rather than a second copy of the rule.",
     file: "lib/form-class.mjs",
-    from: "  // reservation from prior exposure -- via the one shared predicate, not a second copy of the rule.\n  const priorAdministered = administeredEntries(prior);",
-    to: "  // reservation from prior exposure -- via the one shared predicate, not a second copy of the rule.\n  const priorAdministered = prior;",
+    from: "    duration_ms: typeof durationMs === \"number\" && Number.isFinite(durationMs) ? durationMs : null,\n    ...exposureHistory(opened, formContractDigest, formId, occurred)",
+    to: "    duration_ms: typeof durationMs === \"number\" && Number.isFinite(durationMs) ? durationMs : null,\n    ...exposureHistory(opened, formContractDigest, formId, occurred),\n    prior_exposure_count: priorEntries(opened, formContractDigest).length",
     test: "tests/product/form-class.test.mjs",
     name: "an abandoned reservation does not durably inflate the next reservation's own prior_exposure_count"
   },
@@ -9117,6 +9264,7 @@ export const GUARDS = [
     name: "a run lock in the older bare-pid format is broken, not refused under the ledger's answer"
   },
   {
+    pending_issue: "#563, #586",
     // #585 (this round). This guard's name is inherited: `isRealLinkingScaffold` (the predicate
     // this name originally described) is deleted outright, and `tests/mutation/measured.json`
     // cannot be edited to drop or rename a measured guard, so the name that already has a
@@ -9133,6 +9281,7 @@ export const GUARDS = [
     name: "caller linking findings stay unauthenticated in both directions; disjoint anchors still fail"
   },
   {
+    pending_issue: "#563, #586",
     guard: "a form bank record's equivalence status is UNESTABLISHED by construction",
     reason: "#585 (this round). `isRealLinkingScaffold`, the predicate this field used to trust, is deleted: it grew one more required field every review round and a forgery satisfying the new field followed every time. `equivalence_status` is no longer computed from `linking` at all -- it is the literal `\"UNESTABLISHED\"` -- so there is no predicate left to defeat.",
     file: "lib/form-class.mjs",
@@ -9142,6 +9291,7 @@ export const GUARDS = [
     name: "a form bank record's equivalence status is closed by construction: a perfect linking claim still yields UNESTABLISHED"
   },
   {
+    pending_issue: "#563, #586",
     guard: "scoreChangeClaim requires a real linking scaffold, not a self-authored object naming LINKED",
     reason: "#585 (this round). The `covers && isRealLinkingScaffold(...) && ...` branch that used to promote this claim is deleted outright, not merely re-guarded: `linkForms` itself can no longer produce a LINKED-shaped scaffold, so trusting one here -- real or hand-authored -- would only ever be trusting a caller's own say-so. This is the return this function always takes now for two distinct, unreplayed forms; what `linking` claimed is recorded on `unauthenticated_claim`, never promoted to `interpretation`.",
     file: "lib/form-class.mjs",
@@ -9151,6 +9301,7 @@ export const GUARDS = [
     name: "raw improvement is never marked as skill gain: replay suggests memorisation, and closed by construction no linking claim ever observes a change"
   },
   {
+    pending_issue: "#563, #586",
     guard: "comparisonGate withholds every cross-facet comparison by construction",
     reason: "#585 (this round). `isRealLinkingScaffold` is deleted outright, so nothing in this file checks a decision or a relation to a form any more; this name is repurposed (see the comment on the first guard of this round's batch) for `comparisonGate`'s own closed branch -- the complete, well-formed DIF report every declared input present, adequate samples per group, no detected differential functioning -- reaches. AOS did not run the study, so it stays WITHHELD however completely the report is shaped; the report's own reported verdict is recorded on `unauthenticated_claim` instead of authorizing `comparison`.",
     file: "lib/form-class.mjs",
@@ -9160,6 +9311,7 @@ export const GUARDS = [
     name: "DIF findings stay unauthenticated in both directions and incomplete studies stay withheld"
   },
   {
+    pending_issue: "#563, #586",
     guard: "phase A collaboration earns no transfer credit",
     reason: "#585 (this round). `agent_available: false` and `transcript_available: false` are booleans a caller types exactly as easily as `true`; assessTransfer has no way to confirm phase B was genuinely held out. The four real outputs and `status` are hardcoded to their closed defaults now -- `near`/`far`/`retention`/`verification` are computed only to populate `unauthenticated_claim`, never these four fields directly, so phase A's own collaborative success (or any caller-claimed phase B) still earns no transfer credit, now by construction rather than by a check on `tasks`.",
     file: "lib/form-class.mjs",
@@ -9169,6 +9321,7 @@ export const GUARDS = [
     name: "held-out passes are closed by construction: they never establish a real transfer verdict, only an unauthenticated claim"
   },
   {
+    reachable_from: ["lib/cli.mjs", "lib/store.mjs", "lib/cycle.mjs"],
     guard: "the pre-chain and chained exposure ledger shapes own two different schema ids",
     reason: "#585 (this round). Both shapes used to share `aos-exposure-ledger.v1`, and `openExposureLedger` told them apart by whether `revision`/`head_digest` were present, not by the id -- so a raw object tagged with the old id but fabricated with `revision`, `head_digest` and a self-consistent chain was read as a fully verified round-3 ledger, exactly the promotion the migration check exists to refuse for anything that predates the chain. The chained shape now owns `aos-exposure-ledger.v2`; the old id is refused unconditionally.",
     file: "lib/form-class.mjs",
@@ -9178,6 +9331,7 @@ export const GUARDS = [
     name: "a ledger relabeled with the pre-chain id is refused as migration-required, even if it is otherwise a real, chain-verified ledger"
   },
   {
+    pending_issue: "#563, #586",
     guard: "formLifecycleState issues neither equivalence nor drift from a caller's object",
     reason: "\uc5ec\uc12f \ubc88\uc9f8 \uac8c\uc774\ud2b8. \ub2e4\uc12f \uac1c\ub97c \ub2eb\uc740 \ub77c\uc6b4\ub4dc\uac00 \uc774 \ud568\uc218\ub97c \ube60\ub728\ub838\uace0 \ub9ac\ubdf0\uac00 \uc2e4\ud589\uc73c\ub85c \uc7a1\uc558\ub2e4. linkForms \uac00 \ub354 \uc774\uc0c1 LINKED \ub97c \ubabb \ub0b4\ubcf4\ub0b4\ubbc0\ub85c \uc5ec\uae30\uc11c \uadf8 \uac12\uc758 \uc720\uc77c\ud55c \uc0dd\uc0b0\uc790\ub294 \uc190\uc73c\ub85c \uc4f4 \uac1d\uccb4\ubfd0\uc774\uc5c8\uace0, drift_status \ub294 enum \uac80\uc0ac\uc870\ucc28 \uc5c6\uc5b4 \uc544\ubb34 \ubb38\uc790\uc5f4\uc774\ub098 \uad8c\uc704 \uc788\ub294 \ud310\uc815\uc73c\ub85c \ub098\uac14\ub2e4",
     file: "lib/form-class.mjs",
@@ -9206,6 +9360,7 @@ export const GUARDS = [
     name: "exposure verification rederives scored-once eligibility despite an OPERATIONAL verdict on a replay"
   },
   {
+    reachable_from: ["lib/cli.mjs", "lib/store.mjs", "lib/cycle.mjs"],
     guard: "terminal exposure requires a committed REVEALED state",
     reason: "A reservation cannot manufacture a reveal by finalizing; the reveal transition must already be committed.",
     file: "lib/form-class.mjs",
@@ -9215,6 +9370,7 @@ export const GUARDS = [
     name: "a terminal exposure requires a committed reveal transition"
   },
   {
+    reachable_from: ["lib/cli.mjs", "lib/store.mjs", "lib/cycle.mjs"],
     guard: "opening terminal exposure requires its reveal evidence",
     reason: "A recomputed chain can still encode a terminal entry with no reveal evidence; opening the artifact checks state consistency too.",
     file: "lib/form-class.mjs",
@@ -9233,6 +9389,7 @@ export const GUARDS = [
     name: "current result verification cannot replace missing or corrupt exposure evidence with the run record"
   },
   {
+    pending_issue: "#563, #586",
     guard: "linkForms withholds caller-reported drift",
     reason: "Caller drift is an unauthenticated observation claim even though the reported result is negative.",
     file: "lib/form-class.mjs",
@@ -9242,6 +9399,7 @@ export const GUARDS = [
     name: "caller linking findings stay unauthenticated in both directions; disjoint anchors still fail"
   },
   {
+    pending_issue: "#563, #586",
     guard: "comparisonGate withholds caller-reported DIF",
     reason: "A caller-authored negative cannot establish that a DIF study actually happened; both directions stay withheld.",
     file: "lib/form-class.mjs",
@@ -9251,6 +9409,7 @@ export const GUARDS = [
     name: "DIF findings stay unauthenticated in both directions and incomplete studies stay withheld"
   },
   {
+    pending_issue: "#563, #586",
     guard: "unadministered practice analysis keeps same_form_exposure_count unknown",
     reason: "With no administered row this analysis has no observation from which to report this numeric count.",
     file: "lib/form-class.mjs",
@@ -9260,6 +9419,7 @@ export const GUARDS = [
     name: "practice analysis leaves unadministered counts unknown and records observed zero familiarity"
   },
   {
+    pending_issue: "#563, #586",
     guard: "unadministered practice analysis keeps similar_form_exposure_count unknown",
     reason: "With no administered row this analysis has no observation from which to report this numeric count.",
     file: "lib/form-class.mjs",
@@ -9269,6 +9429,7 @@ export const GUARDS = [
     name: "practice analysis leaves unadministered counts unknown and records observed zero familiarity"
   },
   {
+    pending_issue: "#563, #586",
     guard: "unadministered practice analysis keeps oracle_familiarity_count unknown",
     reason: "With no administered row this analysis has no observation from which to report this numeric count.",
     file: "lib/form-class.mjs",
@@ -9278,6 +9439,7 @@ export const GUARDS = [
     name: "practice analysis leaves unadministered counts unknown and records observed zero familiarity"
   },
   {
+    pending_issue: "#563, #586",
     guard: "practice analysis excludes unrevealed similar forms",
     reason: "A similar form reserved but never revealed cannot count as familiarity once the target form is administered.",
     file: "lib/form-class.mjs",
@@ -9287,6 +9449,7 @@ export const GUARDS = [
     name: "practice analysis leaves unadministered counts unknown and records observed zero familiarity"
   },
   {
+    pending_issue: "#563, #586",
     guard: "incomplete phase A keeps collaborative success unknown",
     reason: "An empty phase-A object carries no success observation and cannot produce false.",
     file: "lib/form-class.mjs",
@@ -9296,6 +9459,7 @@ export const GUARDS = [
     name: "an incomplete phase A preserves unknown collaborative success"
   },
   {
+    reachable_from: ["lib/cli.mjs", "lib/store.mjs", "lib/cycle.mjs"],
     guard: "cycle occasion allocation uses the locked reservation sequence",
     reason: "Two processes can share the cycle snapshot; only their locked reservations allocate distinct occasion positions.",
     file: "lib/form-class.mjs",
@@ -9605,6 +9769,7 @@ export const ACCOUNTED_GUARDS = [
   "a reroute is a routing decision",
   "a resolved key is the key",
   "a result has to agree with itself",
+  "a reveal-spent cycle names its bounded replacement command",
   "a risky security state is never VERIFIED",
   "a root is a root wherever it starts",
   "a route event names the agent that ran",
@@ -9699,6 +9864,7 @@ export const ACCOUNTED_GUARDS = [
   "adapter membership is a published name, not a path shape",
   "advice is answered once",
   "agent-relay event needs its attestation",
+  "all cycle surfaces name counted exposure-unverified seeds",
   "all replay failures carry the pending path and explicit recovery action",
   "allowlist-only child environment",
   "an OBSERVED canary cannot be built without a real profile digest to bind",
@@ -9796,6 +9962,7 @@ export const ACCOUNTED_GUARDS = [
   "aos-known is not a scorable runtime capability source",
   "artifact top-level mode",
   "artifact type in the envelope",
+  "assess preserves context for every finalization refusal",
   "assess records every graded administration into the exposure ledger",
   "assessTransfer requires an actually observed phase-B task, not merely a nonempty tasks array, before calling phase B administered",
   "axis metric ids belong to the administered family contract",
@@ -9804,6 +9971,7 @@ export const ACCOUNTED_GUARDS = [
   "block scalar measured from its key",
   "both blocking issues are named while the log is blocked",
   "both canary judges share one denial predicate",
+  "both lock acquisition attempts classify publication contention",
   "bubblewrap mounts what the policy declares",
   "buildResult runs the standard-setting gate",
   "canonical manifest order and uniqueness",
@@ -9886,6 +10054,7 @@ export const ACCOUNTED_GUARDS = [
   "every runValidity refusal carries an exposure state, including PROFILE_CHANGED",
   "every segment of a snapshot name has to be readable",
   "every transport spelling needs the transport approval",
+  "every verification selector alternative must still select a test",
   "everything published passes the one gate",
   "evidence bound to the audited revision",
   "evidence contract cannot be switched off",
@@ -9899,6 +10068,8 @@ export const ACCOUNTED_GUARDS = [
   "explicit keys are keys",
   "exposure CLI commands resume pending scored runs before dispatch",
   "exposure entry recovery does not gate unrelated commands",
+  "exposure repair preserves a live recorded owner",
+  "exposure repair requires acknowledged stopped writers",
   "exposure verification accepts only reader-sealed ledger snapshots",
   "exposure verification leaves missing eligibility evidence unknown",
   "exposure verification rederives scored-once eligibility",
@@ -9969,6 +10140,7 @@ export const ACCOUNTED_GUARDS = [
   "missing route pair does not borrow a fixed form",
   "missing seeded terms do not become empty text matches",
   "missing-result refusal",
+  "mutation totals separate pending library witnesses from command coverage",
   "naming something to preserve refuses the deletion recommendation",
   "no credential is looked up before the identity stage",
   "no deletion is authorized without a pre-deletion observation",
@@ -10063,6 +10235,7 @@ export const ACCOUNTED_GUARDS = [
   "public write-access lookup has its required name",
   "published cycle occasion comes from its reserved entry",
   "pull request produced the commit",
+  "quarantined publication is checked before reading its absent artifacts",
   "quoted keys are keys",
   "rate denominator floor",
   "raw Buffer authority",
@@ -10086,6 +10259,7 @@ export const ACCOUNTED_GUARDS = [
   "relay source is observed by producer",
   "relay supersede or cancel refuses a recorded human turn",
   "relay supplied responses never prompt a terminal",
+  "release-required platform cannot disappear from the comparison domain",
   "reliance provenance has a new schema identity",
   "replaying a committed completion consumes no second revision",
   "reserveExposure excludes an abandoned reservation from its own prior_exposure_count",
@@ -10109,6 +10283,7 @@ export const ACCOUNTED_GUARDS = [
   "session cancellation refuses a pending measured completion",
   "session ledger byte identity",
   "settle reads the cleanup failures",
+  "shared history excludes unrevealed same-form reservations",
   "single observation per probe",
   "skipped directory is still an entry",
   "snapshot provenance",
@@ -10210,6 +10385,7 @@ export const ACCOUNTED_GUARDS = [
   "the evidence digest is over the claim, not the transcript row",
   "the exception needs a submission branch to be about",
   "the executable identity digest is recomputed, not read",
+  "the exposure boundary supplies recovery for every refusal",
   "the exposure ledger is reserved before the suite's first prepareScenario reveals anything",
   "the exposure ledger transitions to REVEALED the instant the first scenario is materialized",
   "the exposure ledger's read-modify-write is held under an exclusive lock",
@@ -10238,6 +10414,7 @@ export const ACCOUNTED_GUARDS = [
   "the matrix decides the process axis with the run's own helper",
   "the matrix reads what the teardown could not remove",
   "the minimum route is the cheapest and its tie-break is canonical",
+  "the named exposure repair command actually recovers the pending completion",
   "the network axis is enumerated, not typed",
   "the network enforcement name is the gate's own vocabulary",
   "the observation digest is recursive over its content",

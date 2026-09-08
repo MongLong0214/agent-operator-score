@@ -1037,12 +1037,13 @@
       }
     },
     "a cross-facet comparison without invariance evidence is withheld": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:4b91881517b6f8179d9ee7faedce2d87449c90230c157b475436a2f471a2a6ff",
+      "fingerprint": "sha256:013f3954715199215d0aaf31aa692a5d7391dffd866f1413bb17cfcc41ccbc80",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.827Z"
+        "at": "2026-09-08T19:32:05.008Z"
       }
     },
     "a cut-off probe remains retryable and provider-undetermined": {
@@ -1415,12 +1416,13 @@
       }
     },
     "a form bank record's equivalence status is UNESTABLISHED by construction": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:e9106635d1cc020e41a5322756e291bc3129a144cae2ea4fc86a9750172df189",
+      "fingerprint": "sha256:5db64484178df5e5179219d2a902092dd78d4487ce940e1baa5068d8ccdf09f8",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.831Z"
+        "at": "2026-09-08T19:32:42.272Z"
       }
     },
     "a form list naming an undeclared cell is refused before it is dereferenced": {
@@ -1433,12 +1435,17 @@
       }
     },
     "a form revealed but never terminated classifies as practice, not fresh": {
+      "reachable_from": [
+        "lib/cli.mjs",
+        "lib/store.mjs",
+        "lib/cycle.mjs"
+      ],
       "platform": "darwin",
-      "fingerprint": "sha256:a1c6fee8b10677f48f418d14f662f950acf723adac27dec8041afac247db33b4",
+      "fingerprint": "sha256:1f8820322952c82264ab0e080ad2502349be763b54e3002305e5f2360fa311fb",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.830Z"
+        "at": "2026-09-08T19:32:16.980Z"
       }
     },
     "a generation is named for what it actually predates": {
@@ -1506,11 +1513,11 @@
     },
     "a ledger open replays durable pending completions": {
       "platform": "darwin",
-      "fingerprint": "sha256:a94a7757cefb12663897214c1546072c3aa95201301ec6a0c1f9e3d7ce848c74",
+      "fingerprint": "sha256:6b78320bc02494c39ba1057b34778fdad1f109cb55b967e48b4f40132c56c9ac",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.775Z"
+        "at": "2026-09-08T19:31:58.048Z"
       }
     },
     "a live audit needs a live snapshot": {
@@ -1541,12 +1548,17 @@
       }
     },
     "a malformed exposure ledger entry refuses the ledger instead of vanishing from it": {
+      "reachable_from": [
+        "lib/cli.mjs",
+        "lib/store.mjs",
+        "lib/cycle.mjs"
+      ],
       "platform": "darwin",
-      "fingerprint": "sha256:2f6c87f08f08b4d2f2dc1617d11dbc47ae4dbf94ad1875af89bc8994bc212d99",
+      "fingerprint": "sha256:6892a55629bb5ff19db7151aa8290017e2c50be3c6f4eff606748a4699fc49c2",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.829Z"
+        "at": "2026-09-08T19:32:08.343Z"
       }
     },
     "a metric's status and its value are one state": {
@@ -1793,12 +1805,17 @@
       }
     },
     "a prior exposure reclassifies an operational administration as practice": {
+      "reachable_from": [
+        "lib/cli.mjs",
+        "lib/store.mjs",
+        "lib/cycle.mjs"
+      ],
       "platform": "darwin",
-      "fingerprint": "sha256:d86b0eb81d274e6f926de507777a6320149be90c5c3d56b87c70d2a487ee9328",
+      "fingerprint": "sha256:b2bcf21957d6d336df55968ce647f8aec2315f7f0a4817e033fb801b8203a70d",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.827Z"
+        "at": "2026-09-08T19:32:00.364Z"
       }
     },
     "a probe that observed nothing is not a runtime that can do nothing": {
@@ -2024,6 +2041,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-08T15:38:25.816Z"
+      }
+    },
+    "a reveal-spent cycle names its bounded replacement command": {
+      "platform": "darwin",
+      "fingerprint": "sha256:33462fcc0eccda62cf50f6a1a11ae9d34098750cec7c8a82b333fd37162aae93",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T19:31:39.877Z"
       }
     },
     "a risky security state is never VERIFIED": {
@@ -2252,12 +2278,13 @@
       }
     },
     "a small linking sample is not a smaller yes": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:a9839dc028f83442c5f610dfba5361df75df8e03788e76436dd0a3d516a18016",
+      "fingerprint": "sha256:bf152805a655c82ac0b98d7f3fab1d122119a7fd0b7a71d846cf770485fdd5bc",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.827Z"
+        "at": "2026-09-08T19:32:03.717Z"
       }
     },
     "a spawn refusal rebinds from AOS's safe pre-spawn class": {
@@ -2872,6 +2899,15 @@
         "at": "2026-09-08T15:38:25.818Z"
       }
     },
+    "all cycle surfaces name counted exposure-unverified seeds": {
+      "platform": "darwin",
+      "fingerprint": "sha256:37ccdcf1453ded2100c97f574ffdcae7dc783f40fb40bf36ef704e9e9255429a",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T19:31:26.364Z"
+      }
+    },
     "all replay failures carry the pending path and explicit recovery action": {
       "platform": "darwin",
       "fingerprint": "sha256:e2cc20b56249bc7773e09922e3871fd41878df19faa42e3216fef0343d70ac7b",
@@ -3035,12 +3071,13 @@
       }
     },
     "an empty phase B task array does not read as an observed transfer occasion": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:a7e2ab8176ae2d8b187ed5505985100ea66a058708915a8424fc21d3c22e8e7b",
+      "fingerprint": "sha256:13c7fb64fa4eae18a621b8b08614a0026cb2c2e49cdb76f3749c74f4dda426b2",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.831Z"
+        "at": "2026-09-08T19:32:33.458Z"
       }
     },
     "an empty string, array or object is not read as a considered field": {
@@ -3494,12 +3531,13 @@
       }
     },
     "an undeclared facet level does not compare as equal": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:6cfa1eaf0e1a7a095408b54b8faa9e90933d1501662d9de9d904c428ee6478eb",
+      "fingerprint": "sha256:0dcbe9f7c0a78115b654bbc745faee2f4b2420161085ec6e8e0435f57eb4db12",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.827Z"
+        "at": "2026-09-08T19:32:05.803Z"
       }
     },
     "an unexplained holder of the run's directories withholds": {
@@ -3745,6 +3783,15 @@
         "at": "2026-09-08T15:38:25.788Z"
       }
     },
+    "assess preserves context for every finalization refusal": {
+      "platform": "darwin",
+      "fingerprint": "sha256:17a630a5f091da222566551f106bb4f5218b1edf4ff6f1536e3b9723e618506b",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T19:34:04.163Z"
+      }
+    },
     "assess records every graded administration into the exposure ledger": {
       "platform": "darwin",
       "fingerprint": "sha256:d3b65b84e04e61edea079ff286e6a4a6e19ce628d263e0b80a95f22e80e21f3c",
@@ -3755,12 +3802,13 @@
       }
     },
     "assessTransfer requires an actually observed phase-B task, not merely a nonempty tasks array, before calling phase B administered": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:97f5abcc40c61753e8f7d9871d8538203471e64de027a43ca8e00393621daede",
+      "fingerprint": "sha256:23536e150a64dc3ea0156b6ee8a27b48188e38ce118fd4325edae5d1e5c93ed1",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.829Z"
+        "at": "2026-09-08T19:32:07.390Z"
       }
     },
     "axis metric ids belong to the administered family contract": {
@@ -3815,6 +3863,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-08T15:38:25.799Z"
+      }
+    },
+    "both lock acquisition attempts classify publication contention": {
+      "platform": "darwin",
+      "fingerprint": "sha256:811eac57239b9d1245ba652069efc8ebb21a8c12d2d946ccad405a9b37ecbc9c",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T19:31:21.469Z"
       }
     },
     "bubblewrap mounts what the policy declares": {
@@ -4052,48 +4109,53 @@
       }
     },
     "comparisonGate requires each DIF response to be an actual observation, not a null slot": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:9e4c462eed5012b74ad1208f8cb790fe5328cea540dc5a81ae59db4c4b9a8346",
+      "fingerprint": "sha256:c95d7707b6f84d0a47e79926db52df88d47beb1f1e9a5ab123da30d120c85897",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.831Z"
+        "at": "2026-09-08T19:32:34.490Z"
       }
     },
     "comparisonGate requires each anchor's per-anchor statistics to be an actual non-empty record": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:b392d435d54f417702e20454b555e6871f1922f8d42d7e4c0c51a97cb99c01e3",
+      "fingerprint": "sha256:f7c4b7b3d6cec5c01446e3a02f9fa18f68e5996d6fb470795ff4909048d736eb",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.831Z"
+        "at": "2026-09-08T19:32:36.655Z"
       }
     },
     "comparisonGate requires the DIF report's own declared inputs, not only its verdict": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:08347600be2f667e865d19ee9c988bf0f90387a0a478f69a8e2abeb107b34daf",
+      "fingerprint": "sha256:baf13344c0407162cc61e993b92c93c10c19fe5682a2d7a80380ab3b33a52ec6",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.829Z"
+        "at": "2026-09-08T19:32:14.114Z"
       }
     },
     "comparisonGate withholds caller-reported DIF": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:8d7de277621969f8826a7c79cb27632424d62184eb8f1823b8ade52bf4f73d0c",
+      "fingerprint": "sha256:f25d3236d38e94dee4d9d1554e92b6367ef936378e22ceadf3e44a551552ed21",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.832Z"
+        "at": "2026-09-08T19:32:54.730Z"
       }
     },
     "comparisonGate withholds every cross-facet comparison by construction": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:8eee0d1ecbfeb9a1b8c46bb7fd15776853b558521606ae0e6eecdabab7d8235c",
+      "fingerprint": "sha256:d4466cacb0f9fc3a860d3b6a41cb0e0f51721d98c536c67113e507710038c978",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.831Z"
+        "at": "2026-09-08T19:32:44.752Z"
       }
     },
     "completion events share NDJSON repair and size validation": {
@@ -4241,12 +4303,17 @@
       }
     },
     "cycle occasion allocation uses the locked reservation sequence": {
+      "reachable_from": [
+        "lib/cli.mjs",
+        "lib/store.mjs",
+        "lib/cycle.mjs"
+      ],
       "platform": "darwin",
-      "fingerprint": "sha256:1225826018446bbd09ba7beeaa8cd4c53ec169b5afb0d2b130cbd784893642d3",
+      "fingerprint": "sha256:8f97a98af2dbd1ac1138b62dd0848c84d79ca47e4bc00efe87eadcc275d2e5da",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.832Z"
+        "at": "2026-09-08T19:33:15.872Z"
       }
     },
     "cycle recovery uses the committed receipt despite later administrations": {
@@ -4555,6 +4622,15 @@
         "at": "2026-09-08T15:38:25.786Z"
       }
     },
+    "every verification selector alternative must still select a test": {
+      "platform": "darwin",
+      "fingerprint": "sha256:d9c110e88a289ae89cecc75edbeba2e6686ce7e8b528fe45de50474d7f24e6ac",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T19:31:42.505Z"
+      }
+    },
     "everything published passes the one gate": {
       "platform": "darwin",
       "fingerprint": "sha256:2bb972cbd0adf03bbcee51eaee9ba6491956f92c30ebab95a6849ef84980e660",
@@ -4672,6 +4748,24 @@
         "at": "2026-09-08T15:38:25.774Z"
       }
     },
+    "exposure repair preserves a live recorded owner": {
+      "platform": "darwin",
+      "fingerprint": "sha256:9060a509aa2640b586eddcfbf4372e91e5eed955a40085e991bb9be41046214b",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T19:30:53.269Z"
+      }
+    },
+    "exposure repair requires acknowledged stopped writers": {
+      "platform": "darwin",
+      "fingerprint": "sha256:3657d6782f9dee150ed3f8d58a735489d51c4e4af72b8d6211504e3c108adfcf",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T19:30:51.653Z"
+      }
+    },
     "exposure verification accepts only reader-sealed ledger snapshots": {
       "platform": "darwin",
       "fingerprint": "sha256:d5675ac12f941b81b39dc801243ff6ea68d4eb3cdb046e661e75417b85e8056a",
@@ -4772,12 +4866,13 @@
       }
     },
     "form class definitions are derived from the declaring contract": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:8220a4dd6e4ee4d9608a98337c40210cb99dfcea0b03512383aa3c11692e6f96",
+      "fingerprint": "sha256:c805a8757c5afe75bd4f6b8a81cf9d8e24dfd00feac9c4faf153dd7a376dd92b",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.773Z"
+        "at": "2026-09-08T19:31:44.147Z"
       }
     },
     "form variation report counts oracle branches": {
@@ -4790,21 +4885,23 @@
       }
     },
     "formLifecycleState excludes an abandoned reservation from retirement": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:a8baebd5d4ed40aa58c648f455659a197917f4e0d55f167b40120744c190b369",
+      "fingerprint": "sha256:60c9be9c2dbe06134bfef55d6a706cd0cce16bd454d55fccb1b1eca70b9064f9",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.831Z"
+        "at": "2026-09-08T19:32:29.841Z"
       }
     },
     "formLifecycleState issues neither equivalence nor drift from a caller's object": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:5206f8804635ee79a3d581e2c4d4f84eeaf5dfba4448b5818eeaec0f91e5b462",
+      "fingerprint": "sha256:c5d656eb8a1d1dc7170881d5c38647b5829bf41186f9c419c06ada5dce38808d",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.832Z"
+        "at": "2026-09-08T19:32:49.773Z"
       }
     },
     "fresh empty locks receive a bounded acquisition grace": {
@@ -4916,12 +5013,13 @@
       }
     },
     "incomplete phase A keeps collaborative success unknown": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:550117d8aaa767fe496a4a1f40074753e269d297910233b1af0c92f7f8d44af2",
+      "fingerprint": "sha256:7823d62d91cc1a2afd74a1a2bddf64ce50a29f26dbfac63e284e5d6d4b3d8453",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.832Z"
+        "at": "2026-09-08T19:32:59.998Z"
       }
     },
     "independent checks survive a non-canonical plan": {
@@ -4961,12 +5059,13 @@
       }
     },
     "invariance facets include every facet declared by the contract": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:8d9d86645889c20d344b6815aee77ecadcaebaf28d85e7c7d33eb2486da88c66",
+      "fingerprint": "sha256:fdf786c4abac1105c3d8e274582aad5ac433071f23ed4c8f7f91ad3aa860b894",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.773Z"
+        "at": "2026-09-08T19:31:45.669Z"
       }
     },
     "invocation identity provenance": {
@@ -5096,66 +5195,73 @@
       }
     },
     "linkForms counts distinct anchors, not raw array length, against the declared minimum": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:5e12c4c6001265822a127dc1f7ffb4d31f99214a7c9a81846ab2c7a467136b0f",
+      "fingerprint": "sha256:a20cd3d6f921987f81fc96b3b14b201f42c81ae748c2cf0bdfe024c714aede1f",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.831Z"
+        "at": "2026-09-08T19:32:31.057Z"
       }
     },
     "linkForms enforces the anchor minimum the method interface declares, not a second literal": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:dd46c4ca607e1b956fa9fbb65215e1ee3281371a2e1c030dd0e2fb9bbe5a22d0",
+      "fingerprint": "sha256:4704f3528949e1e50c3e493071b88cfaa0f7195c71f53d8cad23709f87d308ad",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.829Z"
+        "at": "2026-09-08T19:32:11.911Z"
       }
     },
     "linkForms records a caller's numbers as an unauthenticated claim, never as a decision": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:47e4702bc4b1e5eecfd56fa4eaba666cd4a6a40c97d3f34cf2be04042c69cfb6",
+      "fingerprint": "sha256:4cf29beb7fff39ff9cd6177b5a4e56f1338c6eaefb7036aaae416eb912ca088b",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.831Z"
+        "at": "2026-09-08T19:32:40.954Z"
       }
     },
     "linkForms refuses to LINK on an unregistered method or method_version": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:e6026a624abcdc5e2e5fd8b418841cf23c8fcbef5127017b4c134924e4de8041",
+      "fingerprint": "sha256:0eaf4bc4069a77cf9ecf6998dfb8453507669a2b3c74658f7d48a580beb924a7",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.830Z"
+        "at": "2026-09-08T19:32:18.440Z"
       }
     },
     "linkForms withholds caller-reported drift": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:9aaae8e40e7f275f7e5a43530e35954cfa43ad93797fa4f9abd4c802dcebbd0c",
+      "fingerprint": "sha256:07f5474183f12c60a9d3ea810cbc998fdcd3cb996b5fa770067a54e7dc1e9e18",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.832Z"
+        "at": "2026-09-08T19:32:54.101Z"
       }
     },
     "linkForms's drift threshold is read from the registered method, never a caller-supplied one": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:a7b04acb9b249ffaf3c9b4beb180db64f864851446a098a0a2301ccfc58bfd6c",
+      "fingerprint": "sha256:4ae6bac2a5e1e510160b1188f5c1eea1d73f044093bd0bc434c3df1faeb11a7f",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.830Z"
+        "at": "2026-09-08T19:32:19.927Z"
       }
     },
     "linking without empirical evidence stays unestablished": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:acd30d2deb3c930823b566f67e91269ae5c2ab982e3e7f07194f6cbb6f5e157e",
+      "fingerprint": "sha256:05bcf9dcaf75c64f754c90fd6a1079b73336051fc18d1f516762670fbc23bec7",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.827Z"
+        "at": "2026-09-08T19:32:02.246Z"
       }
     },
     "local reference redirection": {
@@ -5300,6 +5406,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-08T15:38:25.797Z"
+      }
+    },
+    "mutation totals separate pending library witnesses from command coverage": {
+      "platform": "darwin",
+      "fingerprint": "sha256:6cccb5add300e7bbe2f042027b6a98781d2352c85e0c52c3f64cd70796e8a0c8",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T19:31:40.734Z"
       }
     },
     "naming something to preserve refuses the deletion recommendation": {
@@ -5528,48 +5643,73 @@
       }
     },
     "openExposureLedger binds the ledger to its last entry's digest as head_digest": {
+      "reachable_from": [
+        "lib/cli.mjs",
+        "lib/store.mjs",
+        "lib/cycle.mjs"
+      ],
       "platform": "darwin",
-      "fingerprint": "sha256:37a44b249779196beeaa5571060c1ab3566df4cfbb5c15f6a39b0f8d32358347",
+      "fingerprint": "sha256:574951d2859cedb27fb06963fc9829ea33cb5202fa108412342f48afb6619021",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.830Z"
+        "at": "2026-09-08T19:32:27.227Z"
       }
     },
     "openExposureLedger recomputes the transition digest chain over every stored entry": {
+      "reachable_from": [
+        "lib/cli.mjs",
+        "lib/store.mjs",
+        "lib/cycle.mjs"
+      ],
       "platform": "darwin",
-      "fingerprint": "sha256:70a3be9267f762572b5a7c8c5dbead7aa259ffd3c5e552cbe348194efaad8086",
+      "fingerprint": "sha256:cec216bc0a31e686daf24270fb61858d25e4f3a385473563375af45d083747d5",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.830Z"
+        "at": "2026-09-08T19:32:26.033Z"
       }
     },
     "openExposureLedger refuses two stored entries claiming one administration_id": {
+      "reachable_from": [
+        "lib/cli.mjs",
+        "lib/store.mjs",
+        "lib/cycle.mjs"
+      ],
       "platform": "darwin",
-      "fingerprint": "sha256:3c0f276b6769cc6c398ba7e7b7556a592640cc2e1a5ed186f6c6d112604bf83c",
+      "fingerprint": "sha256:e16f1b624fae52cb59bfd4482c39526edf0a059ab4d5236a3e583f59e8373289",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.830Z"
+        "at": "2026-09-08T19:32:22.577Z"
       }
     },
     "openExposureLedger refuses two stored entries claiming one revision": {
+      "reachable_from": [
+        "lib/cli.mjs",
+        "lib/store.mjs",
+        "lib/cycle.mjs"
+      ],
       "platform": "darwin",
-      "fingerprint": "sha256:d30c2acb8e0745207eb82ba9896045726ed46bc1b6df2b92010c5b670921cfb6",
+      "fingerprint": "sha256:098938c835f5eb88b649f1e1984ad27a537eebb841e16023254c974dc6dc7f4c",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.830Z"
+        "at": "2026-09-08T19:32:24.602Z"
       }
     },
     "opening terminal exposure requires its reveal evidence": {
+      "reachable_from": [
+        "lib/cli.mjs",
+        "lib/store.mjs",
+        "lib/cycle.mjs"
+      ],
       "platform": "darwin",
-      "fingerprint": "sha256:0b6e5577be727e81d7a216333eadf5ca2af479b3fb6dccb27b00e27292055ced",
+      "fingerprint": "sha256:1edfcaeb085ca5b3bb93d3f876bd25268c68dd6092e69ac85332c301bb31c46c",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.832Z"
+        "at": "2026-09-08T19:32:52.063Z"
       }
     },
     "operator decision window": {
@@ -5789,12 +5929,13 @@
       }
     },
     "phase A collaboration earns no transfer credit": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:3d6236a68e3af381a520c46b70271932de698e9448ab907d6884c6799ab730bc",
+      "fingerprint": "sha256:3f57eee6ed0b302a72a32ca070f32a7585d2a8ff755cbeab10950d8ab42992e5",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.831Z"
+        "at": "2026-09-08T19:32:46.420Z"
       }
     },
     "phase permissions are pinned, not only phase names": {
@@ -5825,12 +5966,13 @@
       }
     },
     "practice analysis excludes unrevealed similar forms": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:68470179888a1015015007aadd703531ca65a7f43c67c631abf747f5b92246b3",
+      "fingerprint": "sha256:d476d70c8d35c813569adec98ac34c9d0ac9c224502d77ab42489e47ddad9060",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.832Z"
+        "at": "2026-09-08T19:32:58.850Z"
       }
     },
     "practice occasions retain their occasion facet": {
@@ -5843,12 +5985,13 @@
       }
     },
     "practiceAnalysis excludes an abandoned reservation from same-form exposure": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:0c444cff38a7d2f94167b48434fe13b1f00f46b7d619f2859e0aab31d9647fd7",
+      "fingerprint": "sha256:2d88cb4e4ddaffeb9b004d35c3bc0834b72708f6cdd42125f7e2321f97d8debf",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.830Z"
+        "at": "2026-09-08T19:32:28.608Z"
       }
     },
     "prepareScenario materializes content only after REVEALED is durable, never before": {
@@ -6148,6 +6291,15 @@
         "at": "2026-09-08T15:38:25.790Z"
       }
     },
+    "quarantined publication is checked before reading its absent artifacts": {
+      "platform": "darwin",
+      "fingerprint": "sha256:11037cd412a45677aaf1d4e72ebfaf7f662d5ef174d228be2af89a7b9d9fffd5",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T19:34:08.380Z"
+      }
+    },
     "quoted keys are keys": {
       "platform": "darwin",
       "fingerprint": "sha256:733895ac80828994d75ce25ebd3ba8ac81ae7d6ccead989866d9ef6fa70bc5e7",
@@ -6207,21 +6359,31 @@
       }
     },
     "recordExposure finalizes onto the reserved entry instead of appending a second one": {
+      "reachable_from": [
+        "lib/cli.mjs",
+        "lib/store.mjs",
+        "lib/cycle.mjs"
+      ],
       "platform": "darwin",
-      "fingerprint": "sha256:2628ef83878463ab7915df0d560457df67d3d8483e4898e37247ace807d70155",
+      "fingerprint": "sha256:d92df5a3f8506ec48b8ac716784adb3fdfc8242a45075239c48694e67e9715e6",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.830Z"
+        "at": "2026-09-08T19:32:15.570Z"
       }
     },
     "recordExposure's bare-append path excludes an abandoned reservation from prior_exposure_count too": {
+      "reachable_from": [
+        "lib/cli.mjs",
+        "lib/store.mjs",
+        "lib/cycle.mjs"
+      ],
       "platform": "darwin",
-      "fingerprint": "sha256:c4659dbeae2d924131417035c0ea97ec27469a041143f8b1e93d29b02123ab57",
+      "fingerprint": "sha256:dac0708132558ebb283060b7cdc16403ff7217e92a5de12ede3215d06935245a",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.831Z"
+        "at": "2026-09-08T19:32:38.362Z"
       }
     },
     "refusal marker in the tree digest": {
@@ -6350,6 +6512,16 @@
         "at": "2026-09-08T15:38:25.825Z"
       }
     },
+    "release-required platform cannot disappear from the comparison domain": {
+      "pending_issue": "#563, #586",
+      "platform": "darwin",
+      "fingerprint": "sha256:a050493e479c79d82cc1f4b2a0ca786e7c38178ff46662de4aac2c281da4d996",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T19:30:44.657Z"
+      }
+    },
     "reliance provenance has a new schema identity": {
       "platform": "darwin",
       "fingerprint": "sha256:33d6d56c8884d9a2d22da351fe9e9ceff435f604c49d26883cb4624f16247fc7",
@@ -6369,12 +6541,17 @@
       }
     },
     "reserveExposure excludes an abandoned reservation from its own prior_exposure_count": {
+      "reachable_from": [
+        "lib/cli.mjs",
+        "lib/store.mjs",
+        "lib/cycle.mjs"
+      ],
       "platform": "darwin",
-      "fingerprint": "sha256:dcf8afb4b90241113393de2e31147cf3b8aec9f755b4635f606944da151a7578",
+      "fingerprint": "sha256:ba70e062704847c52123a1a1a9b73ef7ef04fb6a58662eda41e50891f9253f74",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.831Z"
+        "at": "2026-09-08T19:32:37.409Z"
       }
     },
     "resolver ownership": {
@@ -6495,12 +6672,13 @@
       }
     },
     "scoreChangeClaim requires a real linking scaffold, not a self-authored object naming LINKED": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:bb939057095300bd29ea7c76082275e289f370872d0c1d307b1f2076be17bf12",
+      "fingerprint": "sha256:4a8d2178dade200b0ea44b1d190a5997690ae5c67d6db67ab421c26a3c811d94",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.831Z"
+        "at": "2026-09-08T19:32:42.936Z"
       }
     },
     "secret-shaped material is not a model name": {
@@ -6555,6 +6733,18 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-08T15:38:25.800Z"
+      }
+    },
+    "shared history excludes unrevealed same-form reservations": {
+      "reachable_from": [
+        "lib/cli.mjs"
+      ],
+      "platform": "darwin",
+      "fingerprint": "sha256:e0c515d539a21f4c444d562eb2fa110e209067aea5dde4f4bbbcbc5b9aa0f2bb",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T19:31:22.424Z"
       }
     },
     "single observation per probe": {
@@ -6819,21 +7009,31 @@
       }
     },
     "terminal exposure requires a committed REVEALED state": {
+      "reachable_from": [
+        "lib/cli.mjs",
+        "lib/store.mjs",
+        "lib/cycle.mjs"
+      ],
       "platform": "darwin",
-      "fingerprint": "sha256:05f529b0b1671fa0cd6f94de2db49eb9f759fca8e88d3e183bc498a763f847a3",
+      "fingerprint": "sha256:f4834fc7f160fc5d4386c7b82aa8751fe1d3ea680700f4a739f0c933ffc81d73",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.832Z"
+        "at": "2026-09-08T19:32:51.425Z"
       }
     },
     "terminal transitions retain their pending receipt in the chain": {
+      "reachable_from": [
+        "lib/cli.mjs",
+        "lib/store.mjs",
+        "lib/cycle.mjs"
+      ],
       "platform": "darwin",
-      "fingerprint": "sha256:bd0c2aa75abd8cdb403c6eea037736893bef608fa4ab440e6e7ed9841652658b",
+      "fingerprint": "sha256:86224f8bd6e0d8abe8d0372a85cd72e80b28daf66420e4b9511a98b454257e57",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.775Z"
+        "at": "2026-09-08T19:31:59.177Z"
       }
     },
     "the PATH rule is part of the digest": {
@@ -7466,6 +7666,15 @@
         "at": "2026-09-08T15:38:25.809Z"
       }
     },
+    "the exposure boundary supplies recovery for every refusal": {
+      "platform": "darwin",
+      "fingerprint": "sha256:713bf36796ab014a09d94a2630bd60ae2a5bfef857ec135036eecc57b7d503fb",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T19:30:44.969Z"
+      }
+    },
     "the exposure ledger is reserved before the suite's first prepareScenario reveals anything": {
       "platform": "darwin",
       "fingerprint": "sha256:50dd64ac5afe358431832192fd0e2cbcdb7e32a9b1c683fc7b3eead04f36e494",
@@ -7486,11 +7695,11 @@
     },
     "the exposure ledger's read-modify-write is held under an exclusive lock": {
       "platform": "darwin",
-      "fingerprint": "sha256:1985ddd8acee2ef117dc3cf4d6692ae24b33b62e4eeb6667b5226064f330873b",
+      "fingerprint": "sha256:477e0287df429ccb094d55ce84aa5b86456decf13e7ee5a31acf1262139fb83a",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.829Z"
+        "at": "2026-09-08T19:32:10.952Z"
       }
     },
     "the family form manifest schema moved with its equivalence vocabulary": {
@@ -7718,6 +7927,15 @@
         "at": "2026-09-08T15:38:25.779Z"
       }
     },
+    "the named exposure repair command actually recovers the pending completion": {
+      "platform": "darwin",
+      "fingerprint": "sha256:03a3ba35c57bf51ce14168e2d62361e30d846483b8ac69d7d9055088e3d3034b",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-08T19:33:59.749Z"
+      }
+    },
     "the network axis is enumerated, not typed": {
       "platform": "darwin",
       "fingerprint": "sha256:db5a2539bf7d46e8b660416d0a571dbbf0f9fce783999be36e71f48b344df350",
@@ -7836,12 +8054,17 @@
       }
     },
     "the pre-chain and chained exposure ledger shapes own two different schema ids": {
+      "reachable_from": [
+        "lib/cli.mjs",
+        "lib/store.mjs",
+        "lib/cycle.mjs"
+      ],
       "platform": "darwin",
-      "fingerprint": "sha256:ea3b70019f9f58e5bafb9806a81cfed4930c70cd44e5b37c8670ddfee30868cf",
+      "fingerprint": "sha256:3684c0f913f1a46ba5bbfb2135e1f82f9a570b2b885f0d52f1d6b4aff4146659",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.831Z"
+        "at": "2026-09-08T19:32:48.567Z"
       }
     },
     "the pre-deletion observation is fresh": {
@@ -8727,30 +8950,33 @@
       }
     },
     "unadministered practice analysis keeps oracle_familiarity_count unknown": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:80ca044e73e324ecbfcd9f5beb5a7b877a1c4923d2479f9a40116272e34e5cd4",
+      "fingerprint": "sha256:33a084989a23dfa898550db2ebcb7fd3191c518c457d9c5748572cc4d41f9c59",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.832Z"
+        "at": "2026-09-08T19:32:58.017Z"
       }
     },
     "unadministered practice analysis keeps same_form_exposure_count unknown": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:ca582ea8f06d1dcc5452d1d299d16cacfe9533c438f42b8d8fe7410d3b52bd09",
+      "fingerprint": "sha256:7cec9cf6017556bf0b7c55b5f286fbec06858e5fd7148bcac2b89ed46de2edc6",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.832Z"
+        "at": "2026-09-08T19:32:55.343Z"
       }
     },
     "unadministered practice analysis keeps similar_form_exposure_count unknown": {
+      "pending_issue": "#563, #586",
       "platform": "darwin",
-      "fingerprint": "sha256:f745c1704591ba3b3474381223482d4421360fb4b4e48c6fff1912ceabdc5972",
+      "fingerprint": "sha256:44d6ceae5ae72efc3023ba72e5f7e9e59c4ac3eecf76866c1c9d30aa02db3fe8",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T15:38:25.832Z"
+        "at": "2026-09-08T19:32:56.845Z"
       }
     },
     "uncalibrated perfect forms do not establish generalizability": {

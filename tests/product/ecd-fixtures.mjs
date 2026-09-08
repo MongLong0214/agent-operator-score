@@ -14,7 +14,7 @@ export const complete = { forms_completed: ["FAM-1", "FAM-2", "FAM-3", "FAM-4", 
 
 // The identity `comparability` compares. A run that names every identity facet and a profile digest
 // is what PROFILE_BOUND is defined over; `complete` alone stops at RUN_DIAGNOSTIC.
-export const facets = Object.freeze({ language: "en", interface: "cli", model: "m1", runtime: "r1", harness: "h1", operator: "alice", occasion: 1 });
+export const facets = Object.freeze({ language: "en", interface: "cli", model: "m1", runtime: "r1", harness: "h1", platform: "darwin/arm64", domain_familiarity: "experienced", administration_version: "fixture-v1", operator: "alice", occasion: 1 });
 // A digest, not a label. `sha256:aaa` is three nibbles and cannot bind an exact profile, which is
 // what a profile-bound claim rests on; the fixture states a real one so the tests exercise the
 // shape the product requires rather than a shorthand only the tests accept.

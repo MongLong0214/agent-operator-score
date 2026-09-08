@@ -25,6 +25,39 @@ import {
 
 const scratch = () => mkdtempSync(join(tmpdir(), "aos-home-"));
 
+test("a contender winning stale-lock reclamation is named contention for both resources", (t) => {
+  const home = scratch();
+  const remove = fs.rmSync;
+  try {
+    initHome(home);
+    const { runId } = createRun(home, {});
+    for (const [lock, acquire, code] of [
+      [join(home, "exposure-ledger.lock"), (body) => withExposureLedgerLock(home, body), "AOS_EXPOSURE_LEDGER_LOCKED"],
+      [join(runPaths(home, runId).root, "run.lock"), (body) => withRunLock(home, runId, body), "AOS_RUN_LOCKED"]
+    ]) {
+      writeFileSync(lock, "");
+      utimesSync(lock, new Date(0), new Date(0));
+      let raced = false;
+      t.mock.method(fs, "rmSync", (path, ...args) => {
+        const result = remove(path, ...args);
+        if (String(path).startsWith(`${lock}.reclaim-`)) {
+          raced = true;
+          writeFileSync(lock, JSON.stringify({ pid: process.pid }));
+        }
+        return result;
+      });
+      syncBuiltinESMExports();
+      assert.throws(() => acquire(() => assert.fail("entered another writer's lock")), (error) => {
+        assert.ok(error.message.startsWith(code), error.message);
+        return true;
+      });
+      assert.equal(raced, true);
+      assert.equal(JSON.parse(readFileSync(lock, "utf8")).pid, process.pid);
+      t.mock.restoreAll(); syncBuiltinESMExports();
+    }
+  } finally { t.mock.restoreAll(); syncBuiltinESMExports(); rmSync(home, { recursive: true, force: true }); }
+});
+
 test("a lock released before either observation is the same acquiring contention for both resources", (t) => {
   const home = scratch();
   try {

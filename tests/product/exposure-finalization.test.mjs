@@ -10,7 +10,7 @@ import { spawnSync } from "node:child_process";
 import { writeJson } from "../../lib/core.mjs";
 import { exposureLedgerTestHooks } from "../../lib/cli.mjs";
 import { classifyAdministration, markRevealed, openExposureLedger, recordExposure, reserveExposure } from "../../lib/form-class.mjs";
-import { commitTerminal, exposureLedgerPath, pendingExposurePath, readEvents, readExposureLedgerFile, recoverExposureFinalizations, runPaths } from "../../lib/store.mjs";
+import { commitTerminal, exposureLedgerPath, pendingExposurePath, readEvents, readExposureLedgerFile, recoverExposureFinalizations, runPaths, withExposureLedgerLock } from "../../lib/store.mjs";
 import { addAgent, assessAtATerminal, initBare, makePlan, newestRunId, run } from "./helpers.mjs";
 import { finalizeExposure, signExposureFinalization } from "../../lib/exposure-finalization.mjs";
 import { createHandler, mintToken } from "../../lib/dashboard.mjs";
@@ -41,6 +41,123 @@ const interruptedCompletion = async ({ cwd, home, plan }) => {
   assert.equal(existsSync(runPaths(home, id).terminal), false);
   return id;
 };
+
+test("foreign-host exposure contention preserves the scored completion and names an executable recovery", async () => {
+  const f = fixture();
+  try {
+    const lock = join(f.home, "exposure-ledger.lock");
+    const owner = { schema_id: "aos-resource-lock.v1", pid: 4000000000, host: "another-host", boot_instant: 1, nonce: "foreign" };
+    exposureLedgerTestHooks.afterReveal = () => writeJson(lock, owner);
+    const assessed = await assessAtATerminal(f.cwd, ["assess", "--plan", f.plan, "--seed", "5"]);
+    const id = newestRunId(f.cwd);
+    assert.equal(assessed.status, 3, assessed.stderr);
+    assert.match(assessed.stderr, /AOS_EXPOSURE_LOCK_UNAVAILABLE/u);
+    assert.ok(assessed.stderr.includes(pendingExposurePath(f.home, id)), assessed.stderr);
+    assert.match(assessed.stderr, /scored completion saved/u);
+    const pending = readFileSync(pendingExposurePath(f.home, id), "utf8");
+    for (const command of [["assess"], ["cycle", "status"], ["verify"], ["dashboard"]]) {
+      const blocked = run(f.cwd, command, 2);
+      assert.match(blocked.stderr, /aos doctor --exposure/u);
+      assert.equal(readFileSync(pendingExposurePath(f.home, id), "utf8"), pending);
+    }
+    const diagnosis = run(f.cwd, ["doctor", "--exposure"], 3);
+    assert.match(diagnosis.stdout, /another-host/u);
+    assert.match(diagnosis.stdout, /--repair-exposure-lock --writers-stopped/u);
+    run(f.cwd, ["doctor", "--repair-exposure-lock"], 2);
+    assert.deepEqual(json(lock), owner, "inspection and missing acknowledgement must retain the lock");
+    const repaired = run(f.cwd, ["doctor", "--repair-exposure-lock", "--writers-stopped"], 0);
+    assert.match(repaired.stdout, /preserved/u);
+    assert.equal(existsSync(lock), false);
+    assert.equal(existsSync(pendingExposurePath(f.home, id)), false);
+    assert.equal(json(runPaths(f.home, id).terminal).status, "INCOMPLETE");
+    run(f.cwd, ["verify", "--run", id, "--json"], 0);
+  } finally { clean(f.cwd); }
+});
+
+test("every exposure access failure carries the shared recovery entry even for an unnamed future fault", () => {
+  const cwd = mkdtempSync(join(tmpdir(), "aos-exposure-fault-"));
+  try {
+    for (const message of ["future publication fault", "AOS_EXPOSURE_LEDGER_CORRUPT synthetic", "ENOSPC synthetic"]) {
+      assert.throws(() => withExposureLedgerLock(cwd, () => { throw new Error(message); }), (error) => {
+        assert.ok(error.message.includes(message));
+        assert.match(error.message, /aos doctor --exposure/u);
+        assert.equal(error.recovery.command, "aos doctor --exposure");
+        assert.equal(error.recovery.home, cwd);
+        return true;
+      });
+    }
+    writeFileSync(exposureLedgerPath(cwd), "{");
+    assert.throws(() => readExposureLedgerFile(cwd), /AOS_MALFORMED_JSON.*aos doctor --exposure/u);
+  } finally { rmSync(cwd, { recursive: true, force: true }); }
+});
+
+test("cycle text and dashboard name the same counted seeds whose exposure was never verified", () => {
+  const f = fixture();
+  try {
+    run(f.cwd, ["cycle", "start", "--seed", "11", "--seed", "12", "--seed", "13"]);
+    const file = join(f.home, "cycle.json");
+    const cycle = json(file);
+    cycle.decision = {
+      cycle_id: cycle.cycle_id, seeds: cycle.seeds, valid_runs: 2, complete: false, issued: false,
+      excluded: [], valid_runs_exposure_unverified: [cycle.seeds[0], cycle.seeds[1]]
+    };
+    writeJson(file, cycle);
+    const text = run(f.cwd, ["cycle", "status"], 1).stdout;
+    const token = mintToken();
+    let status;
+    let html;
+    createHandler({ home: f.home, token })({ method: "GET", url: `/?t=${token}`, headers: { host: "localhost" } }, {
+      writeHead: (code) => { status = code; }, end: (body) => { html = body; }
+    });
+    assert.equal(status, 200);
+    for (const seed of cycle.decision.valid_runs_exposure_unverified) {
+      assert.ok(text.includes(`counted, exposure unverified: ${seed}`), text);
+      assert.ok(html.includes(`counted, exposure unverified: ${seed}`), html);
+    }
+    assert.equal(html.includes(`counted, exposure unverified: ${cycle.seeds[2]}`), false);
+  } finally { clean(f.cwd); }
+});
+
+test("assess publication names its own quarantined completion instead of reading missing artifacts", async (t) => {
+  const f = fixture();
+  const original = fs.linkSync;
+  try {
+    let conflicted = false;
+    t.mock.method(fs, "linkSync", (source, target, ...rest) => {
+      if (target === join(f.home, "exposure-ledger.lock")) {
+        const name = readdirSync(f.home).find((name) => /^exposure-pending-.+\.json$/u.test(name));
+        if (name && !conflicted) {
+          conflicted = true;
+          const id = name.slice("exposure-pending-".length, -".json".length);
+          commitTerminal(f.home, id, { status: "CANCELLED", reason: "concurrent cancellation" });
+        }
+      }
+      return original(source, target, ...rest);
+    });
+    syncBuiltinESMExports();
+    const assessed = await assessAtATerminal(f.cwd, ["assess", "--plan", f.plan, "--seed", "5"]);
+    assert.equal(conflicted, true, "the conflict must occur after the pending write");
+    assert.equal(assessed.status, 2, assessed.stderr);
+    assert.match(assessed.stderr, /AOS_EXPOSURE_FINALIZATION_UNPUBLISHED/u);
+    assert.match(assessed.stderr, /\.unreplayable/u);
+    assert.doesNotMatch(assessed.stderr, /AOS_UNREADABLE|ENOENT/u);
+    const id = newestRunId(f.cwd);
+    assert.equal(existsSync(`${pendingExposurePath(f.home, id)}.unreplayable`), true);
+    assert.equal(json(runPaths(f.home, id).terminal).status, "CANCELLED");
+  } finally { t.mock.restoreAll(); syncBuiltinESMExports(); clean(f.cwd); }
+});
+
+test("acknowledged exposure repair still refuses a live owner and preserves every artifact", () => {
+  const f = fixture();
+  try {
+    const lock = join(f.home, "exposure-ledger.lock");
+    writeJson(lock, { pid: process.pid, host: "another-host" });
+    const before = readFileSync(lock, "utf8");
+    const repaired = run(f.cwd, ["doctor", "--repair-exposure-lock", "--writers-stopped"], 2);
+    assert.match(repaired.stderr, /AOS_EXPOSURE_LEDGER_LOCKED.*live pid/u);
+    assert.equal(readFileSync(lock, "utf8"), before);
+  } finally { clean(f.cwd); }
+});
 
 const assertHomeUsable = async ({ cwd, home, plan }, damagedId) => {
   run(cwd, ["session", "recover", damagedId], 0);

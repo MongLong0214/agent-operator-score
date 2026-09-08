@@ -1391,8 +1391,10 @@ test("held-out passes are closed by construction: they never establish a real tr
 test("every cross-facet comparison is withheld until invariance evidence exists, for each declared facet", async () => {
   const { INVARIANCE_FACETS, comparisonGate } = await import("../../lib/form-class.mjs");
   const { modelIdentityProjection } = await import("../../lib/model-identity.mjs");
-  assert.deepEqual([...INVARIANCE_FACETS], ["language", "interface", "model", "runtime", "harness"]);
-  for (const facet of INVARIANCE_FACETS) {
+  // Acceptance names are independent of the implementation's contract-derived domain.
+  const requiredFacets = ["language", "interface", "model", "runtime", "harness", "platform", "domain_familiarity", "administration_version"];
+  assert.deepEqual([...INVARIANCE_FACETS], requiredFacets);
+  for (const facet of requiredFacets) {
     const gate = comparisonGate({ facet, left_level: "a", right_level: "b" });
     assert.equal(gate.decision, null, `${facet}: no invariance evidence is a null, not a verdict`);
     assert.equal(gate.comparison, "WITHHELD", `${facet}: the comparison must be withheld, not made with a caveat`);
@@ -1585,6 +1587,7 @@ test("an abandoned reservation does not durably inflate the next reservation's o
     administration_id: "admin-abandoned-count-2", run_id: "run-abandoned-count-2", occurred_at: "2026-09-06T10:00:05.000Z"
   });
   assert.equal(next.entry.prior_exposure_count, 0, "an abandoned reservation was counted as prior exposure on the next reservation");
+  assert.equal(next.entry.prior_same_form_id_count, 0, "an abandoned reservation is not same-form exposure");
 
   // The same bug's fifth site: `recordExposure`'s direct, one-shot append path (no reservation)
   // computed the same field from the same unfiltered rows.
@@ -1594,6 +1597,7 @@ test("an abandoned reservation does not durably inflate the next reservation's o
     occurred_at: "2026-09-06T10:00:10.000Z", run_id: "run-abandoned-count-3"
   });
   assert.equal(bareAppended.entry.prior_exposure_count, 0, "an abandoned reservation was counted as prior exposure on a bare-appended entry");
+  assert.equal(bareAppended.entry.prior_same_form_id_count, 0, "a bare append must use the same exposure history as a reservation");
 });
 
 test("an administration revealed but never finalized is exposure a later attempt cannot read as fresh", async () => {

@@ -28,7 +28,7 @@ const contractWithADifferentDigest = () => {
   doc.interpretation_use.release_note = `${doc.interpretation_use.release_note} Scored under a second copy of this contract.`;
   return sealEcdContract(doc);
 };
-const facets = { language: "en", interface: "cli", model: "m1", runtime: "r1", harness: "h1", operator: "alice", occasion: 1 };
+const facets = { language: "en", interface: "cli", model: "m1", runtime: "r1", harness: "h1", platform: "darwin/arm64", domain_familiarity: "experienced", administration_version: "fixture-v1", operator: "alice", occasion: 1 };
 /**
  * A run that names the whole profile it was administered under, which PROFILE_BOUND requires --
  * including the boundary that enforced it: #556 makes an unstated boundary withhold by name, since
@@ -101,7 +101,7 @@ test("PROFILE_BOUND is not issued to a run that never named the profile it claim
   assert.equal(anonymous.profile_digest, null);
   assert.deepEqual(anonymous.incomplete_forms, []);
   assert.deepEqual(anonymous.unsupported_forms, []);
-  assert.deepEqual(anonymous.unidentified_facets, ["language", "interface", "model", "runtime", "harness", "operator", "occasion", "profile_digest"]);
+  assert.deepEqual(anonymous.unidentified_facets, ["language", "interface", "model", "runtime", "harness", "platform", "domain_familiarity", "administration_version", "operator", "occasion", "profile_digest"]);
 
   // One facet short is still short, and the result says which.
   const partial = evaluate(allPass(), { ...identified, facets: { ...facets, harness: null } });
@@ -162,6 +162,13 @@ test("two results differing only in language or interface may not be compared", 
   const model = comparability(result({}), result({ model: "other" }));
   assert.equal(model.comparable, false);
   assert.deepEqual(model.facets, ["model"]);
+
+  for (const [facet, level] of [["platform", "linux/x64"], ["domain_familiarity", "novice"], ["administration_version", "fixture-v2"]]) {
+    const comparison = comparability(result({}), result({ [facet]: level }));
+    assert.equal(comparison.comparable, false);
+    assert.equal(comparison.reason, "INVARIANCE_UNESTABLISHED");
+    assert.deepEqual(comparison.facets, [facet]);
+  }
 
   const both = comparability(result({}), result({ language: "ko", model: "other" }));
   assert.equal(both.comparable, false);
@@ -253,12 +260,12 @@ test("a comparison whose facets nobody declared is refused rather than allowed b
   const one = comparability(declared, undeclared);
   assert.equal(one.comparable, false);
   assert.equal(one.reason, "FACETS_UNDECLARED");
-  assert.deepEqual(one.facets, ["language", "interface", "model", "runtime", "harness", "operator", "occasion", "profile_digest"]);
+  assert.deepEqual(one.facets, ["language", "interface", "model", "runtime", "harness", "platform", "domain_familiarity", "administration_version", "operator", "occasion", "profile_digest"]);
 
   // Half a facet identity is still not one.
   const partial = evaluate(allPass(), { ...complete, facets: { language: "en", interface: "cli" } });
   assert.equal(comparability(declared, partial).comparable, false);
-  assert.deepEqual(comparability(declared, partial).facets, ["model", "runtime", "harness", "operator", "occasion", "profile_digest"]);
+  assert.deepEqual(comparability(declared, partial).facets, ["model", "runtime", "harness", "platform", "domain_familiarity", "administration_version", "operator", "occasion", "profile_digest"]);
 });
 
 // --- negative --------------------------------------------------------------------------------

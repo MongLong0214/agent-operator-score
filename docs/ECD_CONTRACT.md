@@ -29,7 +29,7 @@ field rename was an incompatible shape change that neither the schema's `$id` no
 discriminator had moved to reflect, so a pre-rename and a post-rename document both claimed to be
 the identical schema version), all recorded in the version
 history atop `lib/ecd-contract.mjs` -- moved every artifact again, so `1.5.0` is not this contract's
-current version; `1.9.0` (`ECD_CONTRACT_VERSION`) is. Meaningful
+current version; `1.10.0` (`ECD_CONTRACT_VERSION`) is. Meaningful
 variation is required for FAM-1, FAM-2, FAM-3, FAM-4, and FAM-6.
 FAM-5 has the fixed assessment identity `aos-fam-5-fixed-v0.2.0`: changing its seed does not make
 another assessment form or add meaningful variation. Its task, oracle, and evidence binding remains

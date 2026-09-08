@@ -419,6 +419,10 @@ const crashAndRestart = async (crashAfter) => {
     const restarted = run(cwd, ["cycle", "run", "--plan", plan], 3);
     if (crashAfter === "reveal") {
       assert.match(restarted.stdout, /practice lane: AOS_FORM_EXPOSED_WITHOUT_TERMINAL/u, "the restart's own refusal must name the blocker on the terminal where the operator reads it");
+      assert.match(restarted.stdout, /aos cycle start --force --reason/u);
+      const status = run(cwd, ["cycle", "status"], 1);
+      assert.match(status.stdout, /can no longer reach three valid runs/u);
+      assert.match(status.stdout, /aos cycle start --force --reason/u);
     } else {
       assert.equal(/AOS_FORM_EXPOSED_WITHOUT_TERMINAL/u.test(restarted.stdout), false, "an abandoned reservation refused the restart on the operator's terminal");
     }
@@ -436,17 +440,6 @@ const crashAndRestart = async (crashAfter) => {
     const ledgerAfterRestart = ledgerOf(home);
     assert.equal(ledgerAfterRestart.entries.length, 2, "the restart adds its own terminal row beside the orphaned crash row; neither replaces the other");
     const stillOrphaned = ledgerAfterRestart.entries.find((entry) => entry.administration_id === crashedRunId);
-    // Finding, named here rather than fixed: nothing in this codebase ever resolves a dangling
-    // RESERVED/REVEALED row. Governing directive 25.3 names "resume, or recorded
-    // ABORTED_BEFORE_REVEAL" as the acceptable outcomes for the reserved-but-unrevealed case; no
-    // "ABORTED_BEFORE_REVEAL" status exists anywhere in this codebase (`grep` finds none), and
-    // nothing resumes the crashed administration either. What actually happens, for BOTH crash
-    // points, is that the orphaned row stays in its crashed state (RESERVED or REVEALED) forever --
-    // this exact form_contract_digest is permanently retired from official use unless an operator
-    // edits the ledger file by hand. That is safe (it can never grant a second official slot) but it
-    // is not what the directive's wording promised for the reserved-but-unrevealed case, and it does
-    // not distinguish the two crash points from each other the way the directive's own two bullets
-    // do -- both produce the identical refusal code, AOS_FORM_EXPOSED_WITHOUT_TERMINAL.
     assert.equal(stillOrphaned.state, expectedState, "the crashed row is never automatically resolved; it stays exactly as the crash left it");
 
     const restartRunId = ledgerAfterRestart.entries.find((entry) => entry.administration_id !== crashedRunId)?.administration_id;
@@ -457,10 +450,6 @@ const crashAndRestart = async (crashAfter) => {
       ? "the resumed administration of an exposed-without-terminal form must never be scored"
       : "the restart after a reservation that revealed nothing should have scored officially");
 
-    // The core safety property, checked one last time against everything now on disk: this exact
-    // form_contract_digest never carries two official slots, and (per the finding above) in this
-    // codebase it in fact never carries even one after a crash -- neither entry for this digest is
-    // ever an OPERATIONAL, scored administration.
     // The core safety property, whichever crash point this was: one official slot at most, never
     // two. After a reveal crash the form is spent and the count is zero; after a reservation that
     // revealed nothing the restart takes the one slot the abandoned reservation never used.

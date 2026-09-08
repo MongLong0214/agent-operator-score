@@ -141,7 +141,7 @@ const allPassEvaluation = () => evaluate(allPassObservations(), {
   // these tests is the identity record and only the identity record. The boundary is stated for
   // the same reason: #556 makes an unstated boundary withhold by name, so a fixture that means to
   // reach PROFILE_BOUND has to say the environment was enforced.
-  facets: { language: "en", interface: "cli", harness: "aos@test", runtime: "codex", model: EXACT_A, operator: "fixture-operator", occasion: "1" },
+  facets: { language: "en", interface: "cli", harness: "aos@test", platform: "darwin/arm64", domain_familiarity: "experienced", administration_version: "fixture-v1", runtime: "codex", model: EXACT_A, operator: "fixture-operator", occasion: "1" },
   profile_digest: "d".repeat(64),
   boundary: BOUNDARY_HELD,
   forms_completed: ["FAM-1", "FAM-2", "FAM-3", "FAM-4", "FAM-5", "FAM-6"]

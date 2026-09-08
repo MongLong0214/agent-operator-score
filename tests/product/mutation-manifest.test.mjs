@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { parse } from "acorn";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -9,6 +10,41 @@ import { sha256Bytes } from "../../lib/digest.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const read = (path) => readFileSync(join(root, path), "utf8");
+
+test("form scaffold guards distinguish command callers from pending library consumers", () => {
+  const parseModule = (source) => parse(source, { ecmaVersion: "latest", sourceType: "module" });
+  const source = read("lib/form-class.mjs");
+  const exports = parseModule(source).body.filter((node) => node.type === "ExportNamedDeclaration" && node.declaration);
+  const imported = new Set();
+  for (const directory of ["lib", "bin", "scripts"]) {
+    for (const file of readdirSync(join(root, directory)).filter((file) => file.endsWith(".mjs"))) {
+      for (const node of parseModule(read(`${directory}/${file}`)).body) {
+        if (node.type === "ImportDeclaration" && node.source.value.endsWith("/form-class.mjs")) {
+          for (const specifier of node.specifiers) if (specifier.imported) imported.add(specifier.imported.name);
+        }
+      }
+    }
+  }
+  for (const guard of GUARDS.filter((entry) => entry.file === "lib/form-class.mjs")) {
+    const at = source.indexOf(guard.from);
+    const declaration = exports.find((node) => node.start <= at && at < node.end)?.declaration;
+    const symbol = declaration?.id?.name ?? declaration?.declarations?.[0]?.id.name;
+    const pending = symbol !== undefined && !imported.has(symbol);
+    if (pending) assert.match(guard.pending_issue ?? "", /^#[0-9]+(?:, #[0-9]+)*$/u, `${guard.guard}: ${symbol} has no command caller`);
+    else assert.ok(guard.reachable_from?.length > 0, `${guard.guard}: name the command caller`);
+    assert.equal(Boolean(guard.pending_issue) && Boolean(guard.reachable_from), false, `${guard.guard}: two conflicting reachability claims`);
+  }
+});
+
+test("mutation totals keep pending library witnesses out of command coverage", async () => {
+  const { mutationSummary } = await import("../mutation/coverage.mjs");
+  assert.deepEqual(mutationSummary([
+    { file: "lib/store.mjs", outcome: "killed" },
+    { file: "lib/store.mjs", outcome: "SURVIVED" },
+    { file: "lib/form-class.mjs", pending_issue: "#586", outcome: "killed" }
+  ]), ["command-reachable: 1/2 guards are load-bearing.", "library-pending: 1/1 guards are load-bearing."]);
+  assert.throws(() => mutationSummary([{ file: "lib/form-class.mjs", guard: "new export", outcome: "killed" }]), /Unclassified scaffold guard/u);
+});
 
 // The mutation run is too slow to sit in `npm test` -- it rebuilds a worktree and runs a test file
 // per guard. What runs here is the part that rots: a `from` string that no longer matches after a
