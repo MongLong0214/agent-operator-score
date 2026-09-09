@@ -66,7 +66,7 @@ Required contract artifacts:
 ```text
 aos-construct-map.v1
 aos-evidence-model.v1
-aos-task-model.v1
+aos-task-model.v2
 aos-interpretation-use-argument.v1
 ```
 
@@ -184,6 +184,8 @@ TRANSFER
 ```
 
 Operational forms are scored once and tracked in an exposure ledger. Form linking requires anchor opportunities, coverage/difficulty evidence, and drift monitoring.
+
+The ledger's testimony is scoped to one AOS home: it enforces single official administration for the exposure it has recorded, but an administration from before the ledger existed, or one recorded under a different AOS home, is outside what it can see, and its historical validity stands rather than being refused.
 
 Repeated improvement may reflect practice or memorization. Sequence and interval are therefore recorded.
 

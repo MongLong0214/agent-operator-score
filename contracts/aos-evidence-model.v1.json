@@ -1,6 +1,6 @@
 {
   "schema": "aos-evidence-model.v1",
-  "contract_version": "1.6.0",
+  "contract_version": "1.10.0",
   "axes": [
     {
       "axis_id": "operator_process",
@@ -424,6 +424,18 @@
       "variance_component": "UNESTABLISHED"
     },
     {
+      "facet_id": "platform",
+      "definition": "The operating system and architecture under which the run was administered; distinct from its harness and isolation level.",
+      "levels_observed_per_cycle": 1,
+      "variance_component": "UNESTABLISHED"
+    },
+    {
+      "facet_id": "administration_version",
+      "definition": "The administration procedure and version used for the sitting. Measurement contract identity is additionally checked through contract_digest.",
+      "levels_observed_per_cycle": 1,
+      "variance_component": "UNESTABLISHED"
+    },
+    {
       "facet_id": "occasion",
       "definition": "The sitting the run belongs to.",
       "levels_observed_per_cycle": 1,
@@ -455,7 +467,7 @@
     },
     {
       "facet_id": "domain_familiarity",
-      "definition": "The operator's prior familiarity with the domain of the form.",
+      "definition": "The operator's prior experience and familiarity with the domain of the form (the experience axis in issue 585).",
       "levels_observed_per_cycle": null,
       "variance_component": "UNESTABLISHED"
     },

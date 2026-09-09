@@ -9,7 +9,7 @@ import { sha256Value } from "../../lib/core.mjs";
 import { sha256Bytes } from "../../lib/digest.mjs";
 import { observeRun } from "../../lib/observe.mjs";
 import { FAMILY_CONTRACT_AXIS_ACCOUNTING, FROZEN_FAMILY_CONTRACT_AXIS_IDS, normalizeSeed, scenarioParams, streamFor } from "../../lib/suite-seed.mjs";
-import { FAMILIES, FORM_MANIFEST_SCHEMA, FORM_VARIATION_CONTRACT, FORM_VARIATION_REPORT_SCHEMA, SUITE_ID, formManifest, formVariationReport, formVariationReportForManifests, gradeScenario, prepareScenario, suiteDigest, suiteManifest, verifyFormBinding } from "../../lib/suite.mjs";
+import { FAMILIES, FORM_FAMILY_MANIFEST_SCHEMA, FORM_MANIFEST_SCHEMA, FORM_VARIATION_CONTRACT, FORM_VARIATION_REPORT_SCHEMA, SUITE_ID, formManifest, formVariationReport, formVariationReportForManifests, gradeScenario, prepareScenario, suiteDigest, suiteManifest, verifyFormBinding } from "../../lib/suite.mjs";
 import { observedCleanEffects } from "./helpers.mjs";
 
 const seeds = (count) => Array.from({ length: count }, (_, index) => (index + 1).toString(16));
@@ -56,7 +56,7 @@ const issueFam5Implementation = async (seed, source) => {
   }
 };
 const ADMINISTERED_METRICS_BY_FAMILY = Object.freeze(Object.fromEntries(
-  JSON.parse(readFileSync(new URL("../../contracts/aos-task-model.v1.json", import.meta.url), "utf8")).forms
+  JSON.parse(readFileSync(new URL("../../contracts/aos-task-model.v2.json", import.meta.url), "utf8")).forms
     .map((form) => [form.family, Object.freeze([...form.administered_metric_ids])])
 ));
 
@@ -334,19 +334,27 @@ test("every operational family gives the operator seed-specific sealed task inpu
 test("the operational form manifest binds raw task inputs to each family oracle without claiming equivalence", () => {
   const manifest = formManifest("2a");
   assert.equal(manifest.schema_id, FORM_MANIFEST_SCHEMA);
+  // Pinned literally, not only against the constant: `equivalence_status` moved from the undeclared
+  // UNCALIBRATED to UNESTABLISHED once already without a schema move, and `form_contract_digest`
+  // folds this whole body in, so that silent rename already changed what "the same form" hashes to.
+  // The schema id is the version move that change should have carried the first time; pinning the
+  // literal here is what would have caught the rename landing without one.
+  assert.equal(FORM_MANIFEST_SCHEMA, "aos-form-manifest.v4", "the enclosing form manifest schema did not move with its equivalence vocabulary");
   assert.equal(manifest.form_class, "OPERATIONAL");
-  assert.equal(manifest.equivalence_status, "UNCALIBRATED");
+  assert.equal(manifest.equivalence_status, "UNESTABLISHED");
   assert.equal(manifest.difficulty_features, null, "unmeasured difficulty must not be an empty feature record");
   assert.equal(manifest.difficulty_features_status, "NOT_OBSERVED");
   assert.deepEqual(formManifest("2a"), manifest, "the form manifest is not replayable");
   for (const family of FAMILIES) {
     const form = manifest.family_manifests[family];
+    assert.equal(form.schema_id, FORM_FAMILY_MANIFEST_SCHEMA, `${family} family manifest does not carry the family schema tag`);
+    assert.equal(FORM_FAMILY_MANIFEST_SCHEMA, "aos-form-family-manifest.v2", "the family manifest schema did not move with its equivalence vocabulary either");
     assert.equal(form.form_class, "OPERATIONAL", family);
     assert.match(form.task_tree_digest, /^sha256:[a-f0-9]{64}$/, `${family} task inputs are not raw-byte bound`);
     assert.match(form.oracle_digest, /^sha256:[a-f0-9]{64}$/, `${family} oracle is not bound`);
     assert.ok(form.construct_opportunity.required_cell_ids.length > 0, `${family} declares no required construct opportunity`);
     assert.equal(form.difficulty_features, null, `${family} converts an unmeasured difficulty feature into a record`);
-    assert.equal(form.equivalence_status, "UNCALIBRATED", `${family} claims a form relation this suite has not calibrated`);
+    assert.equal(form.equivalence_status, "UNESTABLISHED", `${family} claims a form relation this suite has no linking evidence for`);
     assert.equal(form.assessment_identity, family === "FAM-5" ? "aos-fam-5-fixed-v0.2.0" : `aos-${family.toLowerCase()}-seed-${manifest.seed}`, `${family} assessment identity is not replayable`);
   }
 });

@@ -28,7 +28,7 @@ const contractWithADifferentDigest = () => {
   doc.interpretation_use.release_note = `${doc.interpretation_use.release_note} Scored under a second copy of this contract.`;
   return sealEcdContract(doc);
 };
-const facets = { language: "en", interface: "cli", model: "m1", runtime: "r1", harness: "h1", operator: "alice", occasion: 1 };
+const facets = { language: "en", interface: "cli", model: "m1", runtime: "r1", harness: "h1", platform: "darwin/arm64", domain_familiarity: "experienced", administration_version: "fixture-v1", operator: "alice", occasion: 1 };
 /**
  * A run that names the whole profile it was administered under, which PROFILE_BOUND requires --
  * including the boundary that enforced it: #556 makes an unstated boundary withhold by name, since
@@ -101,7 +101,7 @@ test("PROFILE_BOUND is not issued to a run that never named the profile it claim
   assert.equal(anonymous.profile_digest, null);
   assert.deepEqual(anonymous.incomplete_forms, []);
   assert.deepEqual(anonymous.unsupported_forms, []);
-  assert.deepEqual(anonymous.unidentified_facets, ["language", "interface", "model", "runtime", "harness", "operator", "occasion", "profile_digest"]);
+  assert.deepEqual(anonymous.unidentified_facets, ["language", "interface", "model", "runtime", "harness", "platform", "domain_familiarity", "administration_version", "operator", "occasion", "profile_digest"]);
 
   // One facet short is still short, and the result says which.
   const partial = evaluate(allPass(), { ...identified, facets: { ...facets, harness: null } });
@@ -162,6 +162,13 @@ test("two results differing only in language or interface may not be compared", 
   const model = comparability(result({}), result({ model: "other" }));
   assert.equal(model.comparable, false);
   assert.deepEqual(model.facets, ["model"]);
+
+  for (const [facet, level] of [["platform", "linux/x64"], ["domain_familiarity", "novice"], ["administration_version", "fixture-v2"]]) {
+    const comparison = comparability(result({}), result({ [facet]: level }));
+    assert.equal(comparison.comparable, false);
+    assert.equal(comparison.reason, "INVARIANCE_UNESTABLISHED");
+    assert.deepEqual(comparison.facets, [facet]);
+  }
 
   const both = comparability(result({}), result({ language: "ko", model: "other" }));
   assert.equal(both.comparable, false);
@@ -253,12 +260,12 @@ test("a comparison whose facets nobody declared is refused rather than allowed b
   const one = comparability(declared, undeclared);
   assert.equal(one.comparable, false);
   assert.equal(one.reason, "FACETS_UNDECLARED");
-  assert.deepEqual(one.facets, ["language", "interface", "model", "runtime", "harness", "operator", "occasion", "profile_digest"]);
+  assert.deepEqual(one.facets, ["language", "interface", "model", "runtime", "harness", "platform", "domain_familiarity", "administration_version", "operator", "occasion", "profile_digest"]);
 
   // Half a facet identity is still not one.
   const partial = evaluate(allPass(), { ...complete, facets: { language: "en", interface: "cli" } });
   assert.equal(comparability(declared, partial).comparable, false);
-  assert.deepEqual(comparability(declared, partial).facets, ["model", "runtime", "harness", "operator", "occasion", "profile_digest"]);
+  assert.deepEqual(comparability(declared, partial).facets, ["model", "runtime", "harness", "platform", "domain_familiarity", "administration_version", "operator", "occasion", "profile_digest"]);
 });
 
 // --- negative --------------------------------------------------------------------------------
@@ -330,6 +337,36 @@ test("a form named twice or named at all without being declared is refused", () 
     .find((one) => one.inference_id === "within_cycle_generalization").assumptions
     .find((one) => /exactly once/.test(one));
   assert.ok(assumption, "the assumption this test enforces is no longer in the artifact");
+});
+
+test("the exposure-ledger evidence and rebuttal are pinned to what classifyAdministration actually enforces", async () => {
+  // #585 shipped the exposure ledger this artifact's `form-exposure-ledger` evidence and
+  // `practice-or-memorisation` rebuttal had stood against as UNESTABLISHED/OPEN, at unchanged
+  // "this contract does not implement one" / "no exposure ledger enforces single administration"
+  // prose, since before the ledger existed. A governance artifact whose text contradicts the
+  // shipped behaviour is the defect class that blocked PR #647 -- this fails if either claim
+  // regresses to the stale wording, or if the code stops doing what the corrected wording claims.
+  const { classifyAdministration, createExposureLedger, recordExposure } = await import("../../lib/form-class.mjs");
+  const inference = loadEcdContract().interpretation_use.inferences.find((one) => one.inference_id === "within_cycle_generalization");
+  const evidence = inference.evidence.find((one) => one.evidence_id === "form-exposure-ledger");
+  const rebuttal = inference.rebuttals.find((one) => one.rebuttal_id === "practice-or-memorisation");
+  assert.ok(evidence, "form-exposure-ledger evidence is no longer in the artifact");
+  assert.ok(rebuttal, "practice-or-memorisation rebuttal is no longer in the artifact");
+  assert.doesNotMatch(evidence.detail, /does not implement one/u, "the evidence still claims no exposure ledger exists");
+  assert.doesNotMatch(rebuttal.detail, /no exposure ledger enforces single administration/u, "the rebuttal still claims nothing enforces single administration");
+
+  // If the artifact claims the ledger is implemented, classifyAdministration must actually refuse
+  // a replay of the exact same form contract digest -- otherwise the text and the shipped behaviour
+  // have drifted apart again.
+  if (evidence.status === "PASS") {
+    const digest = `sha256:${"e".repeat(64)}`;
+    const { ledger } = recordExposure(createExposureLedger(), {
+      form_id: "f", form_contract_digest: digest, declared_class: "OPERATIONAL", occurred_at: "2026-01-01T00:00:00.000Z", scored: true
+    });
+    const replay = classifyAdministration(ledger, { form_id: "f", form_contract_digest: digest, declared_class: "OPERATIONAL" });
+    assert.equal(replay.official_scoring_permitted, false, "the evidence claims the ledger enforces single administration but classifyAdministration still permits a replay");
+    assert.equal(replay.refusal_code, "AOS_FORM_ALREADY_EXPOSED");
+  }
 });
 
 test("the result carries the contract digest and the profile digest it was bound to", () => {

@@ -398,6 +398,16 @@
       "file": "tests/product/handoff-exact-digest.test.mjs",
       "match": "a handoff consumed with the digests it was handed is accepted",
       "note": "the assertion is the expected exit status the run() helper checks; the body has no bare assert because the helper owns it"
+    },
+    {
+      "file": "tests/product/exposure-cross-process.test.mjs",
+      "match": "25.3: a hard crash after the reservation commit, before content reveal, leaves the form usable and takes no official slot",
+      "note": "both crash-injection cases share one assertion-heavy crashAndRestart() helper so the reserve/reveal bodies stay identical apart from which ledger transition kills the process; the body has no bare assert because the helper owns every check"
+    },
+    {
+      "file": "tests/product/exposure-cross-process.test.mjs",
+      "match": "25.3: a hard crash after the reveal commit, before terminal, refuses the same form to a later attempt with the named blocker",
+      "note": "both crash-injection cases share one assertion-heavy crashAndRestart() helper so the reserve/reveal bodies stay identical apart from which ledger transition kills the process; the body has no bare assert because the helper owns every check"
     }
   ]
 }

@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { canonicalJson } from "../../lib/core.mjs";
 import { contractFileDigests, evaluate, shippedEcdContract } from "../../lib/ecd-contract.mjs";
 import { buildResult } from "../../lib/result-schema.mjs";
+import { createExposureLedger } from "../../lib/form-class.mjs";
 import { probeAgentCapabilities, detectedCapabilityRecord } from "../../lib/capability-probe.mjs";
 import { capabilityDigestOf, delegationOracle, routeOracleDigest, routeOracleEvidenceId } from "../../lib/routing-oracle.mjs";
 import { addAgent, initBare, makePlan, newestRunId, run } from "./helpers.mjs";
@@ -31,6 +32,45 @@ const assessed = ({ adapter = null } = {}) => {
   // is the property the check exists to enforce.
   const boundary = JSON.parse(readFileSync(recordPath, "utf8")).isolation.official_issuance;
   return { cwd, runId, boundary, recordPath, resultPath: join(cwd, ".aos", "runs", runId, "result.json") };
+};
+
+// #585 BLOCKER item 1. A second administration of the exact same seed against the exact same plan
+// hits the exposure ledger's scored-once policy and comes back PRACTICE: the run this test hands
+// back is the one whose published surfaces `assess` withheld with `withholdPublishedClaim` AFTER
+// `buildResult` produced them, which is the shape whose own recomputation used to disagree with it.
+const assessedPractice = () => {
+  const cwd = mkdtempSync(join(tmpdir(), "aos-verify-run-practice-"));
+  run(cwd, ["init"]);
+  addAgent(cwd, "solo");
+  const plan = makePlan(cwd, { default: "solo" });
+  run(cwd, ["assess", "--plan", plan, "--seed", "5"], 3);
+  run(cwd, ["assess", "--plan", plan, "--seed", "5"], 3);
+  const runId = newestRunId(cwd);
+  const runDirectory = join(cwd, ".aos", "runs", runId);
+  const terminal = JSON.parse(readFileSync(join(runDirectory, "terminal.json"), "utf8"));
+  assert.equal(terminal.status, "PRACTICE", `the second administration of one seed did not classify as PRACTICE: ${JSON.stringify(terminal)}`);
+  return { cwd, runId, recordPath: join(runDirectory, "record.json"), resultPath: join(runDirectory, "result.json") };
+};
+
+// #585 (this round). A second administration of the exact same seed where the agent also behaves
+// unsafely: the exposure ledger refuses this administration exactly as it does in
+// `assessedPractice` above, but `status` becomes `"UNSAFE"` rather than `"PRACTICE"` because S2
+// deliberately wins the status (see the comment in `lib/cli.mjs` where `status` is assigned). The
+// publish path used to key its withholding off `status === "PRACTICE"` rather than off the ledger's
+// own refusal, so this exact shape published its issued composite and profiles in full beside an
+// UNSAFE terminal.
+const assessedUnsafeReplay = () => {
+  const cwd = mkdtempSync(join(tmpdir(), "aos-verify-run-unsafe-replay-"));
+  run(cwd, ["init"]);
+  addAgent(cwd, "solo");
+  const plan = makePlan(cwd, { default: "solo" });
+  run(cwd, ["assess", "--plan", plan, "--seed", "5"], 3);
+  run(cwd, ["assess", "--plan", plan, "--seed", "5", "--json"], 4, { FAKE_AGENT_PROFILE: "unsafe" });
+  const runId = newestRunId(cwd);
+  const runDirectory = join(cwd, ".aos", "runs", runId);
+  const terminal = JSON.parse(readFileSync(join(runDirectory, "terminal.json"), "utf8"));
+  assert.equal(terminal.status, "UNSAFE", `the unsafe replay of an already-exposed seed did not classify as UNSAFE: ${JSON.stringify(terminal)}`);
+  return { cwd, runId, recordPath: join(runDirectory, "record.json"), resultPath: join(runDirectory, "result.json") };
 };
 
 const assessedWithProbe = (profile = "probe-cut-off") => {
@@ -407,6 +447,115 @@ test("a stored result is recomputed from its own record", () => {
   try {
     const verified = run(cwd, ["verify", "--run", runId]);
     assert.match(verified.stdout, /PASS\trecompute/);
+    assert.equal(/FAIL/.test(verified.stdout), false, verified.stdout);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("current result verification cannot replace missing or corrupt exposure evidence with the run record", () => {
+  const { cwd, runId, recordPath } = assessedPractice();
+  const ledgerPath = join(cwd, ".aos", "exposure-ledger.json");
+  try {
+    const intact = readFileSync(ledgerPath, "utf8");
+    run(cwd, ["verify", "--run", runId]);
+    for (const removeReason of [false, true]) {
+      if (removeReason) {
+        const record = JSON.parse(readFileSync(recordPath, "utf8"));
+        delete record.practice_withholding;
+        writeFileSync(recordPath, JSON.stringify(record));
+      }
+      for (const damage of ["missing", "empty", "json", "chain", "unreadable"]) {
+        rmSync(ledgerPath, { recursive: true, force: true });
+        if (damage === "empty") writeFileSync(ledgerPath, JSON.stringify(createExposureLedger()));
+        if (damage === "json") writeFileSync(ledgerPath, "{");
+        if (damage === "chain") {
+          const raw = JSON.parse(intact);
+          raw.entries[0].score = 12345;
+          writeFileSync(ledgerPath, JSON.stringify(raw));
+        }
+        if (damage === "unreadable") mkdirSync(ledgerPath);
+        const missing = damage === "missing" || damage === "empty";
+        const checked = run(cwd, ["verify", "--run", runId, "--json"], missing ? 4 : 5);
+        const report = JSON.parse(checked.stdout);
+        assert.equal(report.state, missing ? "unresolved" : "contradicted", "missing or corrupt exposure must never verify through the run record");
+        const exposure = report.checks.find((check) => check.check === "exposure-ledger");
+        assert.equal(exposure.decision, missing ? null : false);
+        assert.equal(report.checks.find((check) => check.check === "recompute").decision, null);
+      }
+    }
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("a PRACTICE result withheld by the exposure ledger passes its own verifier", () => {
+  // `withholdPublishedClaim` patches `operator_process_profile`, `system_outcome_profile` and
+  // `aos_composite` onto the built result AFTER `buildResult` produced them, but the exposure
+  // classification that decided the withholding was never an input `evaluate`/`buildResult` saw. A
+  // from-scratch rebuild -- exactly what `aos verify --run` does -- reproduced the un-withheld
+  // surfaces and disagreed with the artifact this command had just written, so every PRACTICE run
+  // failed its own verification. This is the fix's own regression test, not an incidental one.
+  const { cwd, runId, recordPath, resultPath } = assessedPractice();
+  try {
+    const record = JSON.parse(readFileSync(recordPath, "utf8"));
+    assert.equal(typeof record.practice_withholding?.reason, "string", "the run's own working record does not carry the reason it was withheld");
+    const stored = JSON.parse(readFileSync(resultPath, "utf8"));
+    assert.equal(stored.aos_composite.issued, false, "a PRACTICE result should have withheld its composite");
+    assert.equal(stored.aos_composite.withheld_reason, record.practice_withholding.reason, "the stored withheld reason and the run's own record disagree");
+
+    const verified = run(cwd, ["verify", "--run", runId]);
+    assert.match(verified.stdout, /PASS\trecompute/, verified.stdout);
+    assert.equal(/FAIL/.test(verified.stdout), false, verified.stdout);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+// #585 (this round). `verify --run` used to read `practiceReason` from `record.practice_withholding`
+// alone, with nothing to reconcile it against -- the same working-record file an operator can edit
+// by hand. Stripping that field off an otherwise-untouched, legitimately-withheld PRACTICE run's
+// record left the stored (still correctly withheld) `result.json` unchanged but made the verifier's
+// own rebuild stop reapplying the withholding, so the honest rebuild (raw, unwithheld) no longer
+// matched the honest stored artifact (withheld) -- an untampered result failing verification purely
+// because a side file lost one field. Reconciling against the exposure ledger's own committed entry
+// for this administration, which the record cannot edit, means removing the field changes nothing:
+// the ledger still says this administration was already exposed, and the rebuild still withholds.
+test("stripping practice_withholding from the run's own record does not change verify --run's verdict; the ledger still says so", () => {
+  const { cwd, runId, recordPath } = assessedPractice();
+  try {
+    const record = JSON.parse(readFileSync(recordPath, "utf8"));
+    assert.equal(typeof record.practice_withholding?.reason, "string", "the run's own working record does not carry the reason it was withheld");
+    // Tamper only the record's own claim; `result.json` on disk is untouched and still legitimately
+    // withheld. A verifier that reconciles against the ledger cannot be steered by this edit alone.
+    writeFileSync(recordPath, JSON.stringify({ ...record, practice_withholding: null }, null, 2));
+    const verified = run(cwd, ["verify", "--run", runId]);
+    assert.match(verified.stdout, /PASS\trecompute/, verified.stdout);
+    assert.equal(/FAIL/.test(verified.stdout), false, verified.stdout);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+// #585 (this round). `status` is `"UNSAFE"` whenever the agent triggers S2, and S2 deliberately
+// wins the status over a ledger refusal -- but the publish path used to key withholding off
+// `status === "PRACTICE"`, so an S2 replay of an already-exposed form published its issued
+// composite and profiles in full beside an UNSAFE terminal. This is the fix's own regression test.
+test("an S2 replay of an already-exposed form withholds its published surfaces exactly like a PRACTICE replay does", () => {
+  const { cwd, runId, recordPath, resultPath } = assessedUnsafeReplay();
+  try {
+    const record = JSON.parse(readFileSync(recordPath, "utf8"));
+    assert.equal(typeof record.practice_withholding?.reason, "string", "the ledger refused this replay, but the run's own working record does not say so because S2 -- not PRACTICE -- won the status");
+    const stored = JSON.parse(readFileSync(resultPath, "utf8"));
+    assert.equal(stored.aos_composite.issued, false, "an S2 replay of an already-exposed form published its issued composite in full");
+    assert.equal(stored.operator_process_profile.issued, false, "an S2 replay of an already-exposed form published its operator process profile in full");
+    assert.equal(stored.system_outcome_profile.issued, false, "an S2 replay of an already-exposed form published its system outcome profile in full");
+    assert.equal(stored.aos_composite.withheld_reason, record.practice_withholding.reason, "the stored withheld reason and the run's own record disagree");
+
+    // The same fix that withholds the publish path also has to be reconciled by `verify --run`: the
+    // ledger, not `status`, is what verification's own rebuild has to withhold under too.
+    const verified = run(cwd, ["verify", "--run", runId]);
+    assert.match(verified.stdout, /PASS\trecompute/, verified.stdout);
     assert.equal(/FAIL/.test(verified.stdout), false, verified.stdout);
   } finally {
     rmSync(cwd, { recursive: true, force: true });

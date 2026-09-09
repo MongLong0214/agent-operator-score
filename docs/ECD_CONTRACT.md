@@ -14,15 +14,22 @@ have produced it, and what happens when it is absent.
 | `aos-observable-cell.v1` | `contracts/aos-observable-cells.v1.json` | The 35 cells, the subchecks each owns and the form that administers each of them, and the pinned count of subchecks the mapping claims |
 | `aos-construct-map.v1` | `contracts/aos-construct-map.v1.json` | C1–C7, which cells stand for each on which axis, and the one index |
 | `aos-evidence-model.v1` | `contracts/aos-evidence-model.v1.json` | Axes, authorities, scoring rules, missing policies, facets, prohibited value sources |
-| `aos-task-model.v1` | `contracts/aos-task-model.v1.json` | What each form administers, and which opportunity sources are declared but not administered |
+| `aos-task-model.v2` | `contracts/aos-task-model.v2.json` | What each form administers, and which opportunity sources are declared but not administered |
 | `aos-interpretation-use-argument.v1` | `contracts/aos-interpretation-use-argument.v1.json` | Scoring → within-cycle generalization → extrapolation → use, with each link's status |
 
 ## Form-variation contract v0.2.0
 
 The task model's `form_variation` contract is versioned at `0.2.0`; its own change moved the ECD
-contract to `1.5.0` when this section was written. A later, unrelated change -- #568 round 1,
-recorded in the version history atop `lib/ecd-contract.mjs` -- moved every artifact again, so
-`1.5.0` is not this contract's current version; `1.6.0` (`ECD_CONTRACT_VERSION`) is. Meaningful
+contract to `1.5.0` when this section was written. Later, unrelated changes -- #568's legacy-surface
+disclosure, #585's exposure-ledger evidence, #585 item 5's rename of every form's
+`scored_once_per_cycle` to `scored_once_per_aos_home` (matching the scope the exposure ledger
+actually enforces, which the interpretation-use argument already named), and #585 item 6's move of
+the task model's own schema identifier from `aos-task-model.v1` to `aos-task-model.v2` (item 5's
+field rename was an incompatible shape change that neither the schema's `$id` nor its `schema`
+discriminator had moved to reflect, so a pre-rename and a post-rename document both claimed to be
+the identical schema version), all recorded in the version
+history atop `lib/ecd-contract.mjs` -- moved every artifact again, so `1.5.0` is not this contract's
+current version; `1.10.0` (`ECD_CONTRACT_VERSION`) is. Meaningful
 variation is required for FAM-1, FAM-2, FAM-3, FAM-4, and FAM-6.
 FAM-5 has the fixed assessment identity `aos-fam-5-fixed-v0.2.0`: changing its seed does not make
 another assessment form or add meaningful variation. Its task, oracle, and evidence binding remains

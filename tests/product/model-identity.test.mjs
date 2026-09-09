@@ -141,7 +141,7 @@ const allPassEvaluation = () => evaluate(allPassObservations(), {
   // these tests is the identity record and only the identity record. The boundary is stated for
   // the same reason: #556 makes an unstated boundary withhold by name, so a fixture that means to
   // reach PROFILE_BOUND has to say the environment was enforced.
-  facets: { language: "en", interface: "cli", harness: "aos@test", runtime: "codex", model: EXACT_A, operator: "fixture-operator", occasion: "1" },
+  facets: { language: "en", interface: "cli", harness: "aos@test", platform: "darwin/arm64", domain_familiarity: "experienced", administration_version: "fixture-v1", runtime: "codex", model: EXACT_A, operator: "fixture-operator", occasion: "1" },
   profile_digest: "d".repeat(64),
   boundary: BOUNDARY_HELD,
   forms_completed: ["FAM-1", "FAM-2", "FAM-3", "FAM-4", "FAM-5", "FAM-6"]
@@ -1090,8 +1090,15 @@ test("same exact model with a different executable identity is not one cohort", 
   // under the other, and says which field of the cycle it failed.
   const cycle = { seeds: [1], profile_digest: left.profile_digest, suite_major: 0, scorer_major: 0 };
   const run = { seed: 1, profile_digest: right.profile_digest, suite_major: 0, scorer_major: 0, terminal_committed: true, issued: true };
-  assert.deepEqual(runValidity(cycle, run), { valid: false, reason: "PROFILE_CHANGED" });
-  assert.deepEqual(runValidity(cycle, { ...run, profile_digest: left.profile_digest }), { valid: true, reason: null });
+  // #585. No `form_classification` on this fixture run, so the exposure ledger never saw it --
+  // named `UNVERIFIED` rather than folded into the same `valid: true` a verified run would produce.
+  // This assertion pinned the pre-#585 shape of a `PROFILE_CHANGED` refusal, which used to return
+  // before `exposure` was computed at all; `recordRun` reads `validity.exposure.status`
+  // unconditionally, and a refusal missing the field is a TypeError there, not merely an omission.
+  assert.deepEqual(runValidity(cycle, run), { valid: false, reason: "PROFILE_CHANGED", exposure: { decision: null, status: "UNVERIFIED" } });
+  assert.deepEqual(runValidity(cycle, { ...run, profile_digest: left.profile_digest }), {
+    valid: true, reason: null, exposure: { decision: null, status: "UNVERIFIED" }
+  });
 });
 
 test("same model id with a different adapter, environment policy or isolation is not one cohort", () => {
