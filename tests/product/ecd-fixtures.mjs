@@ -62,7 +62,7 @@ export const POPULATED = [
   { target: "C6.OG.01", donor: "C6.BP.01", form: "FAM-6" }
 ];
 
-export const contractWithAPopulatedIndex = () => {
+export const contractWithAPopulatedIndex = (amend = null) => {
   const doc = JSON.parse(JSON.stringify(loadEcdContract()));
   const cellById = new Map(doc.cells.cells.map((one) => [one.cell_id, one]));
   for (const { target, donor, form: formId } of POPULATED) {
@@ -90,6 +90,11 @@ export const contractWithAPopulatedIndex = () => {
   }
   doc.task_model.unadministered_opportunity_sources = doc.task_model.unadministered_opportunity_sources
     .filter((source) => source.source_id !== "operator-authored-plan");
+  // #586. The one seam a test needs to vary the validation registry: the registry statuses are read
+  // off the contract and are never a caller input to the claim-stage engine, so a test that wants a
+  // PASS category has to change the contract and put it back through `sealEcdContract`. If the edit
+  // breaks a contract rule the seal throws, exactly as it does for every other edit above.
+  if (amend !== null) amend(doc);
   return sealEcdContract(doc);
 };
 

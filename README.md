@@ -395,6 +395,38 @@ Until new, unused sessions are measured, the current reviewer's accuracy is not 
 holdout ledger stores session digests, finding IDs, judgments, and reasons — never transcripts.
 See [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md).
 
+## What the number may be used for
+
+A green test suite is not validity evidence. `tests pass` is a fact about a program; what a reader
+may conclude about a person from a number is a different question, and AOS answers it from a
+versioned registry rather than from delivery.
+
+Every result carries an `aos-validity-evidence.v1` record. It holds seven evidence categories --
+`content`, `response_process`, `internal_structure`, `relations_to_other_variables`,
+`generalizability`, `fairness_invariance`, `consequences` -- each `PASS`, `FAIL` or `UNESTABLISHED`,
+and a claim stage derived from them: `EXPERIMENTAL`, `INSTRUMENT_READY`, `PROFILE_BOUND` or
+`GENERALIZABILITY_SUPPORTED`. Missing evidence is `UNESTABLISHED`, which is not a weak `PASS`: with
+an empty registry `PROFILE_BOUND` is unreachable however green the suite is and however many locked
+forms a run completed.
+
+The stage is computed in one place, `lib/claim-governance.mjs`, from the sealed contract and the
+run's own evaluation. No renderer recomputes it and no caller can supply one. Every surface -- the
+result JSON, the markdown report, the HTML page, the card, the dashboard and this page -- shows the
+same eight fields: claim stage, permitted interpretation, forbidden uses, the seven evidence
+category statuses, generalizability status, uncertainty status, the validation-evidence digest, and
+the standard-setting status.
+
+Today all seven categories are `UNESTABLISHED`, so the shipped instrument is `INSTRUMENT_READY` and
+the operator claim is `WITHHOLD`.
+
+Hiring, promotion, certification and population ranking are refused by the product, not only
+discouraged by this page: such a use request returns `AOS_USE_FORBIDDEN` at every claim stage. A
+comparison across profiles returns `AOS_USE_INVARIANCE_UNESTABLISHED` until fairness/invariance
+evidence passes; a category, percentile or rank returns `AOS_USE_STANDARD_SETTING_REQUIRED` until an
+`aos-standard-setting.v1` study is registered; and a request that declares no use at all returns
+`AOS_USE_UNDECLARED` rather than being permitted by omission. Ask the product directly:
+`node bin/aos.mjs use --run <id> --for hiring` prints the refusal and exits non-zero.
+
 ## Outputs, security, and privacy
 
 An assessment produces:

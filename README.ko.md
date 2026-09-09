@@ -395,6 +395,37 @@ EXPERIMENTAL로 남습니다. 보류는 0이 아니라 값 없음이며, 이 명
 없습니다. holdout 기록에는 세션 원문이 아니라 세션 해시, 지적 ID, 판정과 이유만 저장됩니다.
 자세한 내용은 [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md)에 있습니다.
 
+## 이 숫자를 어디에 쓸 수 있는가
+
+테스트가 전부 통과한 것은 타당도 근거가 아닙니다. `tests pass`는 프로그램에 대한 사실이고, 그 숫자로
+사람에 대해 무엇을 말할 수 있는지는 다른 질문입니다. AOS는 그 답을 구현 완료가 아니라 버전이 붙은
+레지스트리에서 가져옵니다.
+
+모든 결과에는 `aos-validity-evidence.v1` 레코드가 붙습니다. 근거 범주 일곱 개 --
+`content`, `response_process`, `internal_structure`, `relations_to_other_variables`,
+`generalizability`, `fairness_invariance`, `consequences` -- 가 각각 `PASS`, `FAIL`,
+`UNESTABLISHED` 중 하나를 갖고, 거기서 claim stage가 나옵니다: `EXPERIMENTAL`,
+`INSTRUMENT_READY`, `PROFILE_BOUND`, `GENERALIZABILITY_SUPPORTED`. 근거가 없으면
+`UNESTABLISHED`이고 이것은 약한 `PASS`가 아닙니다. 레지스트리가 비어 있으면 테스트가 아무리 초록이고
+잠긴 form을 몇 개를 끝냈든 `PROFILE_BOUND`에 도달할 수 없습니다.
+
+stage는 `lib/claim-governance.mjs` 한 곳에서, 봉인된 계약과 그 실행의 evaluation만 보고 계산합니다.
+렌더러는 다시 계산하지 않고 호출자는 stage를 넘길 수 없습니다. 결과 JSON, 마크다운 리포트, HTML,
+카드, 대시보드, 그리고 이 문서까지 모든 표면이 같은 여덟 필드를 보여줍니다: claim stage, 허용된 해석,
+금지된 사용, 근거 범주 일곱 개의 상태, generalizability 상태, uncertainty 상태, 검증 근거 digest,
+standard-setting 상태.
+
+현재 일곱 범주가 모두 `UNESTABLISHED`이므로 배포된 도구는 `INSTRUMENT_READY`이고 운영자에 대한
+주장은 `WITHHOLD`입니다.
+
+채용, 승진, 자격 인증, 인구 순위는 이 문서가 권고로 말리는 것이 아니라 제품이 거부합니다. 그런 사용
+요청은 어느 claim stage에서든 `AOS_USE_FORBIDDEN`을 돌려줍니다. 프로파일 간 비교는
+fairness/invariance 근거가 `PASS`가 되기 전까지 `AOS_USE_INVARIANCE_UNESTABLISHED`,
+카테고리·백분위·순위는 `aos-standard-setting.v1` 연구가 등록되기 전까지
+`AOS_USE_STANDARD_SETTING_REQUIRED`, 용도를 아예 밝히지 않은 요청은 묵시적 허용 대신
+`AOS_USE_UNDECLARED`를 돌려줍니다. 제품에 직접 물어볼 수 있습니다:
+`node bin/aos.mjs use --run <id> --for hiring`은 거부 사유를 출력하고 0이 아닌 코드로 끝납니다.
+
 ## 결과물·보안·개인정보 보호
 
 `assess`가 끝나면 다음 결과물이 만들어집니다.

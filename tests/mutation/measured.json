@@ -532,6 +532,15 @@
         "at": "2026-09-08T23:16:03.556Z"
       }
     },
+    "PROFILE_BOUND requires its four categories at PASS": {
+      "platform": "darwin",
+      "fingerprint": "sha256:6e684302475e369be150f64154138bf86d730c28c65b95f811baaf46bea0c43c",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-09T10:23:35.706Z"
+      }
+    },
     "SUPERSEDED accounts for every commit on no other line": {
       "platform": "darwin",
       "fingerprint": "sha256:40e8c9265673361219580e296b8ac8ad84c4d09b539515cbc249713d64487a51",
@@ -1854,6 +1863,15 @@
         "at": "2026-09-08T23:16:03.589Z"
       }
     },
+    "a profile-bound claim needs an actual STRICT lane": {
+      "platform": "darwin",
+      "fingerprint": "sha256:1db111ee76d9e30e71fbd9d54a08b1d98fcee04e1ca41def5500c5eaf8c59ec2",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-09T10:23:29.570Z"
+      }
+    },
     "a protected branch is never deletion-eligible": {
       "platform": "darwin",
       "fingerprint": "sha256:74cd8842a39fe5de4ff90c797bd646fe20e31b7ce236acce53958e2b7def05a5",
@@ -2384,6 +2402,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-08T23:16:03.584Z"
+      }
+    },
+    "a stored validity record is checked against its own digest": {
+      "platform": "darwin",
+      "fingerprint": "sha256:c9d18782e3da633d5de3c69367b7c01e59719df21a9e549b4d2e8dc8aed1934b",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-09T10:23:43.301Z"
       }
     },
     "a strict canary cannot authorize itself; the embedded record must pass issuanceGate": {
@@ -2980,6 +3007,15 @@
         "at": "2026-09-08T23:16:03.577Z"
       }
     },
+    "an absent evidence category is UNESTABLISHED, never PASS": {
+      "platform": "darwin",
+      "fingerprint": "sha256:1249fc6d7117045864f2d1a8aa24c4da5e4691eb5ad8ada6df31902c76934045",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-09T10:23:18.351Z"
+      }
+    },
     "an after-snapshot head is in flight, not merely named": {
       "platform": "darwin",
       "fingerprint": "sha256:e8800710ec8f7218f2582515c9224dfc5f2ffd1251bf2e4899e0488d11e6951e",
@@ -3431,6 +3467,15 @@
         "at": "2026-09-08T23:16:03.587Z"
       }
     },
+    "an operator-process cell credited from nothing is not provenance": {
+      "platform": "darwin",
+      "fingerprint": "sha256:4d7cd5f80ea90383e1bacf32fc00137e0b0ac18ee359b17688d25087f4264d69",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-09T10:23:30.529Z"
+      }
+    },
     "an opportunity id cannot pass for the operator event id": {
       "platform": "darwin",
       "fingerprint": "sha256:f9a0291af71a719be9e1e6eb4fb575282655f48098bfd1712acbdcb553931be2",
@@ -3538,6 +3583,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-08T23:16:03.597Z"
+      }
+    },
+    "an undeclared use is refused rather than permitted by omission": {
+      "platform": "darwin",
+      "fingerprint": "sha256:a4c2ff716a41f34339aaea554f52b60e4708c87fe3a86aab15321a1e37867140",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-09T10:23:41.336Z"
       }
     },
     "an unexplained holder of the run's directories withholds": {
@@ -4633,11 +4687,11 @@
     },
     "everything published passes the one gate": {
       "platform": "darwin",
-      "fingerprint": "sha256:2bb972cbd0adf03bbcee51eaee9ba6491956f92c30ebab95a6849ef84980e660",
+      "fingerprint": "sha256:ab5c05310d2cf6534a81a3444cc311917548c45ec3fb817717a7e86f85b09d4d",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T23:16:03.584Z"
+        "at": "2026-09-09T10:23:57.259Z"
       }
     },
     "evidence bound to the audited revision": {
@@ -7506,11 +7560,11 @@
     },
     "the dashboard profile row prints uncertainty status, interval and facet coverage": {
       "platform": "darwin",
-      "fingerprint": "sha256:2e72d4499a3a23c601f5d8e1613513a1b195de3502707265ac57fcb0cc04be59",
+      "fingerprint": "sha256:e2906a027020b150d335b675474465244e0a81b19465493ea74d4f41b14cda2a",
       "measured_on": {
         "arch": "arm64",
         "node": "v22.23.2",
-        "at": "2026-09-08T23:16:03.598Z"
+        "at": "2026-09-09T10:23:58.447Z"
       }
     },
     "the dashboard quotes the stored cycle decision": {
@@ -7745,6 +7799,24 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-08T23:16:03.549Z"
+      }
+    },
+    "the forbidden-use gate is reachable from the product, not only from the library": {
+      "platform": "darwin",
+      "fingerprint": "sha256:ebab10dee88fce4a3b6080daf502024ff3de617b9c8edfeee9c7c6584ca46ec7",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-09T10:23:50.765Z"
+      }
+    },
+    "the forbidden-use gate refuses at every stage": {
+      "platform": "darwin",
+      "fingerprint": "sha256:9ea02f2f2bed2f06d2a6fd7d0ad80b88de1be64cd4c5b483cbfd9e14e7570b02",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-09T10:23:31.435Z"
       }
     },
     "the form manifest schema moved with its equivalence vocabulary": {
@@ -8247,6 +8319,15 @@
         "at": "2026-09-08T23:16:03.548Z"
       }
     },
+    "the publication reseal is a redaction, not a laundering tool": {
+      "platform": "darwin",
+      "fingerprint": "sha256:bc74998ee71247c71266dd11232fa410a28d0d919948ee640a9c4261d2653484",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-09T10:23:44.262Z"
+      }
+    },
     "the published contract names an entry point that exists": {
       "platform": "darwin",
       "fingerprint": "sha256:4215f881d1300342a8a106af6e3e5c24d57a6b1343e0df9a825677a8bbf3ce47",
@@ -8616,6 +8697,15 @@
         "at": "2026-09-08T23:16:03.574Z"
       }
     },
+    "the shared card prints the evidence category statuses": {
+      "platform": "darwin",
+      "fingerprint": "sha256:ab9ab3c0ca34074b59d62d7f5fcbdf3c994ad6b152070505a14a5287ece12fc5",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-09T10:23:49.664Z"
+      }
+    },
     "the spawn judge reads the gate's expectation table": {
       "platform": "darwin",
       "fingerprint": "sha256:9fa2f50d47af0cbfb44d225d288f660076340f3949fd81963b5e2e936857fc5a",
@@ -8805,6 +8895,15 @@
         "at": "2026-09-08T23:16:03.593Z"
       }
     },
+    "the validity record cannot be supplied by a caller": {
+      "platform": "darwin",
+      "fingerprint": "sha256:e4167e19461fd307226503152294cb1381fbd7b4d1b9093e5451d79be4c19d0d",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-09T10:23:42.314Z"
+      }
+    },
     "the verified executable must be the adapter's runtime": {
       "platform": "darwin",
       "fingerprint": "sha256:9aea473155b34382d0e630e1e75cb403403cd4489859668c59388fc4ba22ade4",
@@ -8812,6 +8911,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-08T23:16:03.573Z"
+      }
+    },
+    "the verifier recomputes the validity record, not only its digest": {
+      "platform": "darwin",
+      "fingerprint": "sha256:cb86b8ecc229f348904bc149a91de4dc3f862ee99420c6eb862c09e029db5372",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-09T10:23:56.296Z"
       }
     },
     "the weakest run decides the cycle": {

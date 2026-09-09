@@ -4,7 +4,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { canonicalJson } from "../../lib/core.mjs";
+import { canonicalJson, sha256Value } from "../../lib/core.mjs";
+import { verifyValidityRecord } from "../../lib/claim-governance.mjs";
 import { contractFileDigests, evaluate, shippedEcdContract } from "../../lib/ecd-contract.mjs";
 import { buildResult } from "../../lib/result-schema.mjs";
 import { createExposureLedger } from "../../lib/form-class.mjs";
@@ -731,6 +732,24 @@ test("a claim the stored result is not entitled to make is caught by the verifie
     writeFileSync(resultPath, JSON.stringify(trimmed, null, 2));
     const trimmedRun = run(cwd, ["verify", "--run", runId], 5);
     assert.match(trimmedRun.stdout + trimmedRun.stderr, /FAIL\trecompute|AOS_RESULT_INCOMPLETE/);
+
+    // #586. The validity record with its own digest recomputed over the forgery. Nothing inside the
+    // file disagrees with anything -- `verifyValidityRecord` says so below -- because a digest binds
+    // bytes to bytes and never bytes to the study behind them. What catches it is deriving the stage
+    // from the contract's registry and this run's evidence again and comparing, which is the same
+    // answer the claim stage above gets and for the same reason.
+    const record = result.validity_evidence;
+    const { digest, ...body } = {
+      ...record,
+      stage: "GENERALIZABILITY_SUPPORTED",
+      decision: "ALLOW",
+      evidence: Object.fromEntries(Object.entries(record.evidence).map(([category, entry]) => [category, { ...entry, status: "PASS" }]))
+    };
+    const forgedRecord = { ...body, digest: `sha256:${sha256Value(body)}` };
+    assert.equal(verifyValidityRecord(forgedRecord), true, "the forgery has to be internally consistent or it proves nothing");
+    writeFileSync(resultPath, JSON.stringify({ ...result, validity_evidence: forgedRecord }, null, 2));
+    const forgedValidity = run(cwd, ["verify", "--run", runId], 5);
+    assert.match(forgedValidity.stdout, /FAIL\trecompute/);
 
     // And the cruder forgery -- the claim raised in one place only -- is refused before any
     // comparison, because a result whose surfaces disagree with its own top line is unreadable.
