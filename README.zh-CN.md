@@ -380,8 +380,11 @@ AOS 从一个带版本的登记表回答它，而不是从"实现完成"回答�
 
 stage 只在一处计算 -- `lib/claim-governance.mjs` -- 依据封存的契约和该次运行自身的 evaluation。
 渲染器不会重算，调用方也无法传入。结果 JSON、Markdown 报告、HTML 页面、卡片、仪表板，以及本页，
-所有界面都显示同样的八个字段：claim stage、允许的解释、禁止的用途、七个证据类别的状态、
-generalizability 状态、uncertainty 状态、验证证据 digest、standard-setting 状态。
+所有界面都显示同样的九个字段：claim stage、操作者主张的决定、允许的用途、禁止的用途、七个证据类别的
+状态、generalizability 状态、uncertainty 状态、验证证据 digest、standard-setting 状态。这些字段所
+代表的那句解释 -- 用文字写出该 stage 允许读者得出什么结论 -- 由 Markdown 报告、HTML 页面、仪表板和
+终端打印；卡片每行按宽度截断，因此在那个位置放的是 stage 行和允许用途的清单。每个界面各自承担什么，
+由 `tests/product/claim-governance.test.mjs` 逐一检查。
 
 目前七个类别全部是 `UNESTABLISHED`，因此已发布的工具处于 `INSTRUMENT_READY`，对操作者的主张是
 `WITHHOLD`。
@@ -392,6 +395,12 @@ generalizability 状态、uncertainty 状态、验证证据 digest、standard-se
 返回 `AOS_USE_STANDARD_SETTING_REQUIRED`；完全不声明用途的请求返回 `AOS_USE_UNDECLARED`，
 而不是默认许可。可以直接向产品询问：
 `node bin/aos.mjs use --run <id> --for hiring` 会打印拒绝理由并以非零状态退出。
+
+`aos use` 是对已存记录的策略检查，而不是对该记录的验证。它不会依据运行的证据重建记录 --
+那是 `aos verify --run` 做的事，也只有它能推翻记录声称的 claim stage。因此 `aos use` 给出的答案
+从不依赖已存记录对自身证据的说法：已登记的 standard-setting 研究和通过的 fairness/invariance
+证据都是关于登记表和研究的事实，而某个 stage 允许哪些用途是 `lib/claim-governance.mjs` 里的常量。
+一条被改写成声称这三者、并重新算好 digest 的记录，会和诚实的记录一样被拒绝。
 
 ## 输出、安全与隐私
 

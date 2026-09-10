@@ -412,9 +412,13 @@ forms a run completed.
 The stage is computed in one place, `lib/claim-governance.mjs`, from the sealed contract and the
 run's own evaluation. No renderer recomputes it and no caller can supply one. Every surface -- the
 result JSON, the markdown report, the HTML page, the card, the dashboard and this page -- shows the
-same eight fields: claim stage, permitted interpretation, forbidden uses, the seven evidence
-category statuses, generalizability status, uncertainty status, the validation-evidence digest, and
-the standard-setting status.
+same nine fields: claim stage, the operator-claim decision, the permitted uses, forbidden uses, the
+seven evidence category statuses, generalizability status, uncertainty status, the
+validation-evidence digest, and the standard-setting status. The interpretation sentence those
+fields stand for -- what the stage entitles a reader to conclude, in words -- is printed by the
+markdown report, the HTML page, the dashboard and the terminal; the card prints one clipped line per
+row, so it carries the stage line and the permitted-use list in the sentence's place. Each surface
+is held to exactly that list in `tests/product/claim-governance.test.mjs`.
 
 Today all seven categories are `UNESTABLISHED`, so the shipped instrument is `INSTRUMENT_READY` and
 the operator claim is `WITHHOLD`.
@@ -426,6 +430,14 @@ evidence passes; a category, percentile or rank returns `AOS_USE_STANDARD_SETTIN
 `aos-standard-setting.v1` study is registered; and a request that declares no use at all returns
 `AOS_USE_UNDECLARED` rather than being permitted by omission. Ask the product directly:
 `node bin/aos.mjs use --run <id> --for hiring` prints the refusal and exits non-zero.
+
+`aos use` is a policy check on the stored record, not a verification of it. It does not rebuild the
+record from the run's evidence -- `aos verify --run` is the command that does, and it is the one
+that can contradict a record's claim stage. So the answers `aos use` gives never rest on what the
+stored record says about its own evidence: a registered standard-setting study and passing
+fairness/invariance evidence are facts about a registry and a study, and the list of uses a stage
+permits is a constant in `lib/claim-governance.mjs`. A record edited to claim any of the three, with
+its digest recomputed to match, is refused exactly as an honest one would be.
 
 ## Outputs, security, and privacy
 

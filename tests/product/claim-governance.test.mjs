@@ -12,7 +12,7 @@
 // gate answers with a reason code rather than with a paragraph in a document.
 
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -30,11 +30,14 @@ import {
   validityEvidenceRecord,
   verifyValidityRecord
 } from "../../lib/claim-governance.mjs";
+import { canonicalJson, htmlEscape, sha256Value } from "../../lib/core.mjs";
+import { LOOPBACK, startDashboard } from "../../lib/dashboard.mjs";
 import { evaluate, shippedEcdContract } from "../../lib/ecd-contract.mjs";
-import { buildResult, projectResult } from "../../lib/result-schema.mjs";
-import { createRun, initHome, writeResult } from "../../lib/store.mjs";
+import { RESULT_SCHEMA_VERSION, buildResult, projectResult } from "../../lib/result-schema.mjs";
+import { createRun, initHome, runPaths, writeResult } from "../../lib/store.mjs";
 import { renderHtml, renderMarkdown } from "../../lib/report.mjs";
 import { renderCard } from "../../lib/report-card.mjs";
+import { renderProfileTerminal } from "../../lib/profile-report.mjs";
 import { complete, contractWithAPopulatedIndex, facets, FIXTURE_PROFILE_DIGEST, observationsWith } from "./ecd-fixtures.mjs";
 import { run as runCli } from "./helpers.mjs";
 
@@ -215,10 +218,22 @@ test("every category at PASS still stops at PROFILE_BOUND while the contract's o
   // The higher stage is not reachable by filling the registry in: the contract states the ceiling,
   // `checkEcdContract` refuses a contract that raises it, and the engine reads the ceiling rather
   // than the wish.
-  const record = recordFor(withRegistry(EVERY_CATEGORY_PASS));
+  const contract = withRegistry(EVERY_CATEGORY_PASS);
+  const ceiling = contract.interpretation_use.maximum_claim_stage;
+  const record = recordFor(contract);
   assert.equal(record.stage, "PROFILE_BOUND");
-  assert.ok(record.stage_reasons.some((reason) => /ceiling/u.test(reason)), record.stage_reasons.join(" | "));
-  assert.ok(!CLAIM_STAGES.slice(CLAIM_STAGES.indexOf(record.stage) + 1).includes(record.stage));
+  // Filling the registry in moves nothing: three more categories are PASS here than in the minimum
+  // that reaches PROFILE_BOUND, and the stage is the same one.
+  assert.equal(record.stage, recordFor(withRegistry(PROFILE_BOUND_MINIMUM)).stage);
+  assert.equal(ceiling, "PROFILE_BOUND");
+  // The ceiling by name and by value, not `/ceiling/`. The line that used to sit here --
+  // `!CLAIM_STAGES.slice(indexOf(stage) + 1).includes(stage)` -- is true of every stage there is,
+  // including the one it was written to refuse, so it asserted nothing at all.
+  assert.ok(
+    record.stage_reasons.includes(`the contract's own claim-stage ceiling is ${ceiling}, and a stage above the ceiling is not issuable`),
+    record.stage_reasons.join(" | ")
+  );
+  assert.equal(CLAIM_STAGES.indexOf(record.stage), CLAIM_STAGES.indexOf(ceiling));
 });
 
 test("a FAIL category is preserved as FAIL and drops the stage rather than being rounded away", () => {
@@ -240,7 +255,12 @@ test("the record's digest is over its own content, and an edited record no longe
   assert.match(record.digest, /^sha256:[0-9a-f]{64}$/u);
   assert.equal(verifyValidityRecord(record), true);
   assert.equal(verifyValidityRecord({ ...record, stage: "GENERALIZABILITY_SUPPORTED" }), false);
-  assert.equal(verifyValidityRecord({ ...record, decision: "ALLOW", digest: record.digest }), verifyValidityRecord(record));
+  // An edit that changes a value, not one that re-states the value already there: this record's
+  // decision is already `ALLOW`, so `{ ...record, decision: "ALLOW" }` was the record itself and
+  // stayed green with `decision` excluded from the digest altogether.
+  assert.equal(record.decision, "ALLOW");
+  assert.equal(verifyValidityRecord({ ...record, decision: "WITHHOLD" }), false);
+  assert.equal(verifyValidityRecord({ ...record, standard_setting_status: "REGISTERED" }), false);
   assert.equal(verifyValidityRecord({ ...record, evidence: { ...record.evidence, generalizability: { status: "PASS", items: [], detail: "x" } } }), false);
   assert.equal(verifyValidityRecord(null), false);
   assert.equal(verifyValidityRecord({ ...record, digest: "sha256:0" }), false);
@@ -341,6 +361,155 @@ test("`aos use` refuses a forbidden use with a reason code and a non-zero exit",
     const comparative = runCli(cwd, ["use", "--run", runId, "--for", "cross-profile-superiority", "--json"], 2);
     assert.equal(JSON.parse(comparative.stdout).reason_code, "AOS_USE_INVARIANCE_UNESTABLISHED");
   } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("a stored result written before the validity-evidence field is named as a generation, not accused of forging one", () => {
+  // #586 made `validity_evidence` a required property of a persisted result while the generation
+  // stayed at 4.0.0, which is the defect #556 and #566 each wrote a paragraph about in
+  // `lib/result-schema.mjs`. Held there, every honest pre-#586 result in an operator's store takes
+  // the current generation's path: `aos verify --run` reports that its profiles do not follow from
+  // its own observations, and `aos use` answers a field that is absent with a digest mismatch.
+  // Neither sentence names what changed, and the operator has no migration to follow.
+  const contract = withRegistry(PROFILE_BOUND_MINIMUM);
+  const evaluation = evaluate(observationsWith(), strictRun, contract);
+  const result = buildResult({ contract, evaluation, run: { run_id: "run-generation", seed: "seed-1" } });
+  assert.equal(result.schema_version, RESULT_SCHEMA_VERSION, "this build no longer writes the version it checks");
+  const cwd = mkdtempSync(join(tmpdir(), "aos-validity-generation-"));
+  const home = join(cwd, ".aos");
+  try {
+    initHome(home);
+    const { runId } = createRun(home, { mode: "TEST", run_id: "run-generation" });
+    writeResult(home, runId, result, renderMarkdown(result), renderHtml(result), renderCard(result));
+
+    // The record as the previous generation wrote it: its own version, and no validity record,
+    // because there was no such field to write.
+    const older = JSON.parse(canonicalJson(result));
+    older.schema_version = "4.0.0";
+    delete older.validity_evidence;
+    writeFileSync(runPaths(home, runId).result, `${canonicalJson(older)}\n`);
+
+    const named = runCli(cwd, ["verify", "--run", runId], 5);
+    assert.match(named.stdout, /FAIL\tresult-schema/u, named.stdout);
+    assert.match(named.stdout, /4\.0\.0 predates this build's 4\.1\.0/u, named.stdout);
+    // Named for what it actually predates, in that generation's own terms.
+    assert.match(named.stdout, /validity-evidence/u, named.stdout);
+    // And nothing else. An older record is not told its profiles fail to follow from its own
+    // observations, and it is not refused as a damaged document.
+    assert.equal(/FAIL\trecompute/u.test(named.stdout), false, named.stdout);
+    assert.equal(/AOS_RESULT_SCHEMA_INVALID/u.test(`${named.stdout}${named.stderr}`), false, named.stdout);
+
+    // The consumer's command names the generation too. `AOS_VALIDITY_DIGEST` on a result that
+    // carries no record at all is a digest-mismatch sentence about a field nobody wrote.
+    const asked = runCli(cwd, ["use", "--run", runId, "--for", "local-self-diagnosis"], 2);
+    const said = `${asked.stdout}${asked.stderr}`;
+    assert.match(said, /AOS_USE_SCHEMA_GENERATION/u, said);
+    assert.match(said, /4\.0\.0/u, said);
+    assert.equal(/AOS_VALIDITY_DIGEST/u.test(said), false, said);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+test("`aos use` does not take a stored record's word for its own evidence", () => {
+  // The digest binds bytes to bytes, so a forger who edits the record and recomputes it passes
+  // `verifyValidityRecord`. `aos verify --run` rebuilds the record from the contract and the run's
+  // evidence and catches that; `aos use` does not rebuild, and it is the command the README tells a
+  // consumer to ask. What closes the gap here without a rebuild is that the three things a stored
+  // record could assert in its own favour -- a registered standard-setting study, passing
+  // fairness/invariance evidence, and the list of uses its stage permits -- are not read off the
+  // record at this boundary. Two of them come from module constants and the third is refused.
+  const contract = withRegistry(PROFILE_BOUND_MINIMUM);
+  const evaluation = evaluate(observationsWith(), strictRun, contract);
+  const honest = buildResult({ contract, evaluation, run: { run_id: "run-forged", seed: "seed-1" } });
+  const body = { ...honest.validity_evidence };
+  delete body.digest;
+  const forgedBody = {
+    ...body,
+    intended_uses: ["local-self-diagnosis", "category", "percentile", "rank", "cut-score", "band", "cross-profile-superiority", "team-ranking"],
+    standard_setting_status: "REGISTERED",
+    evidence: { ...body.evidence, fairness_invariance: { ...body.evidence.fairness_invariance, status: "PASS" } }
+  };
+  const result = { ...honest, validity_evidence: { ...forgedBody, digest: `sha256:${sha256Value(forgedBody)}` } };
+  // The forgery is self-consistent: this is the check `aos use` used to answer from.
+  assert.equal(verifyValidityRecord(result.validity_evidence), true);
+
+  const cwd = mkdtempSync(join(tmpdir(), "aos-use-forged-"));
+  const home = join(cwd, ".aos");
+  try {
+    initHome(home);
+    const { runId } = createRun(home, { mode: "TEST", run_id: "run-forged" });
+    writeResult(home, runId, result, renderMarkdown(result), renderHtml(result), renderCard(result));
+    const refusalFor = (use) => JSON.parse(runCli(cwd, ["use", "--run", runId, "--for", use, "--json"], 2).stdout);
+    // A verdict about a person still needs a registered study, and the record's own word that one
+    // exists is not that study.
+    for (const use of ["category", "percentile", "rank", "cut-score", "band"]) {
+      assert.equal(refusalFor(use).reason_code, USE_REFUSAL_REASONS.STANDARD_SETTING_REQUIRED, use);
+    }
+    // A comparison across profiles still needs invariance evidence, and the record's own PASS is
+    // not that evidence.
+    assert.equal(refusalFor("cross-profile-superiority").reason_code, USE_REFUSAL_REASONS.INVARIANCE_UNESTABLISHED);
+    // A use nobody's stage permits cannot be added to the record's own list of permitted uses: the
+    // permitted set is the stage's constant, not a field of the artifact being questioned.
+    assert.equal(refusalFor("team-ranking").reason_code, USE_REFUSAL_REASONS.NOT_PERMITTED_AT_STAGE);
+    // And the honest answer is unchanged: this closes a hole rather than refusing everything.
+    const permitted = JSON.parse(runCli(cwd, ["use", "--run", runId, "--for", "local-self-diagnosis", "--json"]).stdout);
+    assert.equal(permitted.permitted, true);
+    assert.deepEqual(permitted.permitted_uses, [...PERMITTED_USES_BY_STAGE.PROFILE_BOUND]);
+  } finally {
+    rmSync(cwd, { recursive: true, force: true });
+  }
+});
+
+// One surface at a time, because "every surface shows the same fields" was a sentence in the README
+// and the test beside it looped `view.phrases` -- a list the interpretation sentence is deliberately
+// kept out of, so the loop could not see the card and the dashboard omitting it. What each page owes
+// a reader is stated here per page, and the README says the same thing.
+const surfaceContains = (output, phrase) => output.includes(phrase) || output.includes(htmlEscape(phrase));
+
+test("the interpretation sentence reaches every surface that can print a sentence, and the short lines reach all of them", async () => {
+  const contract = withRegistry(PROFILE_BOUND_MINIMUM);
+  const evaluation = evaluate(observationsWith(), strictRun, contract);
+  const result = buildResult({ contract, evaluation, run: { run_id: "run-surfaces", seed: "seed-1" } });
+  const view = projectResult(result);
+  const cwd = mkdtempSync(join(tmpdir(), "aos-validity-surfaces-"));
+  const home = join(cwd, ".aos");
+  initHome(home);
+  const { runId } = createRun(home, { mode: "TEST", run_id: "run-surfaces" });
+  writeResult(home, runId, result, renderMarkdown(result), renderHtml(result), renderCard(result));
+  const dashboard = await startDashboard({ home });
+  try {
+    const index = await (await fetch(`http://${LOOPBACK}:${dashboard.port}/?t=${dashboard.token}`)).text();
+    const surfaces = {
+      markdown: renderMarkdown(result),
+      html: renderHtml(result),
+      card: renderCard(result),
+      dashboard: index,
+      terminal: renderProfileTerminal(result).join("\n")
+    };
+    // The short lines carry the same facts in tokens, and every surface owes a reader all of them.
+    const shortLines = [
+      view.claim.validity_stage, view.claim.validity_decision, view.claim.standard_setting,
+      view.claim.validity_permitted, view.claim.validity_digest, ...view.claim.evidence_rows
+    ];
+    assert.equal(shortLines.length, 12);
+    for (const [name, output] of Object.entries(surfaces)) {
+      for (const line of shortLines) assert.ok(surfaceContains(output, line), `${name} omits ${line}`);
+    }
+    // The sentence itself, wherever a sentence fits. The dashboard is an HTML table cell that wraps,
+    // so it has no excuse; it was omitting the sentence while the README named it as a surface that
+    // shows it.
+    assert.ok(view.claim.validity_interpretation.length > 100, "the fixture's interpretation is too short for this to prove anything");
+    for (const name of ["markdown", "html", "dashboard", "terminal"]) {
+      assert.ok(surfaceContains(surfaces[name], view.claim.validity_interpretation), `${name} omits the interpretation sentence`);
+    }
+    // And not on the card, which prints one clipped line per row: a clipped sentence is not the
+    // sentence. That is why the README names the card as carrying the stage line in its place, and
+    // this assertion is what makes changing one without the other fail.
+    assert.equal(surfaceContains(surfaces.card, view.claim.validity_interpretation), false, "the card prints the sentence; the README says it prints the short line instead");
+  } finally {
+    await dashboard.close();
     rmSync(cwd, { recursive: true, force: true });
   }
 });

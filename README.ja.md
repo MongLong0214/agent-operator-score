@@ -413,9 +413,13 @@ holdout 台帳には、セッション本文ではなく、セッションのハ
 
 stage は `lib/claim-governance.mjs` の一箇所で、封印された契約とその実行の evaluation だけから計算
 されます。レンダラーは再計算せず、呼び出し側が stage を渡すこともできません。結果 JSON、Markdown
-レポート、HTML、カード、ダッシュボード、そしてこのページまで、すべての面が同じ八つのフィールドを表示
-します: claim stage、許可された解釈、禁止された用途、七つの証拠カテゴリの状態、generalizability の
-状態、uncertainty の状態、検証証拠の digest、standard-setting の状態。
+レポート、HTML、カード、ダッシュボード、そしてこのページまで、すべての面が同じ九つのフィールドを表示
+します: claim stage、運用者主張の決定、許可された用途、禁止された用途、七つの証拠カテゴリの状態、
+generalizability の状態、uncertainty の状態、検証証拠の digest、standard-setting の状態。それらの
+フィールドが表す解釈の文 -- この stage で読み手が何を結論してよいかを言葉にしたもの -- は Markdown
+レポート、HTML、ダッシュボード、ターミナルが印字します。カードは一行ずつ切り詰めて描く面なので、
+その位置には stage の行と許可された用途の一覧が載ります。どの面が何を載せるかは
+`tests/product/claim-governance.test.mjs` がそのまま検査します。
 
 現在は七カテゴリすべてが `UNESTABLISHED` なので、出荷されている道具は `INSTRUMENT_READY` であり、
 オペレーターについての主張は `WITHHOLD` です。
@@ -427,6 +431,14 @@ fairness/invariance の証拠が `PASS` になるまで `AOS_USE_INVARIANCE_UNES
 `AOS_USE_STANDARD_SETTING_REQUIRED`、用途を全く宣言しない要求は黙示の許可ではなく
 `AOS_USE_UNDECLARED` を返します。製品に直接尋ねられます:
 `node bin/aos.mjs use --run <id> --for hiring` は拒否理由を表示し、0 以外で終了します。
+
+`aos use` は保存されたレコードに対する方針の検査であって、そのレコードの検証ではありません。実行の
+証拠からレコードを組み直すことはしません -- それは `aos verify --run` の仕事で、レコードの claim
+stage に反論できるのもそちらです。ですから `aos use` の答えは、保存されたレコードが自分の証拠に
+ついて言うことには依りません。登録済みの standard-setting 研究も、通過した fairness/invariance の
+証拠も registry と研究についての事実であり、どの stage が何を許すかは `lib/claim-governance.mjs`
+の定数です。その三つを主張するよう書き換え digest を計算し直したレコードも、正直なレコードと同じ
+ように拒否されます。
 
 ## 出力・セキュリティ・プライバシー
 

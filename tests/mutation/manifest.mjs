@@ -7933,8 +7933,8 @@ export const GUARDS = [
     reason:
       "dropped from the list, a record from the previous build reads as a version this build has never heard of -- so an operator with legacy runs is told a mismatch rather than which generation wrote them",
     file: "lib/result-schema.mjs",
-    from: "export const RESULT_SCHEMA_GENERATIONS = Object.freeze([\"2.0.0\", \"2.1.0\", \"2.2.0\", \"3.0.0\", \"4.0.0\"]);",
-    to: "export const RESULT_SCHEMA_GENERATIONS = Object.freeze([\"2.0.0\", \"2.2.0\", \"3.0.0\", \"4.0.0\"]);",
+    from: "export const RESULT_SCHEMA_GENERATIONS = Object.freeze([\"2.0.0\", \"2.1.0\", \"2.2.0\", \"3.0.0\", \"4.0.0\", \"4.1.0\"]);",
+    to: "export const RESULT_SCHEMA_GENERATIONS = Object.freeze([\"2.0.0\", \"2.2.0\", \"3.0.0\", \"4.0.0\", \"4.1.0\"]);",
     test: "tests/product/hard-caps.test.mjs",
     name: "a result written before cap binding existed is named as an older generation, not accused of forging one"
   },
@@ -9602,6 +9602,51 @@ export const GUARDS = [
     to: "  // Eligibility evidence check removed.",
     test: "tests/product/cycle.test.mjs",
     name: "exposure verification rederives scored-once eligibility despite an OPERATIONAL verdict on a replay"
+  },
+  {
+    guard: "the superseded generation names the field it predates",
+    reason: "#586. A required field was added to the persisted result and the generation moved with it, which is what lets a pre-#586 record be reported as an older generation rather than as a result that does not follow from its own observations. The sentence has to be true of that record: without it the reader is told only that the versions differ, which is the answer this table exists to replace.",
+    file: "lib/result-schema.mjs",
+    from: "  \"4.0.0\": \"it was written before the validity-evidence record, so it carries no aos-validity-evidence.v1 record to say what its number may be used for\"",
+    to: "  \"4.0.0\": \"it predates this build\"",
+    test: "tests/product/claim-governance.test.mjs",
+    name: "a stored result written before the validity-evidence field is named as a generation, not accused of forging one"
+  },
+  {
+    guard: "the consumer's command checks the generation before the record",
+    reason: "#586. `aos use` reads `result.validity_evidence`, which a result from the generation before this one does not carry. Without the generation check first, the absent field is reported as a digest mismatch -- a sentence about a record that disagrees with itself, said of a record nobody wrote -- and the operator is given no migration to follow.",
+    file: "lib/cli.mjs",
+    from: "  if (result.schema_id === RESULT_SCHEMA_ID && generation !== RESULT_SCHEMA_VERSION) {",
+    to: "  if (false) {",
+    test: "tests/product/claim-governance.test.mjs",
+    name: "a stored result written before the validity-evidence field is named as a generation, not accused of forging one"
+  },
+  {
+    guard: "`aos use` does not weigh a stored record against its own evidence claims",
+    reason: "#586. The digest binds bytes to bytes, so a forger who edits the record and recomputes it passes `verifyValidityRecord`. `aos use` does not rebuild the record -- that is `aos verify --run` -- so the standard-setting status, the invariance evidence and the permitted-use list must come from the stage constant rather than from the artifact being asked about, or a re-digested forgery licenses a category, a percentile, a rank and a cross-profile comparison.",
+    file: "lib/cli.mjs",
+    from: "  const weighed = useInputFromStoredRecord(record);",
+    to: "  const weighed = record;",
+    test: "tests/product/claim-governance.test.mjs",
+    name: "`aos use` does not take a stored record's word for its own evidence"
+  },
+  {
+    guard: "the dashboard prints the interpretation sentence, not only the stage token",
+    reason: "#586. The README names every surface that shows what the stage entitles a reader to conclude. The card keeps prose off because it clips a line, and the dashboard was silently doing the same in an HTML table cell that wraps -- so the page a reader browses carried the tokens and not the sentence while the README said otherwise.",
+    file: "lib/dashboard.mjs",
+    from: "      const validity = `${view.claim.validity_stage} · ${view.claim.validity_decision} · ${view.claim.standard_setting} · ${view.claim.validity_permitted} · ${view.claim.validity_interpretation}`;",
+    to: "      const validity = `${view.claim.validity_stage} · ${view.claim.validity_decision} · ${view.claim.standard_setting} · ${view.claim.validity_permitted}`;",
+    test: "tests/product/claim-governance.test.mjs",
+    name: "the interpretation sentence reaches every surface that can print a sentence, and the short lines reach all of them"
+  },
+  {
+    guard: "the operator-claim decision is inside the record's digest",
+    reason: "#586. `decision` is the field that says whether a claim about an operator is allowed or withheld, and a digest that skipped it would let that word be edited on a stored record while the record still verified against itself. The witness that used to stand here re-stated the decision the record already carried, so excluding the field from the digest left it green.",
+    file: "lib/claim-governance.mjs",
+    from: "  return record.digest === `sha256:${sha256Value(JSON.parse(canonicalJson(digestableBody(record))))}`;",
+    to: "  return record.digest === `sha256:${sha256Value(JSON.parse(canonicalJson({ ...digestableBody(record), decision: \"ALLOW\" })))}`;",
+    test: "tests/product/claim-governance.test.mjs",
+    name: "the record's digest is over its own content, and an edited record no longer verifies"
   }
 ];
 
@@ -9717,6 +9762,7 @@ export const ACCOUNTED_GUARDS = [
   "UNIQUE_WORK carries the plan that gets the work off the branch",
   "UNIQUE_WORK names what is unique to it",
   "UNKNOWN_HOLD names what blocks the decision",
+  "`aos use` does not weigh a stored record against its own evidence claims",
   "a .NET startup hook is a pre-main hook like the rest",
   "a /proc listing is not a list of survivors",
   "a 404 is an answer and a 502 is not",
@@ -10471,6 +10517,7 @@ export const ACCOUNTED_GUARDS = [
   "the comparison projection is read from the contract",
   "the completion producer signs its in-memory working record",
   "the composite has to agree with its own inputs",
+  "the consumer's command checks the generation before the record",
   "the contract digest covers the contract's bytes",
   "the contract names the gate that binds the record to its evidence",
   "the contract states the cells each row averages",
@@ -10481,6 +10528,7 @@ export const ACCOUNTED_GUARDS = [
   "the cycle command quotes the stored decision",
   "the cycle refuses a run the exposure ledger did not permit official scoring",
   "the cycle run carries the ledger's classification onto the recorded run",
+  "the dashboard prints the interpretation sentence, not only the stage token",
   "the dashboard profile row prints uncertainty status, interval and facet coverage",
   "the dashboard quotes the stored cycle decision",
   "the deleted ref is live at the commit being deleted",
@@ -10536,6 +10584,7 @@ export const ACCOUNTED_GUARDS = [
   "the observation digest is recursive over its content",
   "the observations carry the operator events they rest on",
   "the operator event projection is an allowlist",
+  "the operator-claim decision is inside the record's digest",
   "the operator-typed event set is what the gate covers",
   "the per-task invocation bound is compared",
   "the permanent failure classifier encloses the entire replay operation",
@@ -10617,6 +10666,7 @@ export const ACCOUNTED_GUARDS = [
   "the store requires an attestation for an operator event",
   "the stored ceiling is checked against the rows it rests on",
   "the stored record is bound, not only the event on it",
+  "the superseded generation names the field it predates",
   "the table shows the decision and not the label",
   "the task model's form lists agree with the cell they name",
   "the teardown observation reports what cleanup returned",
