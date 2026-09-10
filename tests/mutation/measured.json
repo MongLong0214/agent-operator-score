@@ -586,6 +586,15 @@
         "at": "2026-09-09T10:47:01.159Z"
       }
     },
+    "`aos use` does not weigh a stored record against its own evidence claims": {
+      "platform": "darwin",
+      "fingerprint": "sha256:4aba00c7201ac084fb228b696fe18fbf0c0778422a06a1e40c3218e98e33287b",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-10T22:42:14.438Z"
+      }
+    },
     "a .NET startup hook is a pre-main hook like the rest": {
       "platform": "darwin",
       "fingerprint": "sha256:84fb839fcac12f2ea27c05bdeb6ef0ec474395d5ac18b9a9092645d7e7e554a0",
@@ -7468,6 +7477,15 @@
         "at": "2026-09-09T10:47:01.182Z"
       }
     },
+    "the consumer's command checks the generation before the record": {
+      "platform": "darwin",
+      "fingerprint": "sha256:1b4953d1fb27a4f780c44ca7ca439d7de7f3c60b42123d3b959d2f8c57370309",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-10T22:42:14.054Z"
+      }
+    },
     "the contract digest covers the contract's bytes": {
       "platform": "darwin",
       "fingerprint": "sha256:7b9058f5c29c526b7f19a4df79150e6e78b68fdf0ab6e7b880cd5c34d19f86fd",
@@ -7556,6 +7574,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-09T10:47:01.193Z"
+      }
+    },
+    "the dashboard prints the interpretation sentence, not only the stage token": {
+      "platform": "darwin",
+      "fingerprint": "sha256:df39ca5ec03553c98a806b42d383b9c08d57583a7e93bdc92ca64eba2f33db7c",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-10T22:42:17.916Z"
       }
     },
     "the dashboard profile row prints uncertainty status, interval and facet coverage": {
@@ -8051,6 +8078,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-09T10:47:01.184Z"
+      }
+    },
+    "the operator-claim decision is inside the record's digest": {
+      "platform": "darwin",
+      "fingerprint": "sha256:1f0e66f5f305775878443bfe3a79e799d4427f676bf451ef460e96cf8c9e757c",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-10T22:42:18.158Z"
       }
     },
     "the operator-typed event set is what the gate covers": {
@@ -8785,6 +8821,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-09T10:47:01.185Z"
+      }
+    },
+    "the superseded generation names the field it predates": {
+      "platform": "darwin",
+      "fingerprint": "sha256:2fad9b931a985b0d41e42a9a1d36fadf3f236614ffd6f8962aa2f066fbc9a3c4",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-10T22:42:00.512Z"
       }
     },
     "the table shows the decision and not the label": {
