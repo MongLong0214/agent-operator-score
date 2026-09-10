@@ -9632,10 +9632,28 @@ export const GUARDS = [
   },
   {
     guard: "the dashboard prints the interpretation sentence, not only the stage token",
-    reason: "#586. The README names every surface that shows what the stage entitles a reader to conclude. The card keeps prose off because it clips a line, and the dashboard was silently doing the same in an HTML table cell that wraps -- so the page a reader browses carried the tokens and not the sentence while the README said otherwise.",
+    reason: "#586. The README names every surface that shows what the stage entitles a reader to conclude. The dashboard was carrying the tokens and not the sentence, in an HTML table cell that wraps and had no reason to omit it, while the README said otherwise -- so the page a reader browses said less than the page describing it.",
     file: "lib/dashboard.mjs",
     from: "      const validity = `${view.claim.validity_stage} · ${view.claim.validity_decision} · ${view.claim.standard_setting} · ${view.claim.validity_permitted} · ${view.claim.validity_interpretation}`;",
     to: "      const validity = `${view.claim.validity_stage} · ${view.claim.validity_decision} · ${view.claim.standard_setting} · ${view.claim.validity_permitted}`;",
+    test: "tests/product/claim-governance.test.mjs",
+    name: "the interpretation sentence reaches every surface that can print a sentence, and the short lines reach all of them"
+  },
+  {
+    guard: "the card carries the interpretation sentence, not only the tokens that stand for it",
+    reason: "#586's projection contract puts the interpretation on the card, and the card is the artifact people forward -- the one surface where a number with no statement of what it entitles a reader to conclude does the most damage. The band was carrying the stage, the decision, the permitted uses, the evidence rows and the digest, and not the sentence.",
+    file: "lib/profile-report.mjs",
+    from: "    ...wrapped(view.claim.validity_interpretation, 150),",
+    to: "    ...[],",
+    test: "tests/product/claim-governance.test.mjs",
+    name: "the interpretation sentence reaches every surface that can print a sentence, and the short lines reach all of them"
+  },
+  {
+    guard: "the card's interpretation wraps rather than clipping",
+    reason: "#586. The band clips each line at 150 and the four intended-interpretation sentences are 76, 87, 137 and 160 characters, so exactly one of them loses its tail -- `Local self-diagnosis and same-profile tracking only.` -- and what is left reads as a wider licence than the evidence supports. One clipped line was the option this repair rejected, so it is the mutant: a check that only asked whether the sentence started on the card would accept it.",
+    file: "lib/profile-report.mjs",
+    from: "    ...wrapped(view.claim.validity_interpretation, 150),",
+    to: "    view.claim.validity_interpretation,",
     test: "tests/product/claim-governance.test.mjs",
     name: "the interpretation sentence reaches every surface that can print a sentence, and the short lines reach all of them"
   },
@@ -10501,8 +10519,10 @@ export const ACCOUNTED_GUARDS = [
   "the capture time names a day that exists",
   "the card carries every reliance metric",
   "the card carries the delegated-artifact rows",
+  "the card carries the interpretation sentence, not only the tokens that stand for it",
   "the card drops no facet",
   "the card quotes the stored identity lines",
+  "the card's interpretation wraps rather than clipping",
   "the ceilings a run earned reach the result it publishes",
   "the channel decides the source",
   "the claim is compared like the numbers are",

@@ -416,9 +416,11 @@ same nine fields: claim stage, the operator-claim decision, the permitted uses, 
 seven evidence category statuses, generalizability status, uncertainty status, the
 validation-evidence digest, and the standard-setting status. The interpretation sentence those
 fields stand for -- what the stage entitles a reader to conclude, in words -- is printed by the
-markdown report, the HTML page, the dashboard and the terminal; the card prints one clipped line per
-row, so it carries the stage line and the permitted-use list in the sentence's place. Each surface
-is held to exactly that list in `tests/product/claim-governance.test.mjs`.
+markdown report, the HTML page, the card, the dashboard and the terminal: every surface that renders
+the record, the card included. The card's band wraps it rather than clipping, because the longest of
+the four sentences is ten characters past the band's width and clipping it removes the restriction
+at its end, leaving a licence that reads wider than the evidence supports. Each surface is held to
+exactly that list in `tests/product/claim-governance.test.mjs`.
 
 Today all seven categories are `UNESTABLISHED`, so the shipped instrument is `INSTRUMENT_READY` and
 the operator claim is `WITHHOLD`.

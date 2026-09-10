@@ -382,8 +382,9 @@ stage 只在一处计算 -- `lib/claim-governance.mjs` -- 依据封存的契约�
 渲染器不会重算，调用方也无法传入。结果 JSON、Markdown 报告、HTML 页面、卡片、仪表板，以及本页，
 所有界面都显示同样的九个字段：claim stage、操作者主张的决定、允许的用途、禁止的用途、七个证据类别的
 状态、generalizability 状态、uncertainty 状态、验证证据 digest、standard-setting 状态。这些字段所
-代表的那句解释 -- 用文字写出该 stage 允许读者得出什么结论 -- 由 Markdown 报告、HTML 页面、仪表板和
-终端打印；卡片每行按宽度截断，因此在那个位置放的是 stage 行和允许用途的清单。每个界面各自承担什么，
+代表的那句解释 -- 用文字写出该 stage 允许读者得出什么结论 -- 由 Markdown 报告、HTML 页面、卡片、
+仪表板和终端打印：凡是渲染该记录的界面都打印，卡片也在其中。卡片不截断，而是折行承载：四句话中最长的一句比色带宽度多十个字符，被截掉的正是句末的限制，一旦截断就会
+读成比证据所支持的更宽的 licence。每个界面各自承担什么，
 由 `tests/product/claim-governance.test.mjs` 逐一检查。
 
 目前七个类别全部是 `UNESTABLISHED`，因此已发布的工具处于 `INSTRUMENT_READY`，对操作者的主张是

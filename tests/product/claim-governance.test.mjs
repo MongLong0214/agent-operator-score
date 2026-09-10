@@ -466,7 +466,17 @@ test("`aos use` does not take a stored record's word for its own evidence", () =
 // and the test beside it looped `view.phrases` -- a list the interpretation sentence is deliberately
 // kept out of, so the loop could not see the card and the dashboard omitting it. What each page owes
 // a reader is stated here per page, and the README says the same thing.
-const surfaceContains = (output, phrase) => output.includes(phrase) || output.includes(htmlEscape(phrase));
+// What a reader of the surface sees, not what its markup spells. The card wraps the interpretation
+// across two `<text>` nodes and the dashboard puts it in a table cell, so a plain substring check
+// answers "are these bytes contiguous in the markup" -- a question whose answer changes when a
+// renderer adds a line break and stays the same when it drops the sentence entirely. Tags become
+// spaces, entities come back, runs of whitespace collapse, and then the sentence is looked for.
+const readable = (value) => String(value)
+  .replace(/<[^>]*>/gu, " ")
+  .replace(/&quot;/gu, '"').replace(/&#39;/gu, "'").replace(/&lt;/gu, "<").replace(/&gt;/gu, ">").replace(/&amp;/gu, "&")
+  .replace(/\s+/gu, " ")
+  .trim();
+const surfaceContains = (output, phrase) => readable(output).includes(readable(phrase));
 
 test("the interpretation sentence reaches every surface that can print a sentence, and the short lines reach all of them", async () => {
   const contract = withRegistry(PROFILE_BOUND_MINIMUM);
@@ -497,17 +507,18 @@ test("the interpretation sentence reaches every surface that can print a sentenc
     for (const [name, output] of Object.entries(surfaces)) {
       for (const line of shortLines) assert.ok(surfaceContains(output, line), `${name} omits ${line}`);
     }
-    // The sentence itself, wherever a sentence fits. The dashboard is an HTML table cell that wraps,
-    // so it has no excuse; it was omitting the sentence while the README named it as a surface that
-    // shows it.
-    assert.ok(view.claim.validity_interpretation.length > 100, "the fixture's interpretation is too short for this to prove anything");
-    for (const name of ["markdown", "html", "dashboard", "terminal"]) {
+    // The sentence itself, on every one of them. #586's projection contract names the card among
+    // the surfaces that carry the interpretation, and the card is the artifact people forward, so
+    // it is the last surface that should be allowed to show a number without it.
+    //
+    // This fixture is `PROFILE_BOUND`, whose sentence is the longest of the four at 160 characters
+    // -- ten past the card band's 150. That is deliberate: a card that clipped instead of wrapping
+    // would drop `Local self-diagnosis and same-profile tracking only.` and still contain enough of
+    // the sentence to pass a looser check, so the assertion is on the whole string.
+    assert.ok(view.claim.validity_interpretation.length > 150, "the fixture's interpretation no longer exceeds the card band's clip width, so this cannot tell wrapping from clipping");
+    for (const name of Object.keys(surfaces)) {
       assert.ok(surfaceContains(surfaces[name], view.claim.validity_interpretation), `${name} omits the interpretation sentence`);
     }
-    // And not on the card, which prints one clipped line per row: a clipped sentence is not the
-    // sentence. That is why the README names the card as carrying the stage line in its place, and
-    // this assertion is what makes changing one without the other fail.
-    assert.equal(surfaceContains(surfaces.card, view.claim.validity_interpretation), false, "the card prints the sentence; the README says it prints the short line instead");
   } finally {
     await dashboard.close();
     rmSync(cwd, { recursive: true, force: true });
