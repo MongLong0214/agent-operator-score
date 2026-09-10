@@ -7333,6 +7333,15 @@
         "at": "2026-09-10T23:14:51.289Z"
       }
     },
+    "the card carries the interpretation sentence, not only the tokens that stand for it": {
+      "platform": "darwin",
+      "fingerprint": "sha256:7e9dc14e05177e2406e1d8db269c1bd382cadbfc471cc87b3ae5294cf814da4e",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-10T23:37:33.995Z"
+      }
+    },
     "the card drops no facet": {
       "platform": "darwin",
       "fingerprint": "sha256:6828f7e9b6916278b816fb633d8b58ae41af754def77de8efdb0bfdab8fa5c36",
@@ -7349,6 +7358,15 @@
         "arch": "arm64",
         "node": "v22.23.2",
         "at": "2026-09-10T23:14:51.281Z"
+      }
+    },
+    "the card's interpretation wraps rather than clipping": {
+      "platform": "darwin",
+      "fingerprint": "sha256:87e503e1ee62d22e0a5369e0a7703089569562e5744fb334569a0cc74e25b416",
+      "measured_on": {
+        "arch": "arm64",
+        "node": "v22.23.2",
+        "at": "2026-09-10T23:37:48.560Z"
       }
     },
     "the ceilings a run earned reach the result it publishes": {
