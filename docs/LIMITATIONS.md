@@ -237,6 +237,39 @@ off. Both are legitimate configurations and they are different profiles:
 This is what PROFILE-BOUND means in practice. The number describes an agent, its configuration
 and its sandbox together, and moving any one of them makes it a different measurement.
 
+## The exact cycle contract catches drift, not forgery
+
+A cycle freezes the digest of every normative contract it measures under -- the construct map,
+the evidence and task models, the use argument, the observable cells, the suite, each locked
+form, the aggregation formula, the reliance definitions, the facet method, the form bank policy,
+the claim gate and the result schema -- and every run terminal carries the same set. A run whose
+digests differ is refused from the cycle, under a reason that names which contract moved.
+
+What that buys is that the two can no longer disagree by accident, which is the shape the failure
+actually takes: a rebuilt contract, a pulled branch, an edited cell, a scorer change nobody
+bumped a version for. Before this the comparison was `suite_major` and `scorer_major` -- two
+integers bumped by hand, so the cells could gain a category or the composite could stop being
+50:50 and neither would move.
+
+What it does not buy is authentication. `cycle.json` is a plain file in the operator's own home
+and a run record is a field on it, so a hand-written cycle and a hand-written run that agree with
+each other pass every check. The run's digests are written by the run. Making the record testify
+against its own author needs a keyed digest or an attested writer, which is a trust root this
+product does not have and will not invent -- the same line `exposureVerification` draws about the
+exposure ledger, for the same reason.
+
+Two further boundaries, stated because each looks like a gap if you assume the opposite:
+
+- **A restart is not prevented, only made visible.** Nothing here can tell a contract change from
+  a contract change made because the last cycle scored badly. A drifted cycle fails closed rather
+  than quietly excluding the runs that no longer fit, so continuing costs a new cycle id with its
+  own seeds and its own runs -- the abandoned one stays in the record, and the two cannot be read
+  as one.
+- **v1 cycles are historical, not upgraded.** The twelve digests are not derivable from the two
+  integers a v1 cycle stored; the bytes that produced them are whatever the checkout held at the
+  time. Such a cycle keeps its runs and its own comparison, and is never promoted to a contract it
+  cannot evidence.
+
 ## The three real cycles, and what each of them measured
 
 Real Codex, one machine, three seeds locked per cycle, every run attended.

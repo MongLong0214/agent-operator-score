@@ -16,6 +16,19 @@ import {
   stabilityOf
 } from "../../lib/cycle.mjs";
 import { sha256Value } from "../../lib/core.mjs";
+import {
+  BLOCKED_CONTRACT_CHANGE,
+  CONTRACT_DIGEST_FIELDS,
+  CONTRACT_MISMATCH_REASONS,
+  activeCycleDrift,
+  contractLines,
+  contractRecordOf,
+  digestPrefix,
+  forgetMeasurementContract,
+  isLegacyCycle,
+  measurementContract
+} from "../../lib/contract-freeze.mjs";
+import { LEGACY_RESULT_SCHEMA_ID, RESULT_SCHEMA_ID } from "../../lib/result-schema.mjs";
 import { EXPOSURE_LEDGER_GENESIS_DIGEST, ADMINISTRATION_CLASSIFICATION_SCHEMA_ID, markRevealed, openExposureLedger, recordExposure, reserveExposure } from "../../lib/form-class.mjs";
 
 // #585 item 1 (this round). `runIdFor`/`formDigestFor` are the one derivation every fixture below
@@ -60,14 +73,27 @@ const ledgerOf = (entries) => {
   return openExposureLedger(ledger);
 };
 
-const cycleOf = (seeds = ["1", "2", "3"]) =>
-  createCycle({ profileDigest: "sha256:profile", suiteMajor: 1, scorerMajor: 1, seeds });
+// #562. A cycle freezes the per-form contract of each seed it locks, and in production that is
+// `formManifest(seed).form_contract_digest`. These fixtures have always used a synthetic
+// `formDigestFor` so a run and its ledger entry share an identity without generating six real
+// forms; the cycle is pointed at the same synthetic digests so the per-form comparison is exercised
+// on the fixtures' own forms rather than skipped.
+const cycleOf = (seeds = ["1", "2", "3"], { runs = seeds.length, resultSchema = LEGACY_RESULT_SCHEMA_ID } = {}) => {
+  const cycle = createCycle({ profileDigest: "sha256:profile", suiteMajor: 1, scorerMajor: 1, seeds, runs, resultSchema });
+  return { ...cycle, form_contracts: Object.fromEntries(cycle.seeds.map((seed) => [seed, formDigestFor(seed)])) };
+};
 
 const runOf = (seed, over = {}) => ({
   seed,
   run_id: runIdFor(seed),
   form_contract_digest: formDigestFor(seed),
   profile_digest: "sha256:profile",
+  // #562. The exact contract this build measures under, which is what a real run terminal carries.
+  // A fixture testing a mismatch overrides one field of it; a fixture that left it out entirely
+  // would be testing the absent-field refusal instead of whatever it meant to test.
+  ...measurementContract(),
+  // These fixtures are the legacy scorer's runs -- they carry `final_score` and `dimensions`.
+  result_schema: LEGACY_RESULT_SCHEMA_ID,
   suite_major: 1,
   scorer_major: 1,
   terminal_committed: true,
@@ -149,8 +175,6 @@ test("a run from another profile, suite or scorer is not this cycle's run", () =
   const cycle = cycleOf();
   for (const [field, value, reason] of [
     ["profile_digest", "sha256:other", "PROFILE_CHANGED"],
-    ["suite_major", 2, "SUITE_MAJOR_CHANGED"],
-    ["scorer_major", 2, "SCORER_MAJOR_CHANGED"],
     ["terminal_committed", false, "NO_TERMINAL"]
   ]) {
     const check = runValidity(cycle, runOf("0000000000000001", { [field]: value }));
@@ -158,6 +182,198 @@ test("a run from another profile, suite or scorer is not this cycle's run", () =
     assert.equal(check.reason, reason, field);
     assert.deepEqual(check.exposure, { decision: null, status: "UNVERIFIED" }, `${field}: every runValidity refusal carries an exposure state`);
   }
+});
+
+test("a v1 cycle still compares the two majors, and is never rewritten into a v3 one", () => {
+  // #562. The majors are how a v1 cycle decided comparability, and there is no honest way to derive
+  // the twelve digests from two integers -- the bytes that produced them are whatever the checkout
+  // held at the time. So a v1 cycle keeps the comparison it was written with. Upgrading it in place
+  // would be this file inventing the evidence, which is the one thing the compatibility rule names.
+  const legacy = { ...cycleOf(), schema_id: "aos-cycle.v1" };
+  assert.equal(isLegacyCycle(legacy), true);
+  for (const [field, value, reason] of [
+    ["suite_major", 2, "SUITE_MAJOR_CHANGED"],
+    ["scorer_major", 2, "SCORER_MAJOR_CHANGED"]
+  ]) {
+    const check = runValidity(legacy, runOf("0000000000000001", { [field]: value }));
+    assert.equal(check.reason, reason, field);
+  }
+  // And the exact comparison does not run against it: a run carrying no contract at all is still
+  // this cycle's run, because this cycle never froze one to compare against.
+  const bare = runOf("0000000000000001");
+  for (const { field } of CONTRACT_DIGEST_FIELDS) delete bare[field];
+  bare.profile_digest = "sha256:profile";
+  assert.equal(runValidity(legacy, bare).valid, true, "a v1 cycle demanded digests it never froze");
+
+  // The same bare run against the v3 cycle it was not measured under: refused, not admitted on the
+  // strength of having nothing to compare.
+  assert.equal(runValidity(cycleOf(), bare).valid, false);
+});
+
+test("one semantic byte of any frozen contract blocks the run from the cycle, by name", () => {
+  // #562's whole point, and the twelve reasons in one table. `suite_major`/`scorer_major` used to
+  // be the entire defence: two integers somebody had to remember to bump. Every row below moves a
+  // digest instead, and each one has to be refused under the reason that names which contract
+  // moved -- a run refused under the wrong reason sends its operator to the wrong file.
+  const cycle = cycleOf();
+  const elsewhere = (n) => `sha256:${String(n).repeat(64)}`;
+  const matrix = [
+    ["profile_digest", elsewhere(0), "PROFILE_CHANGED"],
+    ["construct_contract_digest", elsewhere(1), "CONSTRUCT_CONTRACT_CHANGED"],
+    ["evidence_model_digest", elsewhere(2), "EVIDENCE_MODEL_CHANGED"],
+    ["task_model_digest", elsewhere(3), "TASK_MODEL_CHANGED"],
+    ["interpretation_use_digest", elsewhere(4), "USE_ARGUMENT_CHANGED"],
+    ["suite_contract_digest", elsewhere(5), "SUITE_CONTRACT_CHANGED"],
+    ["form_bank_contract_digest", elsewhere(6), "FORM_CONTRACT_CHANGED"],
+    ["observable_cell_contract_digest", elsewhere(7), "SCORER_CHANGED"],
+    ["profile_aggregation_digest", elsewhere(8), "SCORER_CHANGED"],
+    ["reliance_contract_digest", elsewhere(9), "RELIANCE_CONTRACT_CHANGED"],
+    ["facet_uncertainty_digest", elsewhere(1), "FACET_UNCERTAINTY_CHANGED"],
+    ["validation_claim_digest", elsewhere(2), "VALIDATION_CLAIM_CHANGED"],
+    ["standard_setting_status_digest", elsewhere(3), "VALIDATION_CLAIM_CHANGED"],
+    ["result_schema", "aos-result.v2", "RESULT_SCHEMA_CHANGED"],
+    ["form_contract_digest", elsewhere(4), "FORM_CONTRACT_CHANGED"]
+  ];
+  for (const [field, value, reason] of matrix) {
+    const check = runValidity(cycle, runOf("0000000000000001", { [field]: value }));
+    assert.equal(check.valid, false, `${field}: a moved contract was admitted to the cycle`);
+    assert.equal(check.reason, reason, field);
+  }
+  // Every one of the twelve is reachable from that table. A reason nothing can produce is a reason
+  // nobody will ever read, and it would sit in the vocabulary looking like coverage.
+  const produced = new Set(matrix.map(([, , reason]) => reason));
+  assert.deepEqual([...produced].sort(), [...CONTRACT_MISMATCH_REASONS].sort());
+});
+
+test("a contract the run does not carry at all is a mismatch, never a pass", () => {
+  // The hole every version-comparison has: absence reads as agreement. A run from a build that
+  // never computed a digest has nothing to compare, and admitting it would make the missing half of
+  // the comparison the way through it.
+  const cycle = cycleOf();
+  for (const { field, reason } of CONTRACT_DIGEST_FIELDS) {
+    const run = runOf("0000000000000001");
+    delete run[field];
+    const check = runValidity(cycle, run);
+    assert.equal(check.valid, false, `${field}: an absent contract was read as a matching one`);
+    assert.equal(check.reason, reason, field);
+  }
+  // The per-form contract too, which is stored per seed rather than beside the twelve.
+  const noForm = runOf("0000000000000001");
+  delete noForm.form_contract_digest;
+  assert.equal(runValidity(cycle, noForm).reason, "FORM_CONTRACT_CHANGED");
+});
+
+test("a path, a time and a key order do not move a digest; a byte does", () => {
+  // The comparison is only worth having if it survives being run somewhere else. `canonicalJson`
+  // sorts keys, every file digest is over raw bytes, and nothing in the contract reads a timestamp,
+  // an absolute path or an mtime -- so the same source answers the same on another machine.
+  const once = measurementContract();
+  forgetMeasurementContract();
+  const twice = measurementContract();
+  assert.deepEqual(once, twice, "the contract is not stable within one build");
+
+  // Key order, made explicit: a cycle re-serialised through a reordering round-trip is the same
+  // cycle, and its runs still belong to it.
+  const cycle = cycleOf();
+  const reordered = Object.fromEntries(Object.entries(cycle).reverse());
+  assert.equal(runValidity(reordered, runOf(cycle.seeds[0])).valid, true, "reordering a cycle's keys unseated its runs");
+
+  // And both spellings of one digest are one digest. A published result normalises to
+  // `sha256:<hex>` and a cycle's own key is bare hex; comparing the strings made every run of a new
+  // result PROFILE_CHANGED against its own cohort.
+  const bare = runOf(cycle.seeds[0], { task_model_digest: once.task_model_digest.replace(/^sha256:/u, "") });
+  assert.equal(runValidity(cycle, bare).valid, true, "the same digest in two spellings read as two digests");
+});
+
+test("cycle status shows every frozen contract as a machine digest and a safe prefix", () => {
+  // #562's UI requirement, and the reason it is both: the prefix is what a person compares across
+  // two terminals, and the full digest is what a script compares. A status that printed only the
+  // prefix would be a status whose output cannot be used as evidence, and one that printed only the
+  // full digests would be twelve unreadable lines nobody checks.
+  const cycle = cycleOf();
+  const lines = contractLines(cycle);
+  for (const label of ["Profile", "Construct/Evidence/Task/Use", "Suite/Form", "Aggregation/Reliance",
+    "Facet/Uncertainty", "Validation/Claim", "Result schema"]) {
+    assert.ok(lines.some((line) => line.includes(`${label}:`)), `${label} is not shown`);
+  }
+  // Every locked form, by seed. A cycle that showed the suite contract and not its forms would hide
+  // the half that moves when a task tree or an oracle does.
+  for (const seed of cycle.seeds) assert.ok(lines.some((line) => line.includes(`Form ${seed}`)), seed);
+
+  // The prefix is a prefix of the digest it stands for, in either spelling, and is not the digest.
+  const shown = digestPrefix(cycle.suite_contract_digest);
+  assert.ok(cycle.suite_contract_digest.includes(shown.replace("…", "")), "the prefix is not from this digest");
+  assert.notEqual(shown, cycle.suite_contract_digest);
+  assert.equal(digestPrefix(cycle.suite_contract_digest.replace(/^sha256:/u, "")), shown, "two spellings shortened to two prefixes");
+  assert.equal(digestPrefix(null), "unrecorded", "an unrecorded digest printed as a blank");
+
+  // The machine half carries the full digests, so `--json` is evidence rather than a summary of it.
+  const record = contractRecordOf(cycle);
+  for (const { field } of CONTRACT_DIGEST_FIELDS) assert.equal(record[field], cycle[field], field);
+
+  // A run that was refused names every contract that moved, not only the first. A reader told the
+  // construct map moved would rebuild the construct map and still not match.
+  const refused = recordRun(cycle, runOf(cycle.seeds[0], {
+    task_model_digest: `sha256:${"a".repeat(64)}`,
+    reliance_contract_digest: `sha256:${"b".repeat(64)}`
+  }));
+  assert.deepEqual(refused.runs[0].contract_mismatches, ["TASK_MODEL_CHANGED", "RELIANCE_CONTRACT_CHANGED"]);
+  assert.ok(contractLines(refused).some((line) => line.includes("TASK_MODEL_CHANGED, RELIANCE_CONTRACT_CHANGED")));
+
+  // A legacy cycle says what it is instead of printing digests it never froze.
+  const legacyLines = contractLines({ ...cycle, schema_id: "aos-cycle.v1" });
+  assert.equal(legacyLines.length, 1);
+  assert.match(legacyLines[0], /historical, and never upgraded/u);
+});
+
+test("a different package patch, a later timestamp and a different locked form all still belong", () => {
+  // #562's allow-list, which matters as much as the reject-list: a comparison that refuses runs it
+  // should accept gets switched off by whoever has to ship, and then it is refusing nothing.
+  const cycle = cycleOf();
+  const seed = cycle.seeds[0];
+
+  // A patch release with identical normative digests. `package_version` is recorded as provenance
+  // for a reader and is deliberately not compared -- two builds whose contracts are byte-identical
+  // measured the same thing whatever their version strings say, and two whose contracts differ did
+  // not, however equal the strings look.
+  assert.ok("package_version" in cycle, "the cycle does not record the build that froze it");
+  assert.ok(CONTRACT_DIGEST_FIELDS.every(({ field }) => field !== "package_version"),
+    "package_version is compared, so a patch release splits a cohort whose contracts are identical");
+  assert.equal(runValidity(cycle, runOf(seed, { package_version: "0.9.9" })).valid, true);
+
+  // A later run of the same contract. Nothing in the contract reads a clock, so a field naming when
+  // the record was produced cannot move a digest.
+  assert.equal(runValidity(cycle, runOf(seed, { generated_at: "2031-01-01T00:00:00.000Z" })).valid, true);
+
+  // Two different locked forms under one contract: each seed's own form digest is what its run is
+  // compared against, so a run against seed two is not judged by seed one's form.
+  const second = cycle.seeds[1];
+  assert.notEqual(cycle.form_contracts[seed], cycle.form_contracts[second], "the fixture's forms are not distinct");
+  assert.equal(runValidity(cycle, runOf(second)).valid, true, "a second locked form was refused by the first one's digest");
+  // And they are not interchangeable: seed two's run carrying seed one's form is refused.
+  assert.equal(runValidity(cycle, runOf(second, { form_contract_digest: cycle.form_contracts[seed] })).reason,
+    "FORM_CONTRACT_CHANGED");
+});
+
+test("an active cycle whose contract moved underneath it fails closed, and keeps what it has", () => {
+  // #562's active-cycle policy. The forbidden shape is the quiet one: continue, mark the runs that
+  // no longer fit as `excluded`, and let the median close over what is left -- that reads as a
+  // complete cycle and is a cycle measured under two contracts.
+  const cycle = cycleOf();
+  assert.deepEqual(activeCycleDrift(cycle).blocked, false, "an unchanged contract blocked its own cycle");
+
+  const drifted = { ...cycle, suite_contract_digest: `sha256:${"e".repeat(64)}`, validation_claim_digest: `sha256:${"f".repeat(64)}` };
+  const drift = activeCycleDrift(drifted);
+  assert.equal(drift.blocked, true);
+  assert.equal(drift.code, BLOCKED_CONTRACT_CHANGE);
+  assert.deepEqual([...drift.reasons], ["SUITE_CONTRACT_CHANGED", "VALIDATION_CLAIM_CHANGED"], "the operator is not told which contract moved");
+  assert.match(drift.detail, /preserved/u, "the detail does not say the old runs are kept");
+  assert.match(drift.detail, /aos cycle start --force/u, "the detail does not say what to do instead");
+
+  // A legacy cycle is not blocked by a contract it never froze -- it is historical, and stays so.
+  const legacy = { ...drifted, schema_id: "aos-cycle.v1" };
+  assert.equal(activeCycleDrift(legacy).blocked, false);
+  assert.equal(activeCycleDrift(legacy).legacy, true);
 });
 
 test("recordRun does not crash on a refusal decided before exposure classification runs", () => {
@@ -193,7 +409,7 @@ test("every valid run is counted, not the best of them", () => {
   const seeds = ["1", "2", "3", "4", "5"];
   const cycle = seeds.reduce(
     (acc, seed, index) => recordRun(acc, runOf(acc.seeds[index], { final_score: [10, 20, 30, 90, 95][index] })),
-    createCycle({ profileDigest: "sha256:profile", suiteMajor: 1, scorerMajor: 1, runs: 5, seeds })
+    cycleOf(seeds, { runs: 5 })
   );
   const aggregate = aggregateCycle(cycle);
   assert.equal(aggregate.valid_runs, 5);
@@ -417,17 +633,21 @@ test("a v0.2 result whose exposure the ledger never verified is refused from the
   assert.equal(runValidity(cycleOf(), legacyPreLedger).exposure.status, "UNVERIFIED");
   assert.equal(runValidity(cycleOf(), legacyPreLedger).valid, true, "a pre-ledger legacy run lost its historical validity");
 
-  const profileUnverified = runOf(seed, { result_schema: "aos-result.v4" });
-  const verdict = runValidity(cycleOf(), profileUnverified);
+  // #562. A cycle freezes the result schema its runs are written under, so the v0.2 half of this
+  // test needs a v0.2 cycle -- against a legacy cycle the run is refused as RESULT_SCHEMA_CHANGED
+  // before the exposure gate is ever reached, which would have tested the wrong refusal.
+  const profileCycle = () => cycleOf(["1", "2", "3"], { resultSchema: RESULT_SCHEMA_ID });
+  const profileUnverified = runOf(seed, { result_schema: RESULT_SCHEMA_ID });
+  const verdict = runValidity(profileCycle(), profileUnverified);
   assert.equal(verdict.exposure.status, "UNVERIFIED");
   assert.equal(verdict.valid, false, "a v0.2 run the ledger never verified counted toward the official aggregate");
   assert.equal(verdict.reason, "AOS_EXPOSURE_UNVERIFIED_FOR_PROFILE_BOUND");
 
   // And a v0.2 run the ledger did verify still counts -- now genuinely, from a real ledger entry.
   const ledger = ledgerOf([ledgerEntry(seed, { administeredClass: "OPERATIONAL" })]);
-  const profileVerified = runOf(seed, { result_schema: "aos-result.v4", form_classification: classification(seed, true) });
-  assert.equal(runValidity(cycleOf(), profileVerified, { ledger }).valid, true, "a verified v0.2 run was refused");
-  assert.equal(runValidity(cycleOf(), profileVerified, { ledger }).exposure.status, "VERIFIED");
+  const profileVerified = runOf(seed, { result_schema: RESULT_SCHEMA_ID, form_classification: classification(seed, true) });
+  assert.equal(runValidity(profileCycle(), profileVerified, { ledger }).valid, true, "a verified v0.2 run was refused");
+  assert.equal(runValidity(profileCycle(), profileVerified, { ledger }).exposure.status, "VERIFIED");
 });
 
 test("the shape of the stored classification no longer decides VERIFIED -- the ledger entry does", () => {
