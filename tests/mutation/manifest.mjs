@@ -16,6 +16,76 @@
 
 export const GUARDS = [
   {
+    reachable_from: ["lib/cycle.mjs", "lib/cli.mjs"],
+    guard: "a cycle compares every frozen contract, not two major versions",
+    reason: "#562. `suite_major`/`scorer_major` were the whole defence and both are bumped by hand: the cells could gain a category, the composite could stop being 50:50, the verifier could start accepting an answer it used to reject, and two runs marked by different rules still landed in one median. Deleting the comparison puts that back with nothing to notice it.",
+    file: "lib/cycle.mjs",
+    from: "    const mismatches = contractMismatches(cycle, run);",
+    to: "    const mismatches = [];",
+    test: "tests/product/cycle.test.mjs",
+    name: "one semantic byte of any frozen contract blocks the run from the cycle, by name"
+  },
+  {
+    reachable_from: ["lib/cycle.mjs", "lib/cli.mjs"],
+    guard: "a contract the run does not carry is a mismatch, not a pass",
+    reason: "#562. The hole every version comparison has: absence reads as agreement. A run from a build that never computed a digest has nothing to compare, and skipping it would make the missing half of the comparison the way through it.",
+    file: "lib/cycle-contract.mjs",
+    from: "    if (expected === null) continue;",
+    to: "    if (expected === null || carried?.[field] == null) continue;",
+    test: "tests/product/cycle.test.mjs",
+    name: "a contract the run does not carry at all is a mismatch, never a pass"
+  },
+  {
+    reachable_from: ["lib/cycle.mjs", "lib/cli.mjs"],
+    guard: "an active cycle whose contract drifted fails closed",
+    reason: "#562. The forbidden shape is the quiet one: continue the cycle, mark the runs that no longer fit as `excluded`, and let the median close over what is left. That reads as a complete cycle and is a cycle measured under two contracts.",
+    file: "lib/cycle-contract.mjs",
+    from: "    blocked: true,",
+    to: "    blocked: false,",
+    test: "tests/product/cycle.test.mjs",
+    name: "an active cycle whose contract moved underneath it fails closed, and keeps what it has"
+  },
+  {
+    reachable_from: ["lib/cycle.mjs", "lib/cli.mjs"],
+    guard: "a v1 cycle is never silently upgraded into a v3 one",
+    reason: "#562. The twelve digests are not derivable from the two integers a v1 cycle stored -- the bytes that produced them are whatever the checkout held at the time. Treating a v1 cycle as exact makes this module invent the evidence, and its historical runs are then judged against a contract they were never measured under.",
+    file: "lib/cycle-contract.mjs",
+    from: "export const isLegacyCycle = (cycle) => LEGACY_CYCLE_SCHEMAS.includes(cycle?.schema_id ?? \"\");",
+    to: "export const isLegacyCycle = () => false;",
+    test: "tests/product/cycle.test.mjs",
+    name: "a v1 cycle still compares the two majors, and is never rewritten into a v3 one"
+  },
+  {
+    reachable_from: ["lib/cycle.mjs", "lib/cli.mjs"],
+    guard: "the per-form contract is compared per seed",
+    reason: "#562. A cycle holds one contract per locked operational form. Without this a form whose task tree, oracle or exposure policy moved is still this cycle's form, and the suite-level digest cannot see it because the suite did not change.",
+    file: "lib/cycle.mjs",
+    from: "    const formMismatch = formContractMismatch(cycle, run, run.seed);",
+    to: "    const formMismatch = null;",
+    test: "tests/product/cycle.test.mjs",
+    name: "one semantic byte of any frozen contract blocks the run from the cycle, by name"
+  },
+  {
+    reachable_from: ["lib/cli.mjs"],
+    guard: "one digest, two spellings, is one digest",
+    reason: "#562. A published result normalises every digest to `sha256:<hex>` while a cycle's own key is written as bare hex, so a run and the cycle it belongs to hold the same digest in two forms. Comparing the strings made every run of a new result mismatch its own cohort over a prefix.",
+    file: "lib/cycle-contract.mjs",
+    from: "  return left.replace(/^sha256:/u, \"\") === right.replace(/^sha256:/u, \"\");",
+    to: "  return left === right;",
+    test: "tests/product/cycle.test.mjs",
+    name: "a path, a time and a key order do not move a digest; a byte does"
+  },
+  {
+    reachable_from: ["lib/cli.mjs"],
+    guard: "every run terminal carries the exact contract it measured under",
+    reason: "#562. The comparison in `runValidity` has nothing to compare unless the run stamps what it ran under. Dropping it from the terminal does not fail loudly -- it refuses every run of every cycle for a contract it never recorded, which reads as the cycle being broken rather than the terminal being empty.",
+    file: "lib/cli.mjs",
+    from: "        ...measurementContract(),",
+    to: "        ...{},",
+    test: "tests/product/form-class.test.mjs",
+    name: "a replayed operational form crosses runs as practice, never as official aggregate evidence"
+  },
+  {
     guard: "the verifier recomputes the validity record, not only its digest",
     reason: "#586. A digest binds bytes to bytes and never bytes to the study behind them, so a forger who edits the record and recomputes its digest passes every internal check. The recomputation derives the stage from the contract's registry and the run's evidence again, and comparing it is what catches the forgery.",
     file: "lib/cli.mjs",
@@ -342,7 +412,12 @@ export const GUARDS = [
     name: "exposure verification requires an opened ledger even when a raw copy is internally coherent"
   },
   {
-    pending_issue: "#563, #586",
+    // #562. No longer pending: `lib/cycle-contract.mjs` reads FORM_CLASS_REGISTRY into
+    // `form_bank_contract_digest`, which `createCycle` freezes and every run terminal carries, so
+    // `aos cycle start` and `aos cycle run` both reach it. Measured rather than inferred from the
+    // import graph: applying this mutation to a copy of the tree moves the digest from
+    // sha256:1268cd3d... to sha256:c1d919b8....
+    reachable_from: ["lib/cycle-contract.mjs", "lib/cycle.mjs", "lib/cli.mjs"],
     guard: "form class definitions are derived from the declaring contract",
     reason: "The live registry must follow the contract definitions, including the AOS home scope of operational exposure.",
     file: "lib/form-class.mjs",
@@ -9895,6 +9970,7 @@ export const ACCOUNTED_GUARDS = [
   "a configuration directory with no declared file is not a login",
   "a confirmation nobody could check is not a true one",
   "a confirmed author resists an unavailable overwrite",
+  "a contract the run does not carry is a mismatch, not a pass",
   "a contradicted model blocks the candidate outright",
   "a contradicting transcript still leaves the cohort",
   "a copy taken while the tree moved is not a snapshot",
@@ -9908,6 +9984,7 @@ export const ACCOUNTED_GUARDS = [
   "a cut-off probe remains retryable and provider-undetermined",
   "a cut-off trial is not a measurement",
   "a cycle answers with the provenance its runs resolved",
+  "a cycle compares every frozen contract, not two major versions",
   "a cycle locks the executable as it is, not as it was registered",
   "a cycle of profiles withholds its aggregate by name",
   "a cycle reads the executable its runs saw",
@@ -10081,6 +10158,7 @@ export const ACCOUNTED_GUARDS = [
   "a truncated reference sweep supports no reference claim",
   "a truncated sweep is refused when the observation is verified",
   "a v0.2 result with unverified exposure is refused from the official aggregate",
+  "a v1 cycle is never silently upgraded into a v3 one",
   "a value and its digest are not both accepted",
   "a verdict asserted is not a comparison performed",
   "a verdict must report what was claimed",
@@ -10123,6 +10201,7 @@ export const ACCOUNTED_GUARDS = [
   "an UNTRUSTED identity is not a verified one",
   "an absent boundary is not a passing one",
   "an absent evidence category is UNESTABLISHED, never PASS",
+  "an active cycle whose contract drifted fails closed",
   "an after-snapshot head is in flight, not merely named",
   "an alias is the node it names",
   "an answer is bounded to the workspace it was asked for",
@@ -10304,6 +10383,7 @@ export const ACCOUNTED_GUARDS = [
   "every observation a row cites must record a run that succeeded",
   "every projection is compared with the result",
   "every published string is constrained at the mint",
+  "every run terminal carries the exact contract it measured under",
   "every runValidity refusal carries an exposure state, including PROFILE_CHANGED",
   "every segment of a snapshot name has to be readable",
   "every transport spelling needs the transport approval",
@@ -10412,6 +10492,7 @@ export const ACCOUNTED_GUARDS = [
   "offline does not assert close evidence",
   "offline runs do not print or report a pass",
   "one claim's stated value is not another's",
+  "one digest, two spellings, is one digest",
   "one fixture id, one item",
   "one snapshot entry per issue",
   "oneOf means exactly one",
@@ -10683,6 +10764,7 @@ export const ACCOUNTED_GUARDS = [
   "the operator event projection is an allowlist",
   "the operator-claim decision is inside the record's digest",
   "the operator-typed event set is what the gate covers",
+  "the per-form contract is compared per seed",
   "the per-task invocation bound is compared",
   "the permanent failure classifier encloses the entire replay operation",
   "the phrase list names the artifact rows it is supposed to check",

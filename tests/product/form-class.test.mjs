@@ -537,14 +537,26 @@ test("a cycle excludes a practice-classified administration from the official ag
   const { classifyAdministration, createExposureLedger, recordExposure } = await import("../../lib/form-class.mjs");
   const seeds = ["0000000000000001", "0000000000000002", "0000000000000003"];
   const digest = `sha256:${"6".repeat(64)}`;
+  // #562. A cycle freezes its contract exactly and a run has to carry the same one; these fixtures
+  // are about the exposure ledger's verdict, so they carry a matching contract and vary only the
+  // classification. A run left with no contract at all would be refused before the ledger is ever
+  // consulted, which would make this test green for the wrong reason.
+  const { measurementContract } = await import("../../lib/cycle-contract.mjs");
+  const { LEGACY_RESULT_SCHEMA_ID } = await import("../../lib/result-schema.mjs");
+  const contract = measurementContract();
+  const cycleOn = (cycleId) => {
+    const built = createCycle({ profileDigest: "p", suiteMajor: 1, scorerMajor: 1, seeds, cycleId, resultSchema: LEGACY_RESULT_SCHEMA_ID });
+    return { ...built, form_contracts: Object.fromEntries(built.seeds.map((seed) => [seed, digest])) };
+  };
   const runOn = (seed, classification) => ({
     seed, run_id: `r-${seed}`, profile_digest: "p", suite_major: 1, scorer_major: 1,
+    ...contract, result_schema: LEGACY_RESULT_SCHEMA_ID, form_contract_digest: digest,
     failure: null, terminal_committed: true, issued: true, final_score: 70, dimensions: {},
     form_classification: classification
   });
   const { ledger } = recordExposure(createExposureLedger(), { form_id: "aos-operational-0000000000000001", form_contract_digest: digest, declared_class: "OPERATIONAL", occurred_at: "2026-09-06T10:00:00.000Z", scored: true });
   const replay = classifyAdministration(ledger, { form_id: "aos-operational-0000000000000001", form_contract_digest: digest, declared_class: "OPERATIONAL" });
-  const cycle = recordRun(createCycle({ profileDigest: "p", suiteMajor: 1, scorerMajor: 1, seeds, cycleId: "cycle-B" }), runOn(seeds[0], replay));
+  const cycle = recordRun(cycleOn("cycle-B"), runOn(seeds[0], replay));
   assert.equal(cycle.runs[0].valid, false, "a replayed operational form was counted as official aggregate evidence");
   assert.equal(cycle.runs[0].invalid_reason, "AOS_FORM_ALREADY_EXPOSED");
   const aggregate = aggregateCycle(cycle);
@@ -552,13 +564,13 @@ test("a cycle excludes a practice-classified administration from the official ag
   assert.equal(aggregate.valid_runs, 0);
   // Counterfactual one way: a first-exposure operational administration still counts.
   const official = classifyAdministration(createExposureLedger(), { form_id: "aos-operational-0000000000000001", form_contract_digest: digest, declared_class: "OPERATIONAL" });
-  const counted = recordRun(createCycle({ profileDigest: "p", suiteMajor: 1, scorerMajor: 1, seeds, cycleId: "cycle-C" }), runOn(seeds[0], official));
+  const counted = recordRun(cycleOn("cycle-C"), runOn(seeds[0], official));
   assert.equal(counted.runs[0].valid, true);
   // Counterfactual the other way: a run recorded before the ledger existed carries no
   // classification, and stays what it always was -- the ledger cannot testify about
   // administrations it never saw, and refusing history it has no evidence about would be an
   // absence scored as a value.
-  const historical = recordRun(createCycle({ profileDigest: "p", suiteMajor: 1, scorerMajor: 1, seeds, cycleId: "cycle-D" }), runOn(seeds[0], undefined));
+  const historical = recordRun(cycleOn("cycle-D"), runOn(seeds[0], undefined));
   assert.equal(historical.runs[0].valid, true);
 });
 
