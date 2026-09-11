@@ -21,6 +21,9 @@ import {
   CONTRACT_DIGEST_FIELDS,
   CONTRACT_MISMATCH_REASONS,
   activeCycleDrift,
+  contractLines,
+  contractRecordOf,
+  digestPrefix,
   forgetMeasurementContract,
   isLegacyCycle,
   measurementContract
@@ -280,6 +283,47 @@ test("a path, a time and a key order do not move a digest; a byte does", () => {
   // result PROFILE_CHANGED against its own cohort.
   const bare = runOf(cycle.seeds[0], { task_model_digest: once.task_model_digest.replace(/^sha256:/u, "") });
   assert.equal(runValidity(cycle, bare).valid, true, "the same digest in two spellings read as two digests");
+});
+
+test("cycle status shows every frozen contract as a machine digest and a safe prefix", () => {
+  // #562's UI requirement, and the reason it is both: the prefix is what a person compares across
+  // two terminals, and the full digest is what a script compares. A status that printed only the
+  // prefix would be a status whose output cannot be used as evidence, and one that printed only the
+  // full digests would be twelve unreadable lines nobody checks.
+  const cycle = cycleOf();
+  const lines = contractLines(cycle);
+  for (const label of ["Profile", "Construct/Evidence/Task/Use", "Suite/Form", "Aggregation/Reliance",
+    "Facet/Uncertainty", "Validation/Claim", "Result schema"]) {
+    assert.ok(lines.some((line) => line.includes(`${label}:`)), `${label} is not shown`);
+  }
+  // Every locked form, by seed. A cycle that showed the suite contract and not its forms would hide
+  // the half that moves when a task tree or an oracle does.
+  for (const seed of cycle.seeds) assert.ok(lines.some((line) => line.includes(`Form ${seed}`)), seed);
+
+  // The prefix is a prefix of the digest it stands for, in either spelling, and is not the digest.
+  const shown = digestPrefix(cycle.suite_contract_digest);
+  assert.ok(cycle.suite_contract_digest.includes(shown.replace("…", "")), "the prefix is not from this digest");
+  assert.notEqual(shown, cycle.suite_contract_digest);
+  assert.equal(digestPrefix(cycle.suite_contract_digest.replace(/^sha256:/u, "")), shown, "two spellings shortened to two prefixes");
+  assert.equal(digestPrefix(null), "unrecorded", "an unrecorded digest printed as a blank");
+
+  // The machine half carries the full digests, so `--json` is evidence rather than a summary of it.
+  const record = contractRecordOf(cycle);
+  for (const { field } of CONTRACT_DIGEST_FIELDS) assert.equal(record[field], cycle[field], field);
+
+  // A run that was refused names every contract that moved, not only the first. A reader told the
+  // construct map moved would rebuild the construct map and still not match.
+  const refused = recordRun(cycle, runOf(cycle.seeds[0], {
+    task_model_digest: `sha256:${"a".repeat(64)}`,
+    reliance_contract_digest: `sha256:${"b".repeat(64)}`
+  }));
+  assert.deepEqual(refused.runs[0].contract_mismatches, ["TASK_MODEL_CHANGED", "RELIANCE_CONTRACT_CHANGED"]);
+  assert.ok(contractLines(refused).some((line) => line.includes("TASK_MODEL_CHANGED, RELIANCE_CONTRACT_CHANGED")));
+
+  // A legacy cycle says what it is instead of printing digests it never froze.
+  const legacyLines = contractLines({ ...cycle, schema_id: "aos-cycle.v1" });
+  assert.equal(legacyLines.length, 1);
+  assert.match(legacyLines[0], /historical, and never upgraded/u);
 });
 
 test("an active cycle whose contract moved underneath it fails closed, and keeps what it has", () => {
