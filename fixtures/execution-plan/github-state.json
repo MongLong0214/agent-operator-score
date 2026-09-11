@@ -1,7 +1,7 @@
 {
   "schema": "aos-github-issue-state.v1",
   "repository": "MongLong0214/agent-operator-score",
-  "captured_at": "2026-09-11T08:21:03.323Z",
+  "captured_at": "2026-09-11T11:54:39.039Z",
   "source": "snapshot",
   "integration_branch": "dev",
   "issues": [
@@ -754,18 +754,54 @@
     {
       "number": 562,
       "title": "[P0][measurement] 최종 profile·suite·form·scorer·claim contract를 exact digests로 freeze한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:measurement",
         "priority:P0",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 562,
+        "final_sha": "f5b19ca3e6313c93df21345daf05699f65c86f14",
+        "pr": 657,
+        "ci_run_ids": [
+          34594444513
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "frozen_contract_digests": "12 exact digests + result schema, frozen at createCycle and carried on every run terminal: construct=4f6834eac487 evidence_model=27ae9270a09b task_model=50af168a3d28 interpretation_use=2fdecef64c28 observable_cell=55b408f9e82f suite=2a21194101a3 profile_aggregation=32ffbfa7aa26 reliance=e0c0625d8ddb facet_uncertainty=7dc1daa65c8f form_bank=1268cd3dafe8 validation_claim=0eff77de3014 standard_setting=f293e90b37d9; result_schema=aos-result.v4 (68966797e133); per-form contract stored per locked seed as the exposure ledger's own form_contract_digest",
+          "mutation": "1052/1052 killed, 0 survivors, 0 WRONG-TEST; 1022/1022 command-reachable and 30/30 library-pending guards load-bearing; the single linux row defers on darwin. Seven new guards break the exact comparison in seven places and each is caught by a named witness.",
+          "mismatch_matrix": "all 12 reasons reachable and each returned for the contract that moved; a contract the run does not carry is refused, not admitted",
+          "determinism": "identical digests across a different absolute path and different mtimes; both digest spellings compare equal; a key-order round-trip does not unseat a cycle's runs",
+          "active_cycle": "BLOCKED_CONTRACT_CHANGE, runs and evidence preserved, no profile-bound aggregate, the moved contracts named",
+          "legacy": "v1 cycles keep the two-major comparison and are never rewritten into v3",
+          "verify_scripts": "verify:exact-cycle-contract 2/2, verify:contract-determinism 1/1, verify:contract-mismatch-matrix 1/1, verify:active-cycle-protection 1/1, verify:legacy-cycle-separation 1/1",
+          "tests": "LANG=en_US.UTF-8 node --test 2016 tests, 2015 pass, 0 fail, 1 skip; LANG=ko_KR.UTF-8 identical",
+          "execution_plan_live": "PASS with an empty failure list"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
       "closing_references": [
         "#562",
         "#575",
@@ -800,7 +836,7 @@
         "area:measurement",
         "priority:P0",
         "release:v0.2.0",
-        "status:blocked"
+        "status:ready"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
