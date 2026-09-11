@@ -14,12 +14,19 @@ mode="${2:-}"
 head=$(git rev-parse HEAD)
 body=$(gh pr view "$pr" --json body -q .body)
 
+# Any hex run the body carries that git resolves to this head counts, abbreviated or full. The
+# first cut required the full forty characters and reported an abbreviation of the *right* commit
+# as "describes another commit" -- a sentence that sends a reader to look for a discrepancy that
+# does not exist. Resolving is not looser than matching: a hex run that resolves elsewhere, or to
+# nothing, still fails, and that is the defect this exists to catch.
 if [ "$mode" = "--check" ]; then
-  if printf '%s' "$body" | grep -q "$head"; then
-    echo "pr-body: names the current head $head"
-    exit 0
-  fi
-  echo "pr-body: does NOT name the current head $head -- the verification block describes another commit" >&2
+  for token in $(printf '%s' "$body" | grep -oE '\b[0-9a-f]{7,40}\b' | sort -u); do
+    if [ "$(git rev-parse --verify --quiet "${token}^{commit}" 2>/dev/null)" = "$head" ]; then
+      echo "pr-body: names the current head $head (as $token)"
+      exit 0
+    fi
+  done
+  echo "pr-body: does NOT name the current head $head -- no commit-ish in the body resolves to it" >&2
   exit 1
 fi
 
