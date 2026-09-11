@@ -293,12 +293,3 @@ test("assess binds the form families before deriving the profile, and produces n
     rmSync(home, { recursive: true, force: true });
   }
 });
-
-test("the reliance administration runs only when the operator asked to be asked", () => {
-  const source = readFileSync(new URL("../../lib/cli.mjs", import.meta.url), "utf8");
-  // Inferring relay mode from --checkpoints plus a non-terminal stdin would make a piped CI run
-  // start waiting for a person. This one is a source check because the alternative is executing a
-  // whole assessment to observe that nothing happened.
-  assert.match(source, /getOption\(options, "relay", false\) !== true \? null : createRelianceAdministration\(/u,
-    "the reliance administration is not gated on an explicit --relay");
-});

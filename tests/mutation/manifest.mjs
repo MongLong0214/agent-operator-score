@@ -9728,6 +9728,15 @@ export const GUARDS = [
     to: "  taskFormFamilyOf: undefined",
     test: "tests/product/relay-administration.test.mjs",
     name: "assess binds the form families before deriving the profile, and produces nothing without --relay"
+  },
+  {
+    guard: "the relay administration runs only when the operator asked to be asked",
+    reason: "#576. Inferring relay mode from --checkpoints and a non-terminal stdin would make a piped CI run stop and wait for a person. The first check for this read lib/cli.mjs's source; the smoke runs the shipped binary without the flag and looks for a published question, which is the difference between asserting the option's name and observing that nothing was asked.",
+    file: "lib/cli.mjs",
+    from: "  const relianceAdministration = getOption(options, \"relay\", false) !== true ? null : createRelianceAdministration({",
+    to: "  const relianceAdministration = false ? null : createRelianceAdministration({",
+    test: "tests/product/relay-chat-smoke.test.mjs",
+    name: "without --relay the shipped binary asks nothing and says the journal is empty rather than measured"
   }
 ];
 
@@ -10714,6 +10723,7 @@ export const ACCOUNTED_GUARDS = [
   "the record cites the post-deletion observation",
   "the record cites the pre-deletion observation it was checked against",
   "the references a record reports are the ones the sweep returned",
+  "the relay administration runs only when the operator asked to be asked",
   "the release-canary script exits non-zero when the gate does not accept the record",
   "the release-canary script fails closed with no evidence file",
   "the reliance evidence survives its trace",
