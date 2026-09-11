@@ -326,6 +326,35 @@ test("cycle status shows every frozen contract as a machine digest and a safe pr
   assert.match(legacyLines[0], /historical, and never upgraded/u);
 });
 
+test("a different package patch, a later timestamp and a different locked form all still belong", () => {
+  // #562's allow-list, which matters as much as the reject-list: a comparison that refuses runs it
+  // should accept gets switched off by whoever has to ship, and then it is refusing nothing.
+  const cycle = cycleOf();
+  const seed = cycle.seeds[0];
+
+  // A patch release with identical normative digests. `package_version` is recorded as provenance
+  // for a reader and is deliberately not compared -- two builds whose contracts are byte-identical
+  // measured the same thing whatever their version strings say, and two whose contracts differ did
+  // not, however equal the strings look.
+  assert.ok("package_version" in cycle, "the cycle does not record the build that froze it");
+  assert.ok(CONTRACT_DIGEST_FIELDS.every(({ field }) => field !== "package_version"),
+    "package_version is compared, so a patch release splits a cohort whose contracts are identical");
+  assert.equal(runValidity(cycle, runOf(seed, { package_version: "0.9.9" })).valid, true);
+
+  // A later run of the same contract. Nothing in the contract reads a clock, so a field naming when
+  // the record was produced cannot move a digest.
+  assert.equal(runValidity(cycle, runOf(seed, { generated_at: "2031-01-01T00:00:00.000Z" })).valid, true);
+
+  // Two different locked forms under one contract: each seed's own form digest is what its run is
+  // compared against, so a run against seed two is not judged by seed one's form.
+  const second = cycle.seeds[1];
+  assert.notEqual(cycle.form_contracts[seed], cycle.form_contracts[second], "the fixture's forms are not distinct");
+  assert.equal(runValidity(cycle, runOf(second)).valid, true, "a second locked form was refused by the first one's digest");
+  // And they are not interchangeable: seed two's run carrying seed one's form is refused.
+  assert.equal(runValidity(cycle, runOf(second, { form_contract_digest: cycle.form_contracts[seed] })).reason,
+    "FORM_CONTRACT_CHANGED");
+});
+
 test("an active cycle whose contract moved underneath it fails closed, and keeps what it has", () => {
   // #562's active-cycle policy. The forbidden shape is the quiet one: continue, mark the runs that
   // no longer fit as `excluded`, and let the median close over what is left -- that reads as a
