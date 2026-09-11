@@ -83,7 +83,12 @@ step "package smoke" npm run --silent smoke:package
 step "operational form gates" bash -c 'for s in verify:form-classification verify:exposure-ledger verify:scored-once verify:practice-contamination verify:transfer-scaffold verify:comparison-withholding verify:form-linking-status; do npm run --silent $s >/dev/null 2>&1 || exit 1; done'
 step "execution-plan offline" npm run --silent verify:execution-plan
 step "defect classes" npm run --silent check:defect-classes
-step "PR body names the merged head" bash -c "[ -n '$pr' ] && bash scripts/refresh-pr-verification-block.sh '$pr' --check"
+# The head the PR body can possibly name is the branch head that was merged, not the merge commit
+# -- the merge commit did not exist when the body was written. `<merge>^2` is that head; a
+# fast-forward or squash merge has no second parent and the merge commit is then the only head
+# there is.
+reviewed=$(git rev-parse --verify --quiet "$merge^2" 2>/dev/null || git rev-parse "$merge")
+step "PR body names the reviewed head" bash -c "[ -n '$pr' ] && bash scripts/refresh-pr-verification-block.sh '$pr' --check '$reviewed'"
 
 # The sweep rewrote its own timestamps and nothing else -- the step above is what establishes
 # that. Put the file back so the checkout this ran in is left as it was found.
