@@ -5,15 +5,28 @@
 # removed, and twice on #649 it did neither -- once describing a head 41 commits behind with every
 # number wrong. That was found by review both times, which is the expensive way to find it.
 #
-#   refresh-pr-verification-block.sh <pr> [--check]
+#   refresh-pr-verification-block.sh <pr> [--check] [head]
 #
-# --check exits non-zero when the body does not name the current head, so a gate can ask.
+# --check exits non-zero when the body does not name the head, so a gate can ask.
+#
+# The head defaults to HEAD, which is right while the branch is checked out and wrong everywhere
+# else. `post-merge-verify.sh` runs with HEAD at the *merge* commit, and a PR body never names
+# that -- it does not exist until the merge happens. So this step could not pass in the one
+# context that calls it, which is the same defect as the ledger step it sits beside: the caller
+# passes the reviewed head (`<merge>^2`) instead.
 set -euo pipefail
 pr="${1:?pr number}"
 mode="${2:-}"
-head=$(git rev-parse HEAD)
+head=$(git rev-parse "${3:-HEAD}")
 body=$(gh pr view "$pr" --json body -q .body)
 
+# What this measures, exactly: **the body mentions this commit somewhere.** It does not check that
+# the verification block is the thing mentioning it. Measured: #652's body names its reviewed head,
+# its merge commit and the previous merge, and this passes for all three. Scoping the search to the
+# block -- the `head <sha>` line the non-check mode emits -- is the stronger check and a different
+# question from the one §33 asks, so it is not smuggled in here. The failure it therefore cannot
+# catch is a stale block sitting beside a fresh mention elsewhere in the body.
+#
 # Any hex run the body carries that git resolves to this head counts, abbreviated or full. The
 # first cut required the full forty characters and reported an abbreviation of the *right* commit
 # as "describes another commit" -- a sentence that sends a reader to look for a discrepancy that
