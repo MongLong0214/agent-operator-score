@@ -495,7 +495,7 @@
     {
       "issue": 562,
       "kind": "implementation",
-      "status": "blocked",
+      "status": "ready",
       "batch": 7,
       "implementation_blocked_by": [
         553,
@@ -751,7 +751,7 @@
     {
       "issue": 568,
       "kind": "implementation",
-      "status": "ready",
+      "status": "done",
       "batch": 5,
       "implementation_blocked_by": [
         559,
@@ -1091,7 +1091,7 @@
     {
       "issue": 576,
       "kind": "implementation",
-      "status": "ready",
+      "status": "done",
       "batch": 3,
       "implementation_blocked_by": [
         559,
@@ -1379,7 +1379,7 @@
     {
       "issue": 585,
       "kind": "implementation",
-      "status": "ready",
+      "status": "done",
       "batch": 5,
       "implementation_blocked_by": [
         564,
@@ -1420,7 +1420,7 @@
     {
       "issue": 586,
       "kind": "implementation",
-      "status": "blocked",
+      "status": "done",
       "batch": 5,
       "implementation_blocked_by": [
         565,

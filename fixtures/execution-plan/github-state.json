@@ -1,7 +1,7 @@
 {
   "schema": "aos-github-issue-state.v1",
   "repository": "MongLong0214/agent-operator-score",
-  "captured_at": "2026-09-05T10:53:43.945Z",
+  "captured_at": "2026-09-11T08:21:03.323Z",
   "source": "snapshot",
   "integration_branch": "dev",
   "issues": [
@@ -760,7 +760,7 @@
         "area:measurement",
         "priority:P0",
         "release:v0.2.0",
-        "status:blocked"
+        "status:ready"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
@@ -1094,23 +1094,56 @@
     {
       "number": 568,
       "title": "[P1][measurement] active score band·cut score를 제거하고 uncertainty·claim stage로 대체한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:measurement",
         "priority:P1",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 568,
+        "final_sha": "f27ce444653f53b20dc5e1674dfcba610e0b64b8",
+        "pr": 647,
+        "ci_run_ids": [
+          34067723947
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "band_removal_proof": "verify:no-active-score-bands 13/13 pass, 0 fail",
+          "uncertainty_surface": "verify:uncertainty-visible 3/3 and verify:coverage-visible 3/3 pass, 0 fail",
+          "mutation": "load-bearing"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
       "closing_references": [
         "#568",
         "#559",
         "#578",
-        "#575"
+        "#575",
+        "#584",
+        "#647",
+        "#562"
       ]
     },
     {
@@ -1400,21 +1433,65 @@
     {
       "number": 576,
       "title": "[P0][UX][protocol] actual user turn과 initial-before-advice를 보존하는 agent-relay protocol을 구현한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:ux",
         "priority:P0",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 576,
+        "final_sha": "1f341332c38d3668c9940078d83b8d372f18928e",
+        "pr": 655,
+        "ci_run_ids": [
+          34576072338,
+          34577135687
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "relay_protocol_digest": "sha256:058f291be53e4702a6e2f3717b0fb4859930ed3b53dca8962bf606bab1c416fa",
+          "initial_before_advice_proof": "ESTABLISHED for 16/16 episodes in the coding-agent chat smoke, each verified against the instrument-authenticated trace rather than a checkpoint field",
+          "mutation": "load-bearing"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
       "closing_references": [
         "#586",
-        "#583"
+        "#583",
+        "#637",
+        "#575",
+        "#576",
+        "#632",
+        "#648",
+        "#562",
+        "#654",
+        "#655",
+        "#582",
+        "#584",
+        "#557",
+        "#569",
+        "#570"
       ]
     },
     {
@@ -1734,36 +1811,108 @@
     {
       "number": 585,
       "title": "[P1][validation] form class·exposure·practice·transfer·invariance 계약을 구현한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:measurement",
         "priority:P1",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
-      "closing_references": []
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 585,
+        "final_sha": "4289b6473d9790f1ad9155e181e781450005b781",
+        "pr": 649,
+        "ci_run_ids": [
+          34293056322
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "form_class_registry": "verify:form-classification 6/6 pass, 0 fail",
+          "exposure_ledger": "verify:exposure-ledger 8/8 pass, 0 fail",
+          "transfer_classification": "verify:transfer-scaffold 3/3 pass, 0 fail",
+          "mutation": "load-bearing"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#585",
+        "#649",
+        "#563",
+        "#586",
+        "#562"
+      ]
     },
     {
       "number": 586,
       "title": "[P1][validation] validation evidence registry·claim-stage·forbidden-use governance를 구현한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:review",
         "priority:P1",
         "release:v0.2.0",
-        "status:blocked"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
-      "closing_references": []
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 586,
+        "final_sha": "8e00c68e377a8346554fd348f74442d5e0e5946f",
+        "pr": 651,
+        "ci_run_ids": [
+          34544633115
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "validation_registry_digest": "sha256:2f75c189cfe93c33106021c7dc60e6d20ea46b7d1fea8b32396326be63cede25",
+          "claim_stage": "EXPERIMENTAL — all seven aos-validity-evidence.v1 categories UNESTABLISHED",
+          "forbidden_use_policy": "verify:forbidden-use 4/4 pass, 0 fail",
+          "mutation": "load-bearing"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#586",
+        "#651",
+        "#562"
+      ]
     },
     {
       "number": 588,
