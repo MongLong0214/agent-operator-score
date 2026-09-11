@@ -164,6 +164,20 @@ test("an instrument failure may be retried; a low, capped or unsafe result may n
   assert.equal(formStateOf(low, seed), "VALID_TERMINAL");
   assert.equal(mayRerun(low, seed), false, "a low result reopened its own seed");
   assert.throws(() => recordRun(low, runOf(seed, { final_score: 99 })), /AOS_CYCLE_SEED_ALREADY_RUN/u);
+
+  // The case that decides whether the allowlist is an allowlist: a form refused for a reason that
+  // is not an instrument failure at all. Without this the mutation `attempts.every(isInfraFailure)`
+  // -> `attempts.length > 0` is invisible, because every other attempt in this test either is an
+  // instrument failure or produced a terminal -- a measured survivor on the first sweep, and the
+  // reason this paragraph exists.
+  for (const [field, value, reason] of [["issued", false, "NOT_ISSUED"], ["terminal_committed", false, "NO_TERMINAL"]]) {
+    const refused = recordRun(cycle, runOf(seed, { [field]: value }));
+    assert.equal(refused.runs[0].invalid_reason, reason);
+    assert.equal(formStateOf(refused, seed), "RUNNING", `${reason} was read as an instrument failure`);
+    assert.equal(mayRerun(refused, seed), false, `${reason} reopened its own seed`);
+    assert.deepEqual(aggregateCycle(refused).retryable, undefined);
+    assert.deepEqual(aggregateCycle(refused).retryable_forms, [], `${reason} was offered as retryable`);
+  }
 });
 
 test("a form the contract blocked is blocked, not retryable and not pending", () => {
