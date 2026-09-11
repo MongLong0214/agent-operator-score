@@ -1115,7 +1115,10 @@
       ],
       "owned_paths": [
         "lib/relay.mjs",
-        "lib/checkpoint.mjs"
+        "lib/checkpoint.mjs",
+        "lib/relay-producer.mjs",
+        "lib/relay-administration.mjs",
+        "lib/cli.mjs"
       ],
       "evidence_bindings": {},
       "allowed_parallel_with": [
