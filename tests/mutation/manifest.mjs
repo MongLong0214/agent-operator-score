@@ -9692,6 +9692,15 @@ export const GUARDS = [
     to: "    if (taken > half) continue;",
     test: "tests/product/relay-producer.test.mjs",
     name: "the correct/incorrect advice split is exact on every seed, and which questions carry it is not"
+  },
+  {
+    guard: "the delegation posture is fixed by the question, not by the answer key",
+    reason: "#576. The checkpoint stores proactive_delegation and delegation.chosen in cleartext, beside the advice the instrument encrypts. Deriving them from advice correctness puts the answer key next to the sealed answer: anything that can read the run directory knows which advice is correct before the operator is asked, with the seal intact the whole time. It also turns delegation_regret into a function of the advice condition and the question's fixed expected value -- the producer's own construction scored as an operator's judgement.",
+    file: "lib/relay-producer.mjs",
+    from: "    proactive_delegation: question.proactive_delegation,",
+    to: "    proactive_delegation: adviceCorrect ? \"DELEGATE\" : \"DECIDE_ALONE\",",
+    test: "tests/product/relay-producer.test.mjs",
+    name: "the delegation posture is fixed by the question and never restates the answer key"
   }
 ];
 
@@ -10581,6 +10590,7 @@ export const ACCOUNTED_GUARDS = [
   "the dashboard prints the interpretation sentence, not only the stage token",
   "the dashboard profile row prints uncertainty status, interval and facet coverage",
   "the dashboard quotes the stored cycle decision",
+  "the delegation posture is fixed by the question, not by the answer key",
   "the deleted ref is live at the commit being deleted",
   "the deleted ref still exists live",
   "the deletion log is checked against the observations it cites",

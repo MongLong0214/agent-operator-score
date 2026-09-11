@@ -262,3 +262,28 @@ test("every administered episode records relay provenance, and none is promoted 
     assert.equal(opportunity.relay_provenance?.initial_before_advice_proof, true);
   }
 });
+
+test("the delegation posture is fixed by the question and never restates the answer key", () => {
+  // The checkpoint stores `proactive_delegation` and `delegation.chosen` in cleartext, beside the
+  // advice the instrument encrypts. Deriving either from advice correctness put the answer key next
+  // to the sealed answer -- anything that could read the run directory knew which advice was right
+  // before the operator was asked, and the seal was intact the whole time.
+  const postures = new Map();
+  for (const seed of ["1", "2", "3", "ab", "7c2", "deadbeef"]) {
+    const produced = producedFor(seed);
+    for (const one of produced) {
+      const key = one.grading.question_id;
+      if (postures.has(key)) {
+        assert.equal(postures.get(key), one.proactive_delegation, `${key} changed its delegation posture with the seed, so it can still track the advice condition`);
+      } else {
+        postures.set(key, one.proactive_delegation);
+      }
+      assert.equal(one.delegation.chosen, one.proactive_delegation === "DELEGATE", `${one.reliance_opportunity_id} disagrees with its own delegation decision`);
+    }
+    // Not merely "not always equal": the seed decides correctness and cannot decide the posture, so
+    // any agreement between them is coincidence rather than a channel.
+    const agreeing = produced.filter((one) => one.delegation.chosen === one.grading.advice_correct).length;
+    assert.notEqual(agreeing, produced.length, `seed ${seed} makes delegation a restatement of the answer key`);
+    assert.notEqual(agreeing, 0, `seed ${seed} makes delegation the exact negation of the answer key`);
+  }
+});
