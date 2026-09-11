@@ -7,11 +7,13 @@ import {
   aggregateCycle,
   createCycle,
   exposureVerification,
+  formStateOf,
   mayRerun,
   median,
   medianAbsoluteDeviation,
   recordRun,
   repeatEvidence,
+  requiredCoverageOf,
   runValidity,
   stabilityOf
 } from "../../lib/cycle.mjs";
@@ -118,6 +120,151 @@ test("exposure verification requires an opened ledger even when a raw copy is in
   for (const raw of [JSON.parse(JSON.stringify(ledger)), { ...ledger }, Object.freeze({ entries: ledger.entries })]) {
     assert.deepEqual(exposureVerification(run, { ledger: raw }), { decision: null, status: "UNVERIFIED" });
   }
+});
+
+test("a cycle is complete when every locked form has one valid terminal, never when three of them do", () => {
+  // #563. `valid.length >= 3` said complete with five forms locked and three finished, and the
+  // aggregate then closed over whichever three had got there -- partial-success selection spelled
+  // as arithmetic. The number three was never the contract.
+  const five = ["1", "2", "3", "4", "5"];
+  const cycle = cycleOf(five, { runs: 5 });
+  const three = five.slice(0, 3).reduce((acc, _seed, index) => recordRun(acc, runOf(acc.seeds[index])), cycle);
+  const partial = aggregateCycle(three);
+  assert.equal(partial.complete, false, "three of five locked forms read as a complete cycle");
+  assert.equal(partial.operator_score, null, "a partial cycle issued an operator score");
+  assert.equal(partial.completed_forms, 3);
+  assert.equal(partial.configured_forms, 5);
+  assert.match(partial.completion_line, /completed 3 of 5 operational forms/u);
+  assert.match(partial.completion_line, /AOS_FORMS_NOT_ADMINISTERED/u, "the unfinished forms are not named");
+
+  const all = five.reduce((acc, _seed, index) => recordRun(acc, runOf(acc.seeds[index])), cycle);
+  const full = aggregateCycle(all);
+  assert.equal(full.complete, true);
+  assert.equal(full.completed_forms, 5);
+  assert.deepEqual(full.forms.map((form) => form.state), Array(5).fill("VALID_TERMINAL"));
+});
+
+test("an instrument failure may be retried; a low, capped or unsafe result may not", () => {
+  // #563's retry allowlist. The four infrastructure failures measured nothing, so the seed is still
+  // open. A low score measured exactly what it says, and rerunning on it is the cherry-pick the
+  // locked seeds exist to prevent.
+  const cycle = cycleOf();
+  const seed = cycle.seeds[0];
+  for (const failure of INFRASTRUCTURE_FAILURES) {
+    const attempted = recordRun(cycle, runOf(seed, { failure, final_score: null }));
+    assert.equal(formStateOf(attempted, seed), "INFRA_FAILED_RETRYABLE", failure);
+    assert.equal(mayRerun(attempted, seed), true, failure);
+    // And the retry closes the form, with the failed attempt preserved beside it.
+    const retried = recordRun(attempted, runOf(seed, { final_score: 12 }));
+    assert.equal(formStateOf(retried, seed), "VALID_TERMINAL", failure);
+    assert.equal(retried.runs.length, 2, "the failed attempt was dropped rather than preserved");
+  }
+  // A low result is a valid terminal. It closes the form and cannot be run again.
+  const low = recordRun(cycle, runOf(seed, { final_score: 3 }));
+  assert.equal(formStateOf(low, seed), "VALID_TERMINAL");
+  assert.equal(mayRerun(low, seed), false, "a low result reopened its own seed");
+  assert.throws(() => recordRun(low, runOf(seed, { final_score: 99 })), /AOS_CYCLE_SEED_ALREADY_RUN/u);
+});
+
+test("a form the contract blocked is blocked, not retryable and not pending", () => {
+  // #563 forbids disguising a contract mismatch as pending. Retrying it under the same build
+  // produces the same refusal, so calling it retryable invites the loop; calling it pending says
+  // the form was never administered, which is false and hides the reason.
+  const cycle = cycleOf();
+  const seed = cycle.seeds[0];
+  const blocked = recordRun(cycle, runOf(seed, { task_model_digest: `sha256:${"c".repeat(64)}` }));
+  assert.equal(blocked.runs[0].invalid_reason, "TASK_MODEL_CHANGED");
+  assert.equal(formStateOf(blocked, seed), "BLOCKED_CONTRACT_CHANGE");
+  const summary = aggregateCycle(blocked);
+  assert.deepEqual(summary.blocked_contract_change, [seed]);
+  assert.equal(summary.complete, false);
+  assert.match(summary.completion_line, /BLOCKED_CONTRACT_CHANGE/u);
+});
+
+test("a v0.2 run missing required cells withholds the cycle by name, and is never scored as zero", () => {
+  // #563's claim-specific coverage. A required cell that was not issued is a hole in the evidence.
+  // Recording it as a zero would be this file inventing an observation, and a reader could not tell
+  // the two apart afterwards.
+  const cycle = cycleOf(["1", "2", "3"], { resultSchema: RESULT_SCHEMA_ID });
+  const covered = {
+    operator_process: { required: 6, issued: 6 },
+    system_outcome: { required: 4, issued: 4 },
+    reliance: { opportunities: 4, floor: 4 },
+    claim_stage: "PROFILE_BOUND",
+    uncertainty_status: "WITHHELD",
+    generalizability_status: "WITHHELD"
+  };
+  const profileRun = (seed, over = {}) => runOf(seed, {
+    result_schema: RESULT_SCHEMA_ID,
+    form_classification: classification(seed, true),
+    required_coverage: covered,
+    ...over
+  });
+  const ledger = ledgerOf(cycle.seeds.map((seed) => ledgerEntry(seed, { administeredClass: "OPERATIONAL" })));
+
+  const short = cycle.seeds.reduce((acc, seed, index) => recordRun(acc, profileRun(seed,
+    index === 0 ? { required_coverage: { ...covered, operator_process: { required: 6, issued: 5 } } } : {}), { ledger }), cycle);
+  const withheld = aggregateCycle(short, { ledger });
+  assert.equal(withheld.complete, false, "a cycle short a required cell called itself complete");
+  assert.equal(withheld.operator_score, null);
+  assert.deepEqual(withheld.withheld_required_evidence, [cycle.seeds[0]]);
+  assert.equal(withheld.forms[0].state, "WITHHELD_REQUIRED_EVIDENCE");
+  assert.deepEqual(withheld.forms[0].missing, ["AOS_REQUIRED_CELLS_NOT_ISSUED C1-C6 5/6"]);
+  // The run itself is preserved and still valid: its terminal happened, and the withholding is
+  // about what may be claimed from it.
+  assert.equal(short.runs[0].valid, true, "a form short a required cell lost its terminal");
+
+  // The reliance floor is the same kind of fact and is named the same way.
+  const belowFloor = cycle.seeds.reduce((acc, seed, index) => recordRun(acc, profileRun(seed,
+    index === 1 ? { required_coverage: { ...covered, reliance: { opportunities: 2, floor: 4 } } } : {}), { ledger }), cycle);
+  assert.deepEqual(aggregateCycle(belowFloor, { ledger }).forms[1].missing, ["AOS_RELIANCE_OPPORTUNITIES_BELOW_FLOOR 2/4"]);
+
+  // A validation field nobody filled in reads as absent rather than as a value.
+  const noStage = cycle.seeds.reduce((acc, seed, index) => recordRun(acc, profileRun(seed,
+    index === 2 ? { required_coverage: { ...covered, claim_stage: "" } } : {}), { ledger }), cycle);
+  assert.deepEqual(aggregateCycle(noStage, { ledger }).forms[2].missing, ["AOS_REQUIRED_FIELD_ABSENT claim_stage"]);
+
+  // And the whole set present is complete.
+  const full = cycle.seeds.reduce((acc, seed) => recordRun(acc, profileRun(seed), { ledger }), cycle);
+  assert.equal(aggregateCycle(full, { ledger }).complete, true, "a fully covered cycle was withheld");
+});
+
+test("an optional cell nobody observed does not block the cycle", () => {
+  // #563 forbids requiring every optional cell, which would block every cycle forever. Optional
+  // coverage is reported and is not a gate; only the required set decides completion.
+  const cycle = cycleOf(["1", "2", "3"], { resultSchema: RESULT_SCHEMA_ID });
+  const ledger = ledgerOf(cycle.seeds.map((seed) => ledgerEntry(seed, { administeredClass: "OPERATIONAL" })));
+  const withOptionalMissing = cycle.seeds.reduce((acc, seed) => recordRun(acc, runOf(seed, {
+    result_schema: RESULT_SCHEMA_ID,
+    form_classification: classification(seed, true),
+    required_coverage: {
+      operator_process: { required: 6, issued: 6 },
+      system_outcome: { required: 4, issued: 4 },
+      reliance: { opportunities: 4, floor: 4 },
+      claim_stage: "PROFILE_BOUND",
+      uncertainty_status: "WITHHELD",
+      generalizability_status: "WITHHELD",
+      optional_not_observed: ["C7.XX.01", "O5.YY.02"]
+    }
+  }), { ledger }), cycle);
+  assert.equal(aggregateCycle(withOptionalMissing, { ledger }).complete, true, "an unobserved optional cell blocked the cycle");
+});
+
+test("a v0.2 run that states no coverage at all is withheld, not waved through", () => {
+  // The absent-field direction, which is the one a build that never computed coverage produces. A
+  // run that says nothing about its required cells has not shown they were issued.
+  const cycle = cycleOf(["1", "2", "3"], { resultSchema: RESULT_SCHEMA_ID });
+  const ledger = ledgerOf(cycle.seeds.map((seed) => ledgerEntry(seed, { administeredClass: "OPERATIONAL" })));
+  const silent = cycle.seeds.reduce((acc, seed) => recordRun(acc, runOf(seed, {
+    result_schema: RESULT_SCHEMA_ID, form_classification: classification(seed, true)
+  }), { ledger }), cycle);
+  const summary = aggregateCycle(silent, { ledger });
+  assert.equal(summary.complete, false);
+  assert.deepEqual(summary.forms[0].missing, ["AOS_REQUIRED_COVERAGE_ABSENT"]);
+  // A legacy run is not asked: the claim-specific coverage contract is what a v0.2 result asserts,
+  // and a legacy cycle cannot reach PROFILE_BOUND by any path.
+  assert.equal(requiredCoverageOf({ result_schema: "aos-mvp-result.v1" }).applicable, false);
+  assert.equal(requiredCoverageOf({ result_schema: "aos-mvp-result.v1" }).satisfied, true);
 });
 
 test("the seeds are fixed when the cycle is created", () => {
