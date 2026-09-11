@@ -6,7 +6,9 @@ import test from "node:test";
 
 import { createRelianceAdministration, relayPaths } from "../../lib/relay-administration.mjs";
 import { relianceOpportunities } from "../../lib/relay-producer.mjs";
+import { relianceProfileForRun } from "../../lib/cli.mjs";
 import { createRelianceTrace, deriveRelianceProfile } from "../../lib/reliance.mjs";
+import { createRun, instrumentRunKey, operatorRunKey, relianceJournal } from "../../lib/store.mjs";
 import { scenarioParams } from "../../lib/suite-seed.mjs";
 
 const OPERATOR_SECRET = "operator-key";
@@ -238,18 +240,59 @@ test("the inbox a coding agent writes is not the store the protocol verifies fro
   }
 });
 
-test("assess binds the form families before deriving the profile, and produces nothing without --relay", () => {
+test("assess binds the form families before deriving the profile, and produces nothing without --relay", async () => {
+  const home = mkdtempSync(join(tmpdir(), "aos-relay-derive-"));
+  try {
+    const { runId, paths } = createRun(home, { run_id: "derive-run", mode: "TEST" });
+    // The real store, the real keys, the real journal: the defect lives in how the production
+    // derivation is called, so a fixture resolver here would reproduce the bug it hides. An earlier
+    // version of this test matched `taskFormFamilyOf:` in lib/cli.mjs's source and was satisfied by
+    // `taskFormFamilyOf: undefined` -- the mutation survived, which is what a check that reads a
+    // name rather than a behaviour always does.
+    const trace = createRelianceTrace({
+      run_id: runId,
+      operator_secret: operatorRunKey(home, runId),
+      instrument_secret: instrumentRunKey(home, runId),
+      journal: relianceJournal(home, runId)
+    });
+    const produced = produceFor("1", farFuture()).filter((one) => one.task_form_id === "FAM-2").slice(0, 1);
+    const administration = createRelianceAdministration({
+      run_id: runId,
+      run_root: paths.root,
+      produced,
+      operator_secret: operatorRunKey(home, runId),
+      instrument_secret: instrumentRunKey(home, runId),
+      trace,
+      poll_ms: 10
+    });
+    const stop = answeringHost(administration.paths, (challenge) => {
+      const correct = produced[0].grading.correct_option_ids[0];
+      return challenge.phase === "INITIAL_JUDGMENT"
+        ? { selected: [correct] }
+        : { selected: [correct], extra: { inspected: true, final_action: "adopt" } };
+    });
+    await administration.administer("FAM-2");
+    stop();
+    assert.deepEqual(administration.summary().abandoned, [], "the episode did not complete, so the derivation has nothing to bind");
+
+    const profile = relianceProfileForRun(home, runId);
+    assert.equal(profile.opportunities.length, 1, "the production derivation did not read the episode this run recorded");
+    // Other floors are unmet with one episode and that is correct. This is the one reason that is
+    // not about how much was answered: it says the form this run administered could not be named.
+    assert.ok(!profile.operational_coverage.reasons.includes("TASK_FORM_FAMILY_UNBOUND"),
+      `the production derivation left its task form unbound: ${profile.operational_coverage.reasons.join(", ")}`);
+    assert.deepEqual(profile.operational_coverage.families_represented.unbound_task_form_ids, [],
+      "the production derivation could not name the family of a form it administered");
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("the reliance administration runs only when the operator asked to be asked", () => {
   const source = readFileSync(new URL("../../lib/cli.mjs", import.meta.url), "utf8");
-  // Checked at the call site rather than through a run, because the defect is only observable when
-  // episodes exist: with an empty journal there are no task forms to leave unbound, so an assess
-  // that never administered anything looks identical either way. What can be checked is that the
-  // one production call supplies the resolver at all -- its absence is what withheld all ten
-  // metrics while every test that measured the derivation passed its own fixture resolver in.
-  const call = source.slice(source.indexOf("const relianceTrace = deriveRelianceProfile({"));
-  assert.match(call.slice(0, call.indexOf("});")), /taskFormFamilyOf:/u,
-    "the production derivation does not bind its task forms, so every episode raises TASK_FORM_FAMILY_UNBOUND");
-  // And the questions are administered only when the operator asked to be asked. Inferring it from
-  // --checkpoints plus a non-terminal stdin would make a piped CI run start waiting for a person.
+  // Inferring relay mode from --checkpoints plus a non-terminal stdin would make a piped CI run
+  // start waiting for a person. This one is a source check because the alternative is executing a
+  // whole assessment to observe that nothing happened.
   assert.match(source, /getOption\(options, "relay", false\) !== true \? null : createRelianceAdministration\(/u,
     "the reliance administration is not gated on an explicit --relay");
 });

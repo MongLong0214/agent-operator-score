@@ -9733,8 +9733,8 @@ export const GUARDS = [
     guard: "the production reliance derivation binds its task forms",
     reason: "#576. Without the resolver every episode's form lands in `unknownTaskForms` and raises TASK_FORM_FAMILY_UNBOUND, and that one unmet reason withholds all ten metrics -- so a fully answered run reports exactly like a run nobody answered. Its only supplier was a test fixture, which is why a suite measuring the derivation stayed green over the production call that omitted it.",
     file: "lib/cli.mjs",
-    from: "      taskFormFamilyOf: (formId) => (FAMILIES.includes(formId) ? formId : null)",
-    to: "      taskFormFamilyOf: undefined",
+    from: "  taskFormFamilyOf: (formId) => (FAMILIES.includes(formId) ? formId : null)",
+    to: "  taskFormFamilyOf: undefined",
     test: "tests/product/relay-administration.test.mjs",
     name: "assess binds the form families before deriving the profile, and produces nothing without --relay"
   }
