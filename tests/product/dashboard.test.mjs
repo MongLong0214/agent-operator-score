@@ -255,15 +255,20 @@ test("the operator score sits above the runs it was computed from", async () => 
     suite_major: 1,
     scorer_major: 1,
     model_identity: bound(),
-    seeds: ["0000000000000001", "0000000000000002", "0000000000000003", "0000000000000004"],
+    seeds: ["0000000000000001", "0000000000000002", "0000000000000003"],
     runs: [
-      { seed: "0000000000000001", valid: true, invalid_reason: null, final_score: 71, dimensions: { D1: 80 }, model_identity: confirmedRun() },
-      { seed: "0000000000000002", valid: true, invalid_reason: null, final_score: 74, dimensions: { D1: 80 }, model_identity: confirmedRun() },
-      { seed: "0000000000000003", valid: true, invalid_reason: null, final_score: 77, dimensions: { D1: 80 }, model_identity: confirmedRun() },
+      // #563. An attempt the instrument lost, and the retry that produced this form's terminal.
+      // The failed attempt is preserved and named; it is not a second administration, and the form
+      // it belongs to is complete. This fixture used to lock a fourth form and issue a score over
+      // three -- which is the partial-success selection #563 forbids, and the test below is now
+      // that case.
       // Identified like the others: since #561 a cycle holding a run it cannot identify withholds,
       // and a run that did not issue is still a run the cycle ran. Its exclusion is about the
       // score, not about who ran it.
-      { seed: "0000000000000004", valid: false, invalid_reason: "NOT_ISSUED", final_score: null, dimensions: {}, model_identity: confirmedRun() }
+      { seed: "0000000000000001", valid: false, invalid_reason: "AOS_INTERNAL_ERROR", failure: "AOS_INTERNAL_ERROR", final_score: null, dimensions: {}, model_identity: confirmedRun() },
+      { seed: "0000000000000001", valid: true, invalid_reason: null, final_score: 71, dimensions: { D1: 80 }, model_identity: confirmedRun() },
+      { seed: "0000000000000002", valid: true, invalid_reason: null, final_score: 74, dimensions: { D1: 80 }, model_identity: confirmedRun() },
+      { seed: "0000000000000003", valid: true, invalid_reason: null, final_score: 77, dimensions: { D1: 80 }, model_identity: confirmedRun() }
     ]
   });
   const dashboard = await startDashboard({ home });
@@ -272,7 +277,7 @@ test("the operator score sits above the runs it was computed from", async () => 
     assert.match(body, /cycle-abc/);
     assert.match(body, />74</, "the median of the valid runs");
     assert.match(body, /Operator Score/);
-    assert.match(body, /0000000000000004 — NOT_ISSUED/);
+    assert.match(body, /0000000000000001 — AOS_INTERNAL_ERROR/);
     assert.match(body, /local repeat evidence/);
     assert.match(body, /PROFILE-BOUND/);
     assert.match(body, /Model \(solo\): declared openai\/gpt-4o-2024-08-06/, "the same identity lines every other surface shows");
