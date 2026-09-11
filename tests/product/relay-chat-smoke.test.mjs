@@ -153,17 +153,27 @@ test("without --relay the shipped binary asks nothing and says the journal is em
     run(cwd, ["init"]);
     addAgent(cwd, "solo");
     const plan = makePlan(cwd, { default: "solo" });
+    // Bounded, and the bound is the assertion. A run that starts asking with no --relay does not
+    // fail -- it waits, for the two hours of its sitting expiry, which is exactly the piped-CI
+    // failure this flag exists to prevent. Without a deadline here that shows up as a dead test
+    // rather than a stated defect: the mutation runner saw it as the wrong kind of death.
     const status = await new Promise((resolve, reject) => {
       const child = spawn(process.execPath, [cli, "assess", "--plan", plan, "--seed", "11"], {
         cwd,
         env: { ...process.env, AOS_HOME: home, FAKE_AGENT_PROFILE: "competent" }
       });
       const noise = [];
+      const deadline = setTimeout(() => { child.kill("SIGKILL"); }, 120_000);
       child.stdout.on("data", (chunk) => noise.push(String(chunk)));
       child.stderr.on("data", (chunk) => noise.push(String(chunk)));
-      child.on("error", reject);
-      child.on("close", (code) => resolve({ code, output: noise.join("") }));
+      child.on("error", (error) => { clearTimeout(deadline); reject(error); });
+      child.on("close", (code, signal) => {
+        clearTimeout(deadline);
+        resolve({ code, signal, output: noise.join("") });
+      });
     });
+    assert.notEqual(status.signal, "SIGKILL",
+      "the run stopped and waited for an answer although nobody passed --relay, which is the piped-CI hang the flag prevents");
     assert.ok([0, 3].includes(status.code), `exit ${status.code}:\n${status.output.slice(-1500)}`);
     assert.equal(findChallenge(home), null, "a run nobody asked to be relayed published a question anyway");
 
