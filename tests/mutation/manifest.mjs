@@ -29,7 +29,7 @@ export const GUARDS = [
     reachable_from: ["lib/cycle.mjs", "lib/cli.mjs"],
     guard: "a contract the run does not carry is a mismatch, not a pass",
     reason: "#562. The hole every version comparison has: absence reads as agreement. A run from a build that never computed a digest has nothing to compare, and skipping it would make the missing half of the comparison the way through it.",
-    file: "lib/cycle-contract.mjs",
+    file: "lib/contract-freeze.mjs",
     from: "    if (expected === null) continue;",
     to: "    if (expected === null || carried?.[field] == null) continue;",
     test: "tests/product/cycle.test.mjs",
@@ -39,7 +39,7 @@ export const GUARDS = [
     reachable_from: ["lib/cycle.mjs", "lib/cli.mjs"],
     guard: "an active cycle whose contract drifted fails closed",
     reason: "#562. The forbidden shape is the quiet one: continue the cycle, mark the runs that no longer fit as `excluded`, and let the median close over what is left. That reads as a complete cycle and is a cycle measured under two contracts.",
-    file: "lib/cycle-contract.mjs",
+    file: "lib/contract-freeze.mjs",
     from: "    blocked: true,",
     to: "    blocked: false,",
     test: "tests/product/cycle.test.mjs",
@@ -49,7 +49,7 @@ export const GUARDS = [
     reachable_from: ["lib/cycle.mjs", "lib/cli.mjs"],
     guard: "a v1 cycle is never silently upgraded into a v3 one",
     reason: "#562. The twelve digests are not derivable from the two integers a v1 cycle stored -- the bytes that produced them are whatever the checkout held at the time. Treating a v1 cycle as exact makes this module invent the evidence, and its historical runs are then judged against a contract they were never measured under.",
-    file: "lib/cycle-contract.mjs",
+    file: "lib/contract-freeze.mjs",
     from: "export const isLegacyCycle = (cycle) => LEGACY_CYCLE_SCHEMAS.includes(cycle?.schema_id ?? \"\");",
     to: "export const isLegacyCycle = () => false;",
     test: "tests/product/cycle.test.mjs",
@@ -69,7 +69,7 @@ export const GUARDS = [
     reachable_from: ["lib/cli.mjs"],
     guard: "one digest, two spellings, is one digest",
     reason: "#562. A published result normalises every digest to `sha256:<hex>` while a cycle's own key is written as bare hex, so a run and the cycle it belongs to hold the same digest in two forms. Comparing the strings made every run of a new result mismatch its own cohort over a prefix.",
-    file: "lib/cycle-contract.mjs",
+    file: "lib/contract-freeze.mjs",
     from: "  return left.replace(/^sha256:/u, \"\") === right.replace(/^sha256:/u, \"\");",
     to: "  return left === right;",
     test: "tests/product/cycle.test.mjs",
@@ -412,12 +412,12 @@ export const GUARDS = [
     name: "exposure verification requires an opened ledger even when a raw copy is internally coherent"
   },
   {
-    // #562. No longer pending: `lib/cycle-contract.mjs` reads FORM_CLASS_REGISTRY into
+    // #562. No longer pending: `lib/contract-freeze.mjs` reads FORM_CLASS_REGISTRY into
     // `form_bank_contract_digest`, which `createCycle` freezes and every run terminal carries, so
     // `aos cycle start` and `aos cycle run` both reach it. Measured rather than inferred from the
     // import graph: applying this mutation to a copy of the tree moves the digest from
     // sha256:1268cd3d... to sha256:c1d919b8....
-    reachable_from: ["lib/cycle-contract.mjs", "lib/cycle.mjs", "lib/cli.mjs"],
+    reachable_from: ["lib/contract-freeze.mjs", "lib/cycle.mjs", "lib/cli.mjs"],
     guard: "form class definitions are derived from the declaring contract",
     reason: "The live registry must follow the contract definitions, including the AOS home scope of operational exposure.",
     file: "lib/form-class.mjs",

@@ -541,7 +541,7 @@ test("a cycle excludes a practice-classified administration from the official ag
   // are about the exposure ledger's verdict, so they carry a matching contract and vary only the
   // classification. A run left with no contract at all would be refused before the ledger is ever
   // consulted, which would make this test green for the wrong reason.
-  const { measurementContract } = await import("../../lib/cycle-contract.mjs");
+  const { measurementContract } = await import("../../lib/contract-freeze.mjs");
   const { LEGACY_RESULT_SCHEMA_ID } = await import("../../lib/result-schema.mjs");
   const contract = measurementContract();
   const cycleOn = (cycleId) => {

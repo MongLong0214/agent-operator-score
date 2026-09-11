@@ -27,7 +27,7 @@ import {
   forgetMeasurementContract,
   isLegacyCycle,
   measurementContract
-} from "../../lib/cycle-contract.mjs";
+} from "../../lib/contract-freeze.mjs";
 import { LEGACY_RESULT_SCHEMA_ID, RESULT_SCHEMA_ID } from "../../lib/result-schema.mjs";
 import { EXPOSURE_LEDGER_GENESIS_DIGEST, ADMINISTRATION_CLASSIFICATION_SCHEMA_ID, markRevealed, openExposureLedger, recordExposure, reserveExposure } from "../../lib/form-class.mjs";
 
