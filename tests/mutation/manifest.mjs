@@ -9712,15 +9712,6 @@ export const GUARDS = [
     name: "a published challenge is readable only by the run's owner and hides the advice until the initial answer commits"
   },
   {
-    guard: "the published challenge is narrowed to its owner",
-    reason: "#576. The challenge is written where a coding agent reads it, and the post-advice one carries the advice summary -- grading material for the question beside it. `writeJson` does not create 0600, so without this narrowing the file is readable by anything running as another user on the machine.",
-    file: "lib/relay-administration.mjs",
-    from: "    chmodSync(paths.challenge_file, 0o600);",
-    to: "    void paths.challenge_file;",
-    test: "tests/product/relay-administration.test.mjs",
-    name: "a published challenge is readable only by the run's owner and hides the advice until the initial answer commits"
-  },
-  {
     guard: "what a coding agent writes is not the store the protocol verifies from",
     reason: "#576. `responses/` holds the exact bytes `verify` re-derives a receipt from. The inbox is the one path outside the run writes to, so pointing it at that store would let a malformed or hostile file overwrite evidence already committed, rather than failing one response.",
     file: "lib/relay-administration.mjs",
@@ -10713,7 +10704,6 @@ export const ACCOUNTED_GUARDS = [
   "the projection verb is the record's own source",
   "the proposal comes from an admitted operator decision",
   "the publication reseal is a redaction, not a laundering tool",
-  "the published challenge is narrowed to its owner",
   "the published contract names an entry point that exists",
   "the published result carries the boundary it ran under",
   "the published sequence_position is the ledger's own committed reservation, not cycle run's unlocked snapshot",

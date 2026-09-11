@@ -101,10 +101,13 @@ test("a published challenge is readable only by the run's owner and hides the ad
     const paths = relayPaths(root);
     const phases = [];
     const { administration } = administrationIn(root, produced);
+    const modes = [];
     const stop = answeringHost(paths, (challenge) => {
       phases.push({ phase: challenge.phase, advice: challenge.advice });
-      // The file on disk, not the object the protocol returned: this is what a coding agent reads.
-      assert.equal((statSync(paths.challenge_file).mode & 0o077), 0, "the published challenge is readable beyond its owner");
+      // Recorded here, asserted in the body, so the assertion says how many challenges were
+      // checked instead of firing once per callback. Measured: an assertion thrown inside this
+      // callback does fail the test, so this is clarity rather than a repair.
+      modes.push(statSync(paths.challenge_file).mode & 0o077);
       const correct = produced[0].grading.correct_option_ids[0];
       return challenge.phase === "INITIAL_JUDGMENT"
         ? { selected: [correct] }
@@ -115,6 +118,9 @@ test("a published challenge is readable only by the run's owner and hides the ad
     assert.deepEqual(administration.summary().administered, [produced[0].reliance_opportunity_id]);
     assert.deepEqual(administration.summary().abandoned, []);
     assert.deepEqual(phases.map((entry) => entry.phase), ["INITIAL_JUDGMENT", "POST_ADVICE_DECISION"]);
+    // The file on disk, not the object the protocol returned: this is what a coding agent reads,
+    // and the post-advice one carries the advice summary.
+    assert.deepEqual(modes, [0, 0], "a published challenge was readable beyond its owner");
     assert.equal(phases[0].advice, undefined, "the advice was published before the initial judgment committed");
     assert.notEqual(phases[1].advice, undefined, "the post-advice challenge withheld the advice it exists to reveal");
   } finally {
