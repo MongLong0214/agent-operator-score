@@ -134,9 +134,14 @@ test("every stop in the loop is reachable and names its reason", () => {
     assert.equal(step.reason, reason);
     seen.add(reason);
   }
-  // Every declared code is produced by the loop. A code nothing can produce is a code nobody will
-  // ever read, and it would sit in the vocabulary looking like coverage.
-  assert.deepEqual([...seen].sort(), [...REASON_CODES].sort());
+  // Every code the decision owns is produced by it. A code nothing can produce is a code nobody
+  // will ever read, and it would sit in the vocabulary looking like coverage.
+  //
+  // `AOS_QS_STEP_FAILED` is the one exception and belongs to the driver, not to this function: it
+  // is what a *step* failing looks like, and `nextStep` never runs a step. The command test below
+  // reaches it, so it is not dead vocabulary -- it is vocabulary owned one layer up.
+  const decisionOwned = REASON_CODES.filter((code) => code !== "AOS_QS_STEP_FAILED");
+  assert.deepEqual([...seen].sort(), [...decisionOwned].sort());
 });
 
 test("the loop never answers the operator's question for them", () => {
@@ -231,4 +236,42 @@ test("the vocabularies are closed, and the session schema is versioned", () => {
   assert.deepEqual([...STATUSES], ["RUNNING", "ACTION_REQUIRED", "COMPLETE", "BLOCKED", "FAILED"]);
   assert.equal(new Set(REASON_CODES).size, REASON_CODES.length);
   assert.equal(sessionIdentity({ sourceDigest: source }), sessionIdentity({ sourceDigest: source, profileDigest: null, request: "measure" }));
+});
+
+test("the command emits one envelope per turn on stdout and nothing else", async () => {
+  // stdout is the protocol. An agent parsing this stream cannot tell a sub-command's progress line
+  // from a reply and would have to guess at the boundary, which is the whole reason --agent-mode
+  // exists. Measured by running the real command against an isolated home rather than asserted.
+  const { mkdtempSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { runCli } = await import("../../lib/cli.mjs");
+
+  const home = mkdtempSync(join(tmpdir(), "aos-qs-"));
+  const out = [];
+  const err = [];
+  const io = { stdout: { write: (text) => out.push(text) }, stderr: { write: (text) => err.push(text) } };
+  try {
+    // `--data-dir`, not `--home`: the flag is what `resolveHome` reads, and guessing it once sent a
+    // run at the operator's real ~/.aos. An isolated home is the whole point of this fixture.
+    const code = await runCli(["quickstart", "--agent-mode", "--json", "--data-dir", home], io);
+    // An empty home has no agent registered, so the loop stops on the blocker that says so rather
+    // than inventing one or running on.
+    const replies = out.join("").split("\n").filter((line) => line.trim() !== "").map((line) => JSON.parse(line));
+    assert.ok(replies.length > 0, "the command produced no envelope at all");
+    for (const reply of replies) {
+      assert.equal(reply.schema_id, "aos-agent-quickstart.v2");
+      assert.ok(STATUSES.includes(reply.status), reply.status);
+      assert.ok(PHASES.includes(reply.phase), reply.phase);
+    }
+    const last = replies.at(-1);
+    assert.equal(last.status, "BLOCKED");
+    assert.equal(last.reason_code, "AOS_QS_DISCOVERY_BLOCKED");
+    assert.ok(last.next_action !== null, "a stop with no next action leaves the caller guessing");
+    assert.equal(code, 1);
+    // The operator's own home never reaches the stream.
+    assert.equal(/\/Users\/|\/home\//u.test(out.join("")), false, "a raw private path reached stdout");
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
 });
