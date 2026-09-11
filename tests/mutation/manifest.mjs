@@ -9701,6 +9701,42 @@ export const GUARDS = [
     to: "    proactive_delegation: adviceCorrect ? \"DELEGATE\" : \"DECIDE_ALONE\",",
     test: "tests/product/relay-producer.test.mjs",
     name: "the delegation posture is fixed by the question and never restates the answer key"
+  },
+  {
+    guard: "a prepared question is delivered before an answer to it is accepted",
+    reason: "#576. `prepare` only writes the question down; `next` is delivery, and delivery is what moves the checkpoint to DELIVERED. Skipping it made the protocol refuse every answer as belonging to no currently delivered challenge -- correctly, because the question had not been asked -- and every episode was abandoned while the administration reported it as a relay failure rather than as its own missing step.",
+    file: "lib/relay-administration.mjs",
+    from: "      initialChallenge = live.next();",
+    to: "      initialChallenge = live.prepare(preparedOpportunity(one));",
+    test: "tests/product/relay-administration.test.mjs",
+    name: "a published challenge is readable only by the run's owner and hides the advice until the initial answer commits"
+  },
+  {
+    guard: "what a coding agent writes is not the store the protocol verifies from",
+    reason: "#576. `responses/` holds the exact bytes `verify` re-derives a receipt from. The inbox is the one path outside the run writes to, so pointing it at that store would let a malformed or hostile file overwrite evidence already committed, rather than failing one response.",
+    file: "lib/relay-administration.mjs",
+    from: "  inbox: join(runRoot, \"agent-relay\", \"inbox\"),",
+    to: "  inbox: join(runRoot, \"agent-relay\", \"responses\"),",
+    test: "tests/product/relay-administration.test.mjs",
+    name: "the inbox a coding agent writes is not the store the protocol verifies from"
+  },
+  {
+    guard: "the production reliance derivation binds its task forms",
+    reason: "#576. Without the resolver every episode's form lands in `unknownTaskForms` and raises TASK_FORM_FAMILY_UNBOUND, and that one unmet reason withholds all ten metrics -- so a fully answered run reports exactly like a run nobody answered. Its only supplier was a test fixture, which is why a suite measuring the derivation stayed green over the production call that omitted it.",
+    file: "lib/cli.mjs",
+    from: "  taskFormFamilyOf: (formId) => (FAMILIES.includes(formId) ? formId : null)",
+    to: "  taskFormFamilyOf: undefined",
+    test: "tests/product/relay-administration.test.mjs",
+    name: "assess binds the form families before deriving the profile, and produces nothing without --relay"
+  },
+  {
+    guard: "the relay administration runs only when the operator asked to be asked",
+    reason: "#576. Inferring relay mode from --checkpoints and a non-terminal stdin would make a piped CI run stop and wait for a person. The first check for this read lib/cli.mjs's source; the smoke runs the shipped binary without the flag and looks for a published question, which is the difference between asserting the option's name and observing that nothing was asked.",
+    file: "lib/cli.mjs",
+    from: "  const relianceAdministration = getOption(options, \"relay\", false) !== true ? null : createRelianceAdministration({",
+    to: "  const relianceAdministration = false ? null : createRelianceAdministration({",
+    test: "tests/product/relay-chat-smoke.test.mjs",
+    name: "without --relay the shipped binary asks nothing and says the journal is empty rather than measured"
   }
 ];
 
@@ -9951,6 +9987,7 @@ export const ACCOUNTED_GUARDS = [
   "a policy that narrows the run-metadata door is applied, not merely recorded",
   "a post-advice initial cannot be replayed as independent",
   "a pre-advice payload cannot smuggle a post-advice response",
+  "a prepared question is delivered before an answer to it is accepted",
   "a present-but-null required field is not read as filled",
   "a prior exposure reclassifies an operational administration as practice",
   "a probe that observed nothing is not a runtime that can do nothing",
@@ -10663,6 +10700,7 @@ export const ACCOUNTED_GUARDS = [
   "the probe verifier is bound to the record it decides",
   "the process axis needs the sweep and the second poll",
   "the process group is enumerated, not assumed",
+  "the production reliance derivation binds its task forms",
   "the profile card reserves room for the uncertainty interval before clipping the universe declaration",
   "the profile digest binds the boundary and the runtime configuration",
   "the profile digest covers the executable identity",
@@ -10685,6 +10723,7 @@ export const ACCOUNTED_GUARDS = [
   "the record cites the post-deletion observation",
   "the record cites the pre-deletion observation it was checked against",
   "the references a record reports are the ones the sweep returned",
+  "the relay administration runs only when the operator asked to be asked",
   "the release-canary script exits non-zero when the gate does not accept the record",
   "the release-canary script fails closed with no evidence file",
   "the reliance evidence survives its trace",
@@ -10782,6 +10821,7 @@ export const ACCOUNTED_GUARDS = [
   "verifier rederives uncertainty instead of trusting it",
   "version comment after a flow mapping",
   "version comment is a version",
+  "what a coding agent writes is not the store the protocol verifies from",
   "what runs after a reroute belongs to the decision that caused it",
   "what was withheld outright is recorded as such",
   "withheld is never a number, and issued is never a reason",
