@@ -1,7 +1,7 @@
 {
   "schema": "aos-github-issue-state.v1",
   "repository": "MongLong0214/agent-operator-score",
-  "captured_at": "2026-09-11T11:54:39.039Z",
+  "captured_at": "2026-09-11T14:33:57.058Z",
   "source": "snapshot",
   "integration_branch": "dev",
   "issues": [
@@ -830,18 +830,52 @@
     {
       "number": 563,
       "title": "[P0][measurement] 모든 locked operational form과 claim-required coverage가 충족돼야 Cycle을 발급한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:measurement",
         "priority:P0",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 563,
+        "final_sha": "baa177b1b04bc4f88b8fde4a29a8f4647a9992b3",
+        "pr": 659,
+        "ci_run_ids": [
+          34607385505
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "form_completion_gate": "every locked form must reach VALID_TERMINAL: complete = seeds.length > 0 && completedForms.length === seeds.length && no form administered twice. Replaces `valid.length >= 3`, which called five locked forms complete on three. Seven states derived from attempts, never stored: PENDING, RUNNING, VALID_TERMINAL, INFRA_FAILED_RETRYABLE, BLOCKED_CONTRACT_CHANGE, WITHHELD_REQUIRED_EVIDENCE, ABANDONED.",
+          "withheld_states": "WITHHELD_REQUIRED_EVIDENCE names what is missing per form and preserves the terminal: AOS_REQUIRED_CELLS_NOT_ISSUED C1-C6 5/6, AOS_RELIANCE_OPPORTUNITIES_BELOW_FLOOR 2/4, AOS_REQUIRED_FIELD_ABSENT claim_stage, AOS_REQUIRED_COVERAGE_ABSENT. An unissued required cell is never scored as zero. Optional cells are reported and never gate. BLOCKED_CONTRACT_CHANGE is distinct from both pending and retryable.",
+          "retry_allowlist": "only the four infrastructure failures reopen a seed; a low, capped or unsafe result closes the form for good and AOS_CYCLE_SEED_ALREADY_RUN refuses the rerun. Measured against NOT_ISSUED and NO_TERMINAL, which are refusals that are not instrument failures.",
+          "mutation": "1058/1058 killed, 0 survivors, 0 WRONG-TEST; 1028/1028 command-reachable and 30/30 library-pending load-bearing. Six new guards. One survived the first sweep -- `only an instrument failure makes a form retryable` -- because every attempt in its witness either was an instrument failure or produced a terminal, so the allowlist was never asked to refuse anything; the witness now includes a non-infrastructure refusal and the mutation is killed.",
+          "projection": "every surface prints `completed X of N operational forms` with the reason, plus a named line per withheld, blocked and retryable form",
+          "verify_scripts": "verify:all-locked-operational-forms 1/1, verify:claim-required-coverage 3/3, verify:no-partial-profile 3/3, verify:retry-allowlist 1/1, verify:cycle-history 3/3",
+          "tests": "LANG=en_US.UTF-8 node --test 2022 tests, 2021 pass, 0 fail, 1 skip; LANG=ko_KR.UTF-8 identical"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
       "closing_references": [
         "#563",
         "#575",
@@ -1456,7 +1490,7 @@
         "area:ux",
         "priority:P0",
         "release:v0.2.0",
-        "status:blocked"
+        "status:ready"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
