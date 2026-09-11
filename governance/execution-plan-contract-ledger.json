@@ -8,7 +8,7 @@
     },
     {
       "schema": "aos-execution-plan.v2",
-      "plan_digest": "sha256:9abd17c7d03fa12e54e068a12b3c6650c2a58693a17755e56e1767a34562714d",
+      "plan_digest": "sha256:ddcba4401f0e1a1b0f53f27a378a509b7ed87869036cab254b6d4ba61649740d",
       "schema_digest": "sha256:7a0bbdf84a7017ac0c52e8b0e2d46ed4904235669958e9e33f923f7d9cd568ab"
     }
   ]
