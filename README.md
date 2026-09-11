@@ -395,6 +395,52 @@ Until new, unused sessions are measured, the current reviewer's accuracy is not 
 holdout ledger stores session digests, finding IDs, judgments, and reasons — never transcripts.
 See [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md).
 
+## What the number may be used for
+
+A green test suite is not validity evidence. `tests pass` is a fact about a program; what a reader
+may conclude about a person from a number is a different question, and AOS answers it from a
+versioned registry rather than from delivery.
+
+Every result carries an `aos-validity-evidence.v1` record. It holds seven evidence categories --
+`content`, `response_process`, `internal_structure`, `relations_to_other_variables`,
+`generalizability`, `fairness_invariance`, `consequences` -- each `PASS`, `FAIL` or `UNESTABLISHED`,
+and a claim stage derived from them: `EXPERIMENTAL`, `INSTRUMENT_READY`, `PROFILE_BOUND` or
+`GENERALIZABILITY_SUPPORTED`. Missing evidence is `UNESTABLISHED`, which is not a weak `PASS`: with
+an empty registry `PROFILE_BOUND` is unreachable however green the suite is and however many locked
+forms a run completed.
+
+The stage is computed in one place, `lib/claim-governance.mjs`, from the sealed contract and the
+run's own evaluation. No renderer recomputes it and no caller can supply one. Every surface -- the
+result JSON, the markdown report, the HTML page, the card, the dashboard and this page -- shows the
+same nine fields: claim stage, the operator-claim decision, the permitted uses, forbidden uses, the
+seven evidence category statuses, generalizability status, uncertainty status, the
+validation-evidence digest, and the standard-setting status. The interpretation sentence those
+fields stand for -- what the stage entitles a reader to conclude, in words -- is printed by the
+markdown report, the HTML page, the card, the dashboard and the terminal: every surface that renders
+the record, the card included. The card's band wraps it rather than clipping, because the longest of
+the four sentences is ten characters past the band's width and clipping it removes the restriction
+at its end, leaving a licence that reads wider than the evidence supports. Each surface is held to
+exactly that list in `tests/product/claim-governance.test.mjs`.
+
+Today all seven categories are `UNESTABLISHED`, so the shipped instrument is `INSTRUMENT_READY` and
+the operator claim is `WITHHOLD`.
+
+Hiring, promotion, certification and population ranking are refused by the product, not only
+discouraged by this page: such a use request returns `AOS_USE_FORBIDDEN` at every claim stage. A
+comparison across profiles returns `AOS_USE_INVARIANCE_UNESTABLISHED` until fairness/invariance
+evidence passes; a category, percentile or rank returns `AOS_USE_STANDARD_SETTING_REQUIRED` until an
+`aos-standard-setting.v1` study is registered; and a request that declares no use at all returns
+`AOS_USE_UNDECLARED` rather than being permitted by omission. Ask the product directly:
+`node bin/aos.mjs use --run <id> --for hiring` prints the refusal and exits non-zero.
+
+`aos use` is a policy check on the stored record, not a verification of it. It does not rebuild the
+record from the run's evidence -- `aos verify --run` is the command that does, and it is the one
+that can contradict a record's claim stage. So the answers `aos use` gives never rest on what the
+stored record says about its own evidence: a registered standard-setting study and passing
+fairness/invariance evidence are facts about a registry and a study, and the list of uses a stage
+permits is a constant in `lib/claim-governance.mjs`. A record edited to claim any of the three, with
+its digest recomputed to match, is refused exactly as an honest one would be.
+
 ## Outputs, security, and privacy
 
 An assessment produces:

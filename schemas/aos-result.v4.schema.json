@@ -6,6 +6,59 @@
   "type": "object",
   "additionalProperties": false,
   "$defs": {
+    "validity_evidence_category": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "items", "detail"],
+      "properties": {
+        "status": { "enum": ["PASS", "FAIL", "UNESTABLISHED"] },
+        "items": { "type": "array", "maxItems": 100, "items": { "type": "string", "minLength": 1, "maxLength": 400 } },
+        "detail": { "type": "string", "minLength": 1, "maxLength": 2000 }
+      }
+    },
+    "validity_evidence_categories": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["content", "response_process", "internal_structure", "relations_to_other_variables", "generalizability", "fairness_invariance", "consequences"],
+      "properties": {
+        "content": { "$ref": "#/$defs/validity_evidence_category" },
+        "response_process": { "$ref": "#/$defs/validity_evidence_category" },
+        "internal_structure": { "$ref": "#/$defs/validity_evidence_category" },
+        "relations_to_other_variables": { "$ref": "#/$defs/validity_evidence_category" },
+        "generalizability": { "$ref": "#/$defs/validity_evidence_category" },
+        "fairness_invariance": { "$ref": "#/$defs/validity_evidence_category" },
+        "consequences": { "$ref": "#/$defs/validity_evidence_category" }
+      }
+    },
+    "validity_rebuttal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inference_id", "rebuttal_id", "status", "detail"],
+      "properties": {
+        "inference_id": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "rebuttal_id": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "status": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "detail": { "type": "string", "minLength": 1, "maxLength": 2000 }
+      }
+    },
+    "validity_evidence_bundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_claim_stage", "run_profile_bound", "run_generalizability_supported", "canonical_scoring_deterministic", "strict_official_lane", "required_cells_issued", "operator_event_provenance", "uncertainty_visible", "coverage_visible", "universe_declared", "contract_ceiling"],
+      "properties": {
+        "run_claim_stage": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "run_profile_bound": { "type": "boolean" },
+        "run_generalizability_supported": { "type": "boolean" },
+        "canonical_scoring_deterministic": { "type": "boolean" },
+        "strict_official_lane": { "type": "boolean" },
+        "required_cells_issued": { "type": "boolean" },
+        "operator_event_provenance": { "type": "boolean" },
+        "uncertainty_visible": { "type": "boolean" },
+        "coverage_visible": { "type": "boolean" },
+        "universe_declared": { "type": "boolean" },
+        "contract_ceiling": { "type": "string", "minLength": 1, "maxLength": 60 }
+      }
+    },
     "digest": {
       "type": "string",
       "pattern": "^sha256:[0-9a-f]{64}$"
@@ -971,6 +1024,7 @@
     "calibration",
     "permitted_interpretation",
     "forbidden_uses",
+    "validity_evidence",
     "standard_setting",
     "category",
     "cut_score",
@@ -997,7 +1051,7 @@
       "const": "aos-result.v4"
     },
     "schema_version": {
-      "const": "4.0.0"
+      "const": "4.1.0"
     },
     "run": {
       "type": "object",
@@ -1259,6 +1313,44 @@
       },
       "minItems": 1,
       "maxItems": 64
+    },
+    "validity_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_id",
+        "claim_id",
+        "intended_interpretation",
+        "intended_uses",
+        "forbidden_uses",
+        "evidence",
+        "rebuttals",
+        "stage",
+        "stage_reasons",
+        "decision",
+        "standard_setting_status",
+        "generalizability_status",
+        "uncertainty_status",
+        "evidence_bundle",
+        "digest"
+      ],
+      "properties": {
+        "schema_id": { "const": "aos-validity-evidence.v1" },
+        "claim_id": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "intended_interpretation": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "intended_uses": { "type": "array", "maxItems": 40, "items": { "type": "string", "minLength": 1, "maxLength": 200 } },
+        "forbidden_uses": { "type": "array", "maxItems": 64, "items": { "type": "string", "minLength": 1, "maxLength": 200 } },
+        "evidence": { "$ref": "#/$defs/validity_evidence_categories" },
+        "rebuttals": { "type": "array", "maxItems": 200, "items": { "$ref": "#/$defs/validity_rebuttal" } },
+        "stage": { "enum": ["EXPERIMENTAL", "INSTRUMENT_READY", "PROFILE_BOUND", "GENERALIZABILITY_SUPPORTED"] },
+        "stage_reasons": { "type": "array", "maxItems": 64, "items": { "type": "string", "minLength": 1, "maxLength": 600 } },
+        "decision": { "enum": ["ALLOW", "WITHHOLD"] },
+        "standard_setting_status": { "enum": ["NONE", "REGISTERED", "REFUSED"] },
+        "generalizability_status": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "uncertainty_status": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "evidence_bundle": { "$ref": "#/$defs/validity_evidence_bundle" },
+        "digest": { "$ref": "#/$defs/digest" }
+      }
     },
     "standard_setting": {
       "type": "null"

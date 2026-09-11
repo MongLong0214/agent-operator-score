@@ -10,6 +10,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { CLAIM_STAGES, EVIDENCE_CATEGORIES, USE_REFUSAL_REASONS } from "../../lib/claim-governance.mjs";
 import { RUNTIMES } from "../../lib/session.mjs";
 import { SCORABLE_CAPABILITY_SOURCES } from "../../lib/routing-oracle.mjs";
 import { fakeAgent, initBare, makePlan, newestRecord } from "./helpers.mjs";
@@ -401,5 +402,43 @@ test("an unattended run says it cannot be scored before it spends anything", () 
     assert.doesNotMatch(aosIn(cwd, home, ["assess", "--checkpoints"]).stderr, /no --checkpoints/);
   } finally {
     for (const dir of [home, cwd]) rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// #586. The projection contract names the README as one of the surfaces that must show the claim
+// governance block, so the four public pages are bound to the code that computes it rather than to
+// each other. Code identifiers, not translated prose: each page explains the rule in its own
+// language and every one of them has to name the same stages, the same categories and the same
+// refusal codes.
+//
+// What this test guarantees, exactly: **the four pages agree with `lib/claim-governance.mjs`.** It
+// does not guarantee that either says the specified thing. `CLAIM_STAGES` and `EVIDENCE_CATEGORIES`
+// are read from the module under test, so renaming `fairness_invariance` in the module and in all
+// four pages together leaves this green -- what fails then is
+// `tests/product/claim-governance.test.mjs`, which writes the required values out as literals and
+// is the only place they are stated independently. The earlier comment here claimed that split made
+// *this* test a check of fixed values; it does not, and the two tests are load-bearing only as a
+// pair. Do not add a literal list here: two independent copies drift, and the one that drifts
+// silently is the copy nobody reads.
+test("every README names whatever lib/claim-governance.mjs names for the claim stages, the evidence categories and the use-refusal codes", () => {
+  const required = [
+    "aos-validity-evidence.v1",
+    "lib/claim-governance.mjs",
+    "aos-standard-setting.v1",
+    ...CLAIM_STAGES,
+    ...EVIDENCE_CATEGORIES,
+    "PASS", "FAIL", "UNESTABLISHED",
+    ...Object.values(USE_REFUSAL_REASONS).filter((code) => code !== "AOS_USE_NOT_PERMITTED_AT_STAGE")
+  ];
+  // Whole token, not substring. `text.includes("fairness_invariance")` is satisfied by
+  // `fairness_invariance_v2`, so a rename that appends to a name -- the cheapest rename there is --
+  // read as the old name still being there. Measured: renaming the category to
+  // `fairness_invariance_v2` in one page left this green.
+  const names = (text, token) => new RegExp(`(?<![A-Za-z0-9_-])${token.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}(?![A-Za-z0-9_-])`, "u").test(text);
+  for (const name of READMES) {
+    const text = readFileSync(join(root, name), "utf8");
+    for (const token of required) {
+      assert.ok(names(text, token), `${name} does not name ${token}`);
+    }
   }
 });

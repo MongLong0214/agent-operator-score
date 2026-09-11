@@ -397,6 +397,51 @@ node bin/aos.mjs holdout --lanes
 holdout 台帳には、セッション本文ではなく、セッションのハッシュ、指摘 ID、判定、理由だけを
 保存します。詳しくは [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) を参照してください。
 
+## この数値を何に使えるか
+
+テストが全て通ったことは妥当性の証拠ではありません。`tests pass` はプログラムについての事実であり、
+その数値から人について何を言えるかは別の問いです。AOS はその答えを、実装完了ではなくバージョン付きの
+レジストリから取ります。
+
+すべての結果に `aos-validity-evidence.v1` レコードが付きます。証拠カテゴリは七つ --
+`content`、`response_process`、`internal_structure`、`relations_to_other_variables`、
+`generalizability`、`fairness_invariance`、`consequences` -- で、それぞれ `PASS`、`FAIL`、
+`UNESTABLISHED` のいずれかを持ち、そこから claim stage が決まります: `EXPERIMENTAL`、
+`INSTRUMENT_READY`、`PROFILE_BOUND`、`GENERALIZABILITY_SUPPORTED`。証拠がなければ
+`UNESTABLISHED` であり、これは弱い `PASS` ではありません。レジストリが空なら、テストがどれだけ緑でも、
+ロックされた form をいくつ完了しても `PROFILE_BOUND` には到達しません。
+
+stage は `lib/claim-governance.mjs` の一箇所で、封印された契約とその実行の evaluation だけから計算
+されます。レンダラーは再計算せず、呼び出し側が stage を渡すこともできません。結果 JSON、Markdown
+レポート、HTML、カード、ダッシュボード、そしてこのページまで、すべての面が同じ九つのフィールドを表示
+します: claim stage、運用者主張の決定、許可された用途、禁止された用途、七つの証拠カテゴリの状態、
+generalizability の状態、uncertainty の状態、検証証拠の digest、standard-setting の状態。それらの
+フィールドが表す解釈の文 -- この stage で読み手が何を結論してよいかを言葉にしたもの -- は Markdown
+レポート、HTML、カード、ダッシュボード、ターミナルが印字します。レコードを描くすべての面であり、
+カードもその一つです。カードは切り詰めずに行を折り返して載せます。四つの文のうち最も長い
+ものが帯の幅より十文字長く、そこで切れるのが文末の制限なので、切り詰めると証拠が支える範囲より広い
+licence として読まれてしまうからです。どの面が何を載せるかは
+`tests/product/claim-governance.test.mjs` がそのまま検査します。
+
+現在は七カテゴリすべてが `UNESTABLISHED` なので、出荷されている道具は `INSTRUMENT_READY` であり、
+オペレーターについての主張は `WITHHOLD` です。
+
+採用、昇進、資格認定、母集団順位付けは、このページが勧めないだけでなく製品が拒否します。そうした用途の
+要求は、どの claim stage でも `AOS_USE_FORBIDDEN` を返します。プロファイル間の比較は
+fairness/invariance の証拠が `PASS` になるまで `AOS_USE_INVARIANCE_UNESTABLISHED`、カテゴリ・
+パーセンタイル・順位は `aos-standard-setting.v1` の研究が登録されるまで
+`AOS_USE_STANDARD_SETTING_REQUIRED`、用途を全く宣言しない要求は黙示の許可ではなく
+`AOS_USE_UNDECLARED` を返します。製品に直接尋ねられます:
+`node bin/aos.mjs use --run <id> --for hiring` は拒否理由を表示し、0 以外で終了します。
+
+`aos use` は保存されたレコードに対する方針の検査であって、そのレコードの検証ではありません。実行の
+証拠からレコードを組み直すことはしません -- それは `aos verify --run` の仕事で、レコードの claim
+stage に反論できるのもそちらです。ですから `aos use` の答えは、保存されたレコードが自分の証拠に
+ついて言うことには依りません。登録済みの standard-setting 研究も、通過した fairness/invariance の
+証拠も registry と研究についての事実であり、どの stage が何を許すかは `lib/claim-governance.mjs`
+の定数です。その三つを主張するよう書き換え digest を計算し直したレコードも、正直なレコードと同じ
+ように拒否されます。
+
 ## 出力・セキュリティ・プライバシー
 
 `assess` が終わると、次のファイルができます。

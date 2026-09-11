@@ -366,6 +366,43 @@ EXPERIMENTAL。扣留意味着没有该值，而不是 0；该命令打印的每
 只保存会话哈希、提示 ID、人工判定与理由，不保存会话正文。详见
 [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md)。
 
+## 这个数字可以用来做什么
+
+测试全部通过不是效度证据。`tests pass` 是关于程序的事实；从这个数字能对一个人得出什么结论是另一个问题，
+AOS 从一个带版本的登记表回答它，而不是从"实现完成"回答。
+
+每个结果都带有一条 `aos-validity-evidence.v1` 记录。它包含七个证据类别 --
+`content`、`response_process`、`internal_structure`、`relations_to_other_variables`、
+`generalizability`、`fairness_invariance`、`consequences` -- 每个取 `PASS`、`FAIL` 或
+`UNESTABLISHED`，并由此推出 claim stage：`EXPERIMENTAL`、`INSTRUMENT_READY`、`PROFILE_BOUND`、
+`GENERALIZABILITY_SUPPORTED`。没有证据就是 `UNESTABLISHED`，它不是弱化的 `PASS`：登记表为空时，
+无论测试多绿、完成了多少个锁定 form，都无法到达 `PROFILE_BOUND`。
+
+stage 只在一处计算 -- `lib/claim-governance.mjs` -- 依据封存的契约和该次运行自身的 evaluation。
+渲染器不会重算，调用方也无法传入。结果 JSON、Markdown 报告、HTML 页面、卡片、仪表板，以及本页，
+所有界面都显示同样的九个字段：claim stage、操作者主张的决定、允许的用途、禁止的用途、七个证据类别的
+状态、generalizability 状态、uncertainty 状态、验证证据 digest、standard-setting 状态。这些字段所
+代表的那句解释 -- 用文字写出该 stage 允许读者得出什么结论 -- 由 Markdown 报告、HTML 页面、卡片、
+仪表板和终端打印：凡是渲染该记录的界面都打印，卡片也在其中。卡片不截断，而是折行承载：四句话中最长的一句比色带宽度多十个字符，被截掉的正是句末的限制，一旦截断就会
+读成比证据所支持的更宽的 licence。每个界面各自承担什么，
+由 `tests/product/claim-governance.test.mjs` 逐一检查。
+
+目前七个类别全部是 `UNESTABLISHED`，因此已发布的工具处于 `INSTRUMENT_READY`，对操作者的主张是
+`WITHHOLD`。
+
+招聘、晋升、资格认证、人群排名不是本页劝阻，而是产品拒绝：这类用途请求在任何 claim stage 都返回
+`AOS_USE_FORBIDDEN`。跨 profile 的比较在 fairness/invariance 证据 `PASS` 之前返回
+`AOS_USE_INVARIANCE_UNESTABLISHED`；类别、百分位、排名在注册 `aos-standard-setting.v1` 研究之前
+返回 `AOS_USE_STANDARD_SETTING_REQUIRED`；完全不声明用途的请求返回 `AOS_USE_UNDECLARED`，
+而不是默认许可。可以直接向产品询问：
+`node bin/aos.mjs use --run <id> --for hiring` 会打印拒绝理由并以非零状态退出。
+
+`aos use` 是对已存记录的策略检查，而不是对该记录的验证。它不会依据运行的证据重建记录 --
+那是 `aos verify --run` 做的事，也只有它能推翻记录声称的 claim stage。因此 `aos use` 给出的答案
+从不依赖已存记录对自身证据的说法：已登记的 standard-setting 研究和通过的 fairness/invariance
+证据都是关于登记表和研究的事实，而某个 stage 允许哪些用途是 `lib/claim-governance.mjs` 里的常量。
+一条被改写成声称这三者、并重新算好 digest 的记录，会和诚实的记录一样被拒绝。
+
 ## 输出、安全与隐私
 
 `assess` 完成后会生成：
