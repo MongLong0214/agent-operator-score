@@ -9665,6 +9665,33 @@ export const GUARDS = [
     to: "  return record.digest === `sha256:${sha256Value(JSON.parse(canonicalJson({ ...digestableBody(record), decision: \"ALLOW\" })))}`;",
     test: "tests/product/claim-governance.test.mjs",
     name: "the record's digest is over its own content, and an edited record no longer verifies"
+  },
+  {
+    guard: "a relayed pair carries its choice-independence sentinel into the trace",
+    reason: "#576. Two episodes are a choice-independence pair because the producer built them from one piece of current evidence under two prior-error conditions. The relay committed the initial event without that sentinel, so every pair stayed incomplete, `choice_independence_pairs` read zero, and the one unmet floor withheld all ten metrics -- a run answered in full, reported as a run nobody answered.",
+    file: "lib/relay.mjs",
+    from: "          : { choice_independence: clone(state.opportunity.choice_independence) })",
+    to: "          : {})",
+    test: "tests/product/relay-producer.test.mjs",
+    name: "an administered catalogue meets the operational coverage its profile is withheld without"
+  },
+  {
+    guard: "an answer that selected every option is not an answer",
+    reason: "#576. The outcome verifier grades by option id, so a submission that selects everything contains a correct id. Reading it as correct is the reading an answer sheet gives itself: the operator committed to nothing and the episode would score as appropriate reliance.",
+    file: "lib/relay-producer.mjs",
+    from: "  const graded = (selected) => Array.isArray(selected) && selected.length === 1 && correct.has(selected[0]);",
+    to: "  const graded = (selected) => Array.isArray(selected) && selected.some((id) => correct.has(id));",
+    test: "tests/product/relay-producer.test.mjs",
+    name: "the outcome verifier grades option ids and reads no submitted text"
+  },
+  {
+    guard: "the advice condition split is exact rather than drawn per question",
+    reason: "#576. The floor requires eight correct and eight incorrect advice conditions in one run. Drawing each question independently meets that on most seeds and misses it on some, and a profile withheld for a draw looks exactly like a profile withheld because nobody answered -- so the failure would be invisible on the surface that reports it.",
+    file: "lib/relay-producer.mjs",
+    from: "    if (taken + weightOf(id) > half) continue;",
+    to: "    if (taken > half) continue;",
+    test: "tests/product/relay-producer.test.mjs",
+    name: "the correct/incorrect advice split is exact on every seed, and which questions carry it is not"
   }
 ];
 
@@ -9933,6 +9960,7 @@ export const ACCOUNTED_GUARDS = [
   "a redundant invocation is one that added nothing",
   "a refused file fails the check",
   "a relay id is published as a digest",
+  "a relayed pair carries its choice-independence sentinel into the trace",
   "a reliance append reuses its verified prefix",
   "a reliance rate waits for its opportunity floor",
   "a reliance trace is built on a journal",
@@ -10052,6 +10080,7 @@ export const ACCOUNTED_GUARDS = [
   "an after-snapshot head is in flight, not merely named",
   "an alias is the node it names",
   "an answer is bounded to the workspace it was asked for",
+  "an answer that selected every option is not an answer",
   "an asserted number equals the number the collector derived",
   "an asserted open PR appears in the collected history",
   "an asserted tree scan is the one that ran",
@@ -10495,6 +10524,7 @@ export const ACCOUNTED_GUARDS = [
   "terminal transitions retain their pending receipt in the chain",
   "the PATH rule is part of the digest",
   "the adapter's own config directory is declared, not typed twice",
+  "the advice condition split is exact rather than drawn per question",
   "the after-snapshot exception is bound to the branch the audit was submitted from",
   "the artifact obligation is checked by opening the file",
   "the assessed process does not decide issuance",
