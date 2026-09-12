@@ -1076,7 +1076,7 @@
         "quickstart-orchestration"
       ],
       "owned_paths": [
-        "lib/orchestration.mjs"
+        "lib/quickstart.mjs"
       ],
       "evidence_bindings": {},
       "allowed_parallel_with": [],
