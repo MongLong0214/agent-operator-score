@@ -275,3 +275,31 @@ test("the command emits one envelope per turn on stdout and nothing else", async
     rmSync(home, { recursive: true, force: true });
   }
 });
+
+test("a completed run publishes its four surfaces, and withheld is not zero", async () => {
+  // The operator who has to open the report to learn the claim stage was handed a path, which is
+  // the thing this loop exists not to do. And an index this product refused to issue is a different
+  // fact from an index nobody computed -- a reader of the envelope has to tell them apart without
+  // opening anything.
+  const { quickstartSurfacesForTest } = await import("../../lib/cli.mjs");
+  const surfaces = quickstartSurfacesForTest({
+    operator_process_profile: { issued: false, index: null, withheld_reason: "C3 has no issued estimate", claim_stage: "PROFILE_BOUND" },
+    reliance_calibration_profile: { status: "WITHHELD" },
+    system_outcome_profile: { issued: true, index: 72.5 },
+    aos_composite: { issued: false, withheld_reason: "the process index is withheld" },
+    uncertainty_status: "NOT_ESTIMATED",
+    generalizability_status: "WITHHELD"
+  });
+  assert.equal(surfaces.operator_process_profile.issued, false);
+  assert.equal(surfaces.operator_process_profile.index, null, "a withheld index was published as a number");
+  assert.equal(surfaces.operator_process_profile.withheld_reason, "C3 has no issued estimate");
+  assert.equal(surfaces.system_outcome_profile.index, 72.5);
+  assert.equal(surfaces.system_outcome_profile.withheld_reason, null);
+  assert.equal(surfaces.aos_composite.issued, false);
+  assert.equal(surfaces.claim_stage, "PROFILE_BOUND");
+  assert.equal(surfaces.uncertainty_status, "NOT_ESTIMATED");
+  assert.equal(surfaces.reliance_calibration_profile.status, "WITHHELD");
+  // No result at all is no surfaces, rather than four nulls that read as four measurements taken
+  // and refused.
+  assert.deepEqual(quickstartSurfacesForTest(null), {});
+});
