@@ -159,6 +159,61 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
+  # #569's promotion gate. Offline and advisory-until-green: the gate matrix is computed from the
+  # execution plan, so a pull request that marks an issue done without the evidence to back it moves
+  # this check, and a release cut from a plan that has drifted is what the whole separation of
+  # `main` from `dev` exists to prevent.
+  #
+  # The fixture mode runs here. It exercises the same decision the live mode makes, on a committed
+  # channel description, so the refusal logic is checked on every run including where there is no
+  # token -- a verifier that only works live is one CI cannot run, and one that only works on a
+  # fixture has never seen the repository it gates. The live half is the job below.
+  #
+  # `continue-on-error` deliberately: this check FAILS while any gate issue is open, which is the
+  # correct state today and will be until the last one closes. It reports rather than blocks so the
+  # signal is visible on every run; making it required is the last step of the promotion, not the
+  # first, and doing it early would only teach everyone to ignore a permanently red check.
+  release-channel:
+    needs: action-pins
+    name: release-channel
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run verify:release-channel
+
+  # The half the fixture cannot do: what the repository actually enforces right now. Asks the API
+  # what protection is in force rather than whether a named feature is switched on, because classic
+  # protection and a ruleset answer the same three questions differently.
+  #
+  # Not on pull requests, for the same reason as `execution-plan-live`: a fork's token cannot read
+  # what this needs. On demand, which is what a release runs.
+  release-channel-live:
+    needs: action-pins
+    if: github.event_name == 'workflow_dispatch'
+    name: release-channel-live
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      actions: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run verify:release-channel:live
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
   # #639's release gate, given the invocation site it shipped without. `scripts/verify-release-canary.mjs`
   # reads the committed `aos-strict-canary.v1` record and decides whether this head may cite it as
   # proof the STRICT lane ran, authenticated, on a real runtime -- and a gate nothing calls withholds

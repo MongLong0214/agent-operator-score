@@ -49,7 +49,11 @@ const protectionOf = (branch) => {
 
 const liveChannel = () => {
   const repo = gh(`repos/${REPO}`);
-  const protection = {};
+  // Null-prototype: this map is keyed by branch names read from the API, and a branch called
+  // `__proto__` would otherwise write through to Object.prototype rather than into the map. The
+  // branch names here are ones this repository controls, but a scanner that only fires on the
+  // dangerous cases is a scanner that has to guess which those are.
+  const protection = Object.create(null);
   for (const branch of ["main", "dev"]) {
     const found = protectionOf(branch);
     if (found !== null) protection[branch] = found;
