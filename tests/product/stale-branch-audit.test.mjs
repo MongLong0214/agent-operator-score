@@ -981,3 +981,36 @@ test("a record that under-reports the references the sweep returned is refused",
     assert.notDeepEqual(derivationFindings(forged), [], `a record dropping ${JSON.stringify(patch)} from its reference scan passed`);
   }
 });
+
+test("the collector runs when invoked through a symlinked path, and does not exit 0 having collected nothing", async () => {
+  // `import.meta.url` is already a realpath and `process.argv[1]` is whatever was typed. On macOS
+  // `/tmp` is a symlink to `/private/tmp`, so a string comparison between the two made this script
+  // skip its whole body and exit 0 -- which reads to every caller exactly like a successful
+  // collection. Measured before the fix: the same command through a `/tmp` symlink exited 0 and
+  // wrote no file.
+  //
+  // A collector that silently collects nothing is worse than one that crashes, because the audit
+  // downstream reads its absence as an answer. The witness is the symlinked invocation; the direct
+  // one passes either way and would have proved nothing.
+  const { mkdtempSync, rmSync, symlinkSync, existsSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { spawnSync } = await import("node:child_process");
+
+  const script = new URL("../../scripts/collect-branch-state.mjs", import.meta.url).pathname;
+  const stage = mkdtempSync(join(tmpdir(), "aos-collector-link-"));
+  try {
+    const link = join(stage, "collect-via-link.mjs");
+    symlinkSync(script, link);
+    const out = join(stage, "observation.json");
+    // This does the real collection; every command the collector runs is a read-only query.
+    const result = spawnSync(process.execPath, [link, "MongLong0214/agent-operator-score", out], {
+      encoding: "utf8", timeout: 300000
+    });
+    assert.equal(result.status, 0, result.stderr?.slice(0, 600));
+    assert.ok(existsSync(out),
+      "the collector exited 0 through a symlinked path without writing an observation, which is indistinguishable from a successful collection");
+  } finally {
+    rmSync(stage, { recursive: true, force: true });
+  }
+});
