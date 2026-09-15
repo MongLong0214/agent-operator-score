@@ -16,6 +16,46 @@
 
 export const GUARDS = [
   {
+    reachable_from: ["scripts/verify-release-channel.mjs"],
+    guard: "near-green is not a promotion condition",
+    reason: "#569. Every gate but one, a plausible story about why that one does not count, and a stable channel now points at work nobody finished. The conjunction is the whole rule; either half alone lets a release through on the other's evidence.",
+    file: "lib/release-channel.mjs",
+    from: "    promote: gates.pass && state.ok,",
+    to: "    promote: gates.pass || state.ok,",
+    test: "tests/product/release-channel.test.mjs",
+    name: "near-green is not a promotion condition"
+  },
+  {
+    reachable_from: ["scripts/verify-release-channel.mjs"],
+    guard: "an issue the plan does not call done is waiting",
+    reason: "#569. An absent plan entry and a done one read identically to a reader who only counts failures. Inverting this makes every gate pass on a plan that has never heard of the issues it names.",
+    file: "lib/release-channel.mjs",
+    from: "    const waiting = issues.filter((issue) => planStatuses?.[issue] !== \"done\");",
+    to: "    const waiting = issues.filter((issue) => planStatuses?.[issue] === \"done\");",
+    test: "tests/product/release-channel.test.mjs",
+    name: "every gate names real issues, and an issue the plan does not know is not passing"
+  },
+  {
+    reachable_from: ["scripts/verify-release-channel.mjs"],
+    guard: "the stable channel is the default branch",
+    reason: "#569. A default branch pointing at integration means every clone follows work that was merged an hour ago, which is the one thing separating main from dev exists to prevent.",
+    file: "lib/release-channel.mjs",
+    from: "  if (defaultBranch !== \"main\") problems.push",
+    to: "  if (false) problems.push",
+    test: "tests/product/release-channel.test.mjs",
+    name: "a channel that is not shaped for a stable release refuses, and says every reason at once"
+  },
+  {
+    reachable_from: ["scripts/verify-release-channel.mjs"],
+    guard: "protection is decided from enforcement that was observed",
+    reason: "#569. Required checks, no force push and no deletion are three separate facts, and a branch enforcing two of them is not protected. Dropping one axis lets a release cite protection it does not have.",
+    file: "lib/release-channel.mjs",
+    from: "      found.required_checks === true ? null : \"required checks\",",
+    to: "      null,",
+    test: "tests/product/release-channel.test.mjs",
+    name: "a channel that is not shaped for a stable release refuses, and says every reason at once"
+  },
+  {
     reachable_from: ["lib/cli.mjs"],
     guard: "the quickstart loop never answers the operator's question",
     reason: "#575. An agent's own answer recorded as an operator's is what the relay exists to prevent, and afterwards it is indistinguishable from the real thing. Running past a pending challenge is how that recording happens without anyone deciding to make it.",
@@ -10356,6 +10396,7 @@ export const ACCOUNTED_GUARDS = [
   "an invocation nobody can attribute decides nothing",
   "an issue number is a number before it is a pattern",
   "an issue owns a surface",
+  "an issue the plan does not call done is waiting",
   "an issued legacy number needs a declared STRICT level",
   "an object whose every value is absent is not a considered field",
   "an observation run carries a provenance record too",
@@ -10594,6 +10635,7 @@ export const ACCOUNTED_GUARDS = [
   "missing-result refusal",
   "mutation totals separate pending library witnesses from command coverage",
   "naming something to preserve refuses the deletion recommendation",
+  "near-green is not a promotion condition",
   "no credential is looked up before the identity stage",
   "no deletion is authorized without a pre-deletion observation",
   "no eligible evidence is said to be none",
@@ -10683,6 +10725,7 @@ export const ACCOUNTED_GUARDS = [
   "profile undeclared run fields are digested",
   "profile unknown result schema is refused",
   "protection is compared as content, not as a projection",
+  "protection is decided from enforcement that was observed",
   "protection is re-checked live, not read from the stored flag",
   "provider credential formats are recognised",
   "provider/task network separation",
@@ -10961,6 +11004,7 @@ export const ACCOUNTED_GUARDS = [
   "the shared card prints the evidence category statuses",
   "the spawn judge reads the gate's expectation table",
   "the spawn refuses a workspace inside the store",
+  "the stable channel is the default branch",
   "the staged credential copy is private",
   "the staged credential is scrubbed by value",
   "the staged secrets reach the scrubber",
