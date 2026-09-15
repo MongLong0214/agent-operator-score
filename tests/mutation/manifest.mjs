@@ -16,6 +16,56 @@
 
 export const GUARDS = [
   {
+    reachable_from: ["lib/cli.mjs"],
+    guard: "the quickstart loop never answers the operator's question",
+    reason: "#575. An agent's own answer recorded as an operator's is what the relay exists to prevent, and afterwards it is indistinguishable from the real thing. Running past a pending challenge is how that recording happens without anyone deciding to make it.",
+    file: "lib/quickstart.mjs",
+    from: "  if (facts.pendingChallengeId) {",
+    to: "  if (false) {",
+    test: "tests/product/quickstart.test.mjs",
+    name: "the loop never answers the operator's question for them"
+  },
+  {
+    reachable_from: ["lib/cli.mjs"],
+    guard: "a quickstart session moves forward only",
+    reason: "#575. A phase that could move backwards is a loop that can re-administer a form it has already committed a terminal for, and the exposure ledger would be the only thing left to notice.",
+    file: "lib/quickstart.mjs",
+    from: "  if (PHASES.indexOf(phase) < PHASES.indexOf(session.phase)) {",
+    to: "  if (false) {",
+    test: "tests/product/quickstart.test.mjs",
+    name: "a session moves forward only, and every write moves the revision exactly once"
+  },
+  {
+    reachable_from: ["lib/cli.mjs"],
+    guard: "a session is not resumed across a changed identity",
+    reason: "#575. Resuming across a changed source, profile or request continues a measurement under inputs it was not made with -- worse than either starting fresh or refusing, because the record afterwards names the wrong conditions.",
+    file: "lib/quickstart.mjs",
+    from: "  if (stored.identity !== wanted) {",
+    to: "  if (false) {",
+    test: "tests/product/quickstart.test.mjs",
+    name: "the same request resumes its session; a different one never does"
+  },
+  {
+    reachable_from: ["lib/cli.mjs"],
+    guard: "a report handed to the agent counts as delivered",
+    reason: "#575. Where the platform has no opener, handing the artifact over IS the delivery. Reporting it as failed makes a working delivery look broken and sends the operator looking for a file they were already given.",
+    file: "lib/quickstart.mjs",
+    from: "  if (Array.isArray(artifacts) && artifacts.length > 0) return { delivered: true, how: \"handed\" };",
+    to: "  if (false) return { delivered: true, how: \"handed\" };",
+    test: "tests/product/quickstart.test.mjs",
+    name: "a report handed to the agent is delivered, and only nothing at all is a failure"
+  },
+  {
+    reachable_from: ["lib/cli.mjs"],
+    guard: "contract drift preserves the cycle rather than continuing it",
+    reason: "#575. The runs in a drifted cycle were measured under a contract that no longer holds. Continuing aggregates two contracts; the loop has to stop and say which one moved.",
+    file: "lib/quickstart.mjs",
+    from: "  if (facts.contractChanged === true) {",
+    to: "  if (false) {",
+    test: "tests/product/quickstart.test.mjs",
+    name: "contract drift preserves the cycle instead of continuing it"
+  },
+  {
     reachable_from: ["lib/cycle.mjs", "lib/cli.mjs"],
     guard: "a cycle is complete only when every locked form has a valid terminal",
     reason: "#563. `valid.length >= 3` said complete with five forms locked and three finished, and the aggregate then closed over whichever three had got there. That is partial-success selection spelled as arithmetic, and the number three was never the contract.",
@@ -10139,6 +10189,7 @@ export const ACCOUNTED_GUARDS = [
   "a protected branch is never deletion-eligible",
   "a provider refusal is narrow, not any non-zero exit",
   "a pull request opened after the audit blocks the deletion",
+  "a quickstart session moves forward only",
   "a raw value is hashed because it was supplied raw",
   "a recomputation compares the boundary facts it published",
   "a recomputation runs under the run's own boundary",
@@ -10153,6 +10204,7 @@ export const ACCOUNTED_GUARDS = [
   "a reliance trace is built on a journal",
   "a replacement challenge cannot discard a retained human turn",
   "a replayed administration's terminal status is decided by the ledger, not only the composite",
+  "a report handed to the agent counts as delivered",
   "a required artifact or handoff is checked against the ledger",
   "a required cell count short of its denominator is missing coverage",
   "a required metric with an unanswered subcheck is not present",
@@ -10182,6 +10234,7 @@ export const ACCOUNTED_GUARDS = [
   "a search that returned no page is not a complete sweep",
   "a secret handed over with a space is still handed over",
   "a sequence at its key's indentation is the value",
+  "a session is not resumed across a changed identity",
   "a settlement nobody could check does not pass",
   "a settlement nobody could check is not a clean one",
   "a skipped real lane is not a verified one",
@@ -10407,6 +10460,7 @@ export const ACCOUNTED_GUARDS = [
   "configured argv0",
   "container image digest",
   "containment is measured, not inferred from a label",
+  "contract drift preserves the cycle rather than continuing it",
   "corpus abstention cannot outweigh decision",
   "corpus leakage refusal",
   "coverage gate",
@@ -10865,6 +10919,7 @@ export const ACCOUNTED_GUARDS = [
   "the published result carries the boundary it ran under",
   "the published sequence_position is the ledger's own committed reservation, not cycle run's unlocked snapshot",
   "the pull request history is read to the end",
+  "the quickstart loop never answers the operator's question",
   "the reader checks the state it was handed",
   "the rebuild is handed the reliance the result was built from",
   "the record binding covers the payload the scorer reads",
