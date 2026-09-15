@@ -1,7 +1,7 @@
 {
   "schema": "aos-github-issue-state.v1",
   "repository": "MongLong0214/agent-operator-score",
-  "captured_at": "2026-09-11T14:33:57.058Z",
+  "captured_at": "2026-09-15T21:41:13.912Z",
   "source": "snapshot",
   "integration_branch": "dev",
   "issues": [
@@ -1225,7 +1225,7 @@
         "area:release",
         "priority:P1",
         "release:v0.2.0",
-        "status:blocked"
+        "status:ready"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
@@ -1484,20 +1484,57 @@
     {
       "number": 575,
       "title": "[P0][UX] verified install 이후 discovery→Cycle→relay→profiles→report orchestration을 구현한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:ux",
         "priority:P0",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 575,
+        "final_sha": "51688ea442b8cd85ada1573971d4994199a88841",
+        "pr": 663,
+        "ci_run_ids": [
+          34700755174
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "orchestration_ledger": "aos quickstart --agent-mode --json drives discovery -> profile -> cycle -> form -> checkpoint -> result -> report, each step a call into the command that already owns it. lib/quickstart.mjs decides and never acts; every branch is reachable from a plain object and all eight decision-owned reason codes are produced by tests rather than declared. stdout carries only the aos-agent-quickstart.v2 envelope; sub-commands write to stderr. A pending relay challenge outranks a pending form and stops the loop with AOS_QS_ACTION_REQUIRED -- the loop never answers on the operator's behalf.",
+          "idempotency_proof": "session identity = source + profile + request; the same ask resumes and a different one never does, named per changed input. Phases move forward only (AOS_QS_PHASE_REGRESSION). Idempotency keys are derived from what the thing is, never from a clock or counter, and are key-order stable across all 8 kinds. A crash at every one of the 8 phases resumes at the committed phase; an unreadable session starts fresh rather than resuming an unknown shape.",
+          "local_smoke": "the shipped binary, end to end, against the fixture runtime: one terminal envelope, ending on AOS_QS_REQUIRED_EVIDENCE_WITHHELD / AOS_ISOLATION_LEVEL_NOT_STRICT -- the exact named blocker this issue's completion condition allows, not a claim of success. The smoke rejects AOS_QS_STEP_FAILED specifically, because a loop that broke on its own step also ends cleanly and a test that accepted any terminal envelope would pass on a broken orchestration.",
+          "report_delivery": "opened where the platform has an opener, handed to the agent where it does not; only neither is a failure. Artifacts are collected from what exists on disk, not from what the loop believes it wrote.",
+          "completion_surfaces": "the COMPLETE envelope carries the operator process, reliance calibration, system outcome and composite surfaces with claim stage, uncertainty and generalizability beside them, quoted from the result rather than recomputed. Withheld carries its reason and a null index; no result at all carries no surfaces.",
+          "mutation": "1063/1063 killed, 0 survivors, 0 WRONG-TEST; 1033/1033 command-reachable and 30/30 library-pending load-bearing. Five new guards: running past a pending challenge, moving a session backwards, resuming across a changed identity, calling a handed report undelivered, continuing a drifted cycle.",
+          "verify_scripts": "verify:quickstart-agent-mode 2/2, verify:quickstart-idempotency 2/2, verify:configured-cycle-plan 1/1, verify:quickstart-relay 1/1, verify:quickstart-local 2/2, verify:auto-report-delivery 1/1",
+          "tests": "LANG=en_US.UTF-8 node --test 2037 tests, 2036 pass, 1 fail, 0 skip -- the single failure is tests/product/relay-chat-smoke.test.mjs, flaky on dev itself (measured failing 2 of 3 runs on an untouched c01ab89 worktree)"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
       "closing_references": [
-        "#568"
+        "#568",
+        "#660",
+        "#662"
       ]
     },
     {
