@@ -44,6 +44,8 @@
     "verify:real-runtime-strict": "AOS_REAL_STRICT_REQUIRED=1 node --test tests/product/confinement-real-lane.test.mjs",
     "verify:real-runtime-strict:update-fixture": "AOS_REAL_STRICT_REQUIRED=1 AOS_STRICT_CANARY_UPDATE_FIXTURE=1 node --test tests/product/confinement-real-lane.test.mjs",
     "verify:release-canary": "node scripts/verify-release-canary.mjs",
+    "verify:release-channel": "node scripts/verify-release-channel.mjs",
+    "verify:release-channel:live": "node scripts/verify-release-channel.mjs --live --json",
     "verify:model-identity": "node --test tests/product/model-identity.test.mjs tests/product/model-canary.test.mjs tests/product/profile.test.mjs tests/product/cycle-command.test.mjs tests/product/dashboard.test.mjs",
     "verify:exact-cycle-contract": "node --test --test-name-pattern='one semantic byte|a contract the run does not carry' tests/product/cycle.test.mjs",
     "verify:contract-determinism": "node --test --test-name-pattern='a path, a time and a key order' tests/product/cycle.test.mjs",
