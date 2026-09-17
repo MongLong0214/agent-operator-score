@@ -14,6 +14,7 @@ import {
   unestablishedFindings
 } from "../../scripts/branch-audit.mjs";
 import { REQUIRED_DERIVATIONS, citedSources, observationDigest, verifyObservation } from "../../scripts/collect-branch-state.mjs";
+import { buildFixtureRepository, withFakeGitHub } from "./branch-state-fixture.mjs";
 
 // #572 phase one is a read-only audit: no branch may be deleted, renamed or force-pushed until #578
 // and #588 have preserved the evidence. An audit is only worth having if it is checkable rather than
@@ -992,25 +993,26 @@ test("the collector runs when invoked through a symlinked path, and does not exi
   // A collector that silently collects nothing is worse than one that crashes, because the audit
   // downstream reads its absence as an answer. The witness is the symlinked invocation; the direct
   // one passes either way and would have proved nothing.
-  const { mkdtempSync, rmSync, symlinkSync, existsSync } = await import("node:fs");
-  const { tmpdir } = await import("node:os");
-  const { join } = await import("node:path");
+  const { symlinkSync } = await import("node:fs");
   const { spawnSync } = await import("node:child_process");
 
-  const script = new URL("../../scripts/collect-branch-state.mjs", import.meta.url).pathname;
-  const stage = mkdtempSync(join(tmpdir(), "aos-collector-link-"));
+  const script = fileURLToPath(new URL("../../scripts/collect-branch-state.mjs", import.meta.url));
+  const fixture = buildFixtureRepository();
   try {
-    const link = join(stage, "collect-via-link.mjs");
+    const link = join(fixture.root, "collect-via-link.mjs");
     symlinkSync(script, link);
-    const out = join(stage, "observation.json");
-    // This does the real collection; every command the collector runs is a read-only query.
-    const result = spawnSync(process.execPath, [link, "MongLong0214/agent-operator-score", out], {
-      encoding: "utf8", timeout: 300000
-    });
+    const out = join(fixture.root, "observation.json");
+    const result = withFakeGitHub(fixture, () => spawnSync(process.execPath, [link, fixture.repository, out], {
+      cwd: fixture.work, encoding: "utf8", timeout: 300000
+    }));
     assert.equal(result.status, 0, result.stderr?.slice(0, 600));
     assert.ok(existsSync(out),
       "the collector exited 0 through a symlinked path without writing an observation, which is indistinguishable from a successful collection");
+    const observation = JSON.parse(readFileSync(out, "utf8"));
+    assert.equal(observation.repository, fixture.repository);
+    assert.deepEqual(verifyObservation(observation), []);
+    assert.equal(observation.digest, observationDigest(observation));
   } finally {
-    rmSync(stage, { recursive: true, force: true });
+    fixture.cleanup();
   }
 });
