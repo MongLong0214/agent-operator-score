@@ -277,7 +277,7 @@ test("every stored band value is looked up through the shared band key, and ever
     const result = legacyResult();
     result.score.band = band;
     assert.ok(renderCard(result, { locale: "en" }).includes(BAND_NAMES[keyOf(band)].en));
-    assert.match(renderHtml(result), new RegExp(`class="band b-${keyOf(band)}"`));
+    assert.ok(renderHtml(result).includes(`class="band b-${keyOf(band)}"`), `the html did not resolve the stored band ${JSON.stringify(band)} to its class`);
   }
   const legacy = legacyResult();
   for (const [name, rendering] of [["markdown", renderMarkdown(legacy)], ["html", renderHtml(legacy)], ["card", renderCard(legacy)]]) {
