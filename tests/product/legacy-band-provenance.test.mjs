@@ -9,7 +9,8 @@ import { evaluate, loadEcdContract } from "../../lib/ecd-contract.mjs";
 import { renderCard } from "../../lib/report-card.mjs";
 import { renderHtml, renderMarkdown } from "../../lib/report.mjs";
 import { buildResult, legacyScorerName } from "../../lib/result-schema.mjs";
-import { SCORER_ID, SCORER_VERSION, scoreRun } from "../../lib/scorer-v1.mjs";
+import { BAND_NAMES, bandKey } from "../../lib/report-i18n.mjs";
+import { BANDS, SCORER_ID, SCORER_VERSION, scoreRun } from "../../lib/scorer-v1.mjs";
 import { createRun, initHome, writeResult } from "../../lib/store.mjs";
 import { writeJson } from "../../lib/core.mjs";
 import { contractWithAPopulatedIndex, identified, observationsWith } from "./ecd-fixtures.mjs";
@@ -262,6 +263,44 @@ test("a legacy cycle aggregate says unrecorded legacy scorer rather than inventi
   } finally {
     await dashboard.close();
     rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("every stored band value is looked up through the shared band key, and every renderer resolves it", () => {
+  const stored = new Set(BANDS.map((entry) => entry.band));
+  assert.ok(stored.has("HIGH RELIABILITY"), "the scorer's own vocabulary moved; rewrite this test against the scorer that wrote legacy records");
+  assert.ok(Object.keys(BAND_NAMES).every((key) => !key.includes(" ")), "BAND_NAMES keys moved to the spaced form; the lookup cannot be key-normalized");
+  const keyOf = bandKey;
+  for (const band of stored) {
+    assert.notEqual(keyOf(band), "UNKNOWN");
+    assert.ok(Object.hasOwn(BAND_NAMES, keyOf(band)), `BAND_NAMES is missing a key for the stored band ${JSON.stringify(band)}`);
+    const result = legacyResult();
+    result.score.band = band;
+    assert.ok(renderCard(result, { locale: "en" }).includes(BAND_NAMES[keyOf(band)].en));
+    assert.match(renderHtml(result), new RegExp(`class="band b-${keyOf(band)}"`));
+  }
+  const legacy = legacyResult();
+  for (const [name, rendering] of [["markdown", renderMarkdown(legacy)], ["html", renderHtml(legacy)], ["card", renderCard(legacy)]]) {
+    assert.ok(rendering.includes("HIGH RELIABILITY"), `${name} did not render the stored band`);
+    assert.doesNotMatch(rendering, /WITHHELD/, `${name} rendered an unwithheld score as WITHHELD`);
+  }
+  const html = renderHtml(legacy);
+  assert.match(html, /class="band b-HIGH_RELIABILITY"/, "the html band div did not resolve the stored band to its class");
+  const card = renderCard(legacy);
+  assert.match(card, /#34d399/, "the card did not resolve the stored band to its palette");
+});
+
+test("an unknown legacy band is not a withheld score", () => {
+  for (const band of ["UNRECOGNIZED", "__proto__", "constructor", null, "WITHHELD"]) {
+    const legacy = legacyResult();
+    legacy.score.band = band;
+    assert.equal(bandKey(band), "UNKNOWN");
+    const card = renderCard(legacy, { locale: "en" });
+    assert.match(card, /UNKNOWN BAND/);
+    assert.match(card, /#c4b5fd/);
+    assert.doesNotMatch(card, /NO SCORE/);
+    assert.match(renderHtml(legacy), /class="band b-UNKNOWN"/);
+    assert.equal(legacy.score.band, band);
   }
 });
 
