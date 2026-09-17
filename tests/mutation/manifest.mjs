@@ -8972,10 +8972,10 @@ export const GUARDS = [
   },
   {
     guard: 'the html headline resolves its stored band through the shared band key',
-    reason: 'the html headline is where the stored band text is drawn; reverting it to the raw stored string silently drops the band line instead of the distinct unknown state the issue requires',
+    reason: 'the html headline draws both the band line and the band class from the shared key; bypassing the normalizer draws the stored spaced string into a class that matches no palette and a name lookup that misses, exactly the raw rendering the unknown-band state exists to replace',
     file: 'lib/report.mjs',
-    from: 'both(BAND_NAMES[band])',
-    to: 'both(BAND_NAMES[band] ?? { en: band ?? "" })',
+    from: 'const band = bandKey(result.score?.band);',
+    to: 'const band = result.score?.band ?? "";',
     test: 'tests/product/legacy-band-provenance.test.mjs',
     name: 'every stored band value is looked up through the shared band key, and every renderer resolves it'
   },
