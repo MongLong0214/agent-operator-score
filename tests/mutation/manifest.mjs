@@ -16,6 +16,46 @@
 
 export const GUARDS = [
   {
+    reachable_from: ["scripts/verify-release-channel.mjs"],
+    guard: "near-green is not a promotion condition",
+    reason: "#569. Every gate but one, a plausible story about why that one does not count, and a stable channel now points at work nobody finished. The conjunction is the whole rule; either half alone lets a release through on the other's evidence.",
+    file: "lib/release-channel.mjs",
+    from: "    promote: gates.pass && state.ok,",
+    to: "    promote: gates.pass || state.ok,",
+    test: "tests/product/release-channel.test.mjs",
+    name: "near-green is not a promotion condition"
+  },
+  {
+    reachable_from: ["scripts/verify-release-channel.mjs"],
+    guard: "an issue the plan does not call done is waiting",
+    reason: "#569. An absent plan entry and a done one read identically to a reader who only counts failures. Inverting this makes every gate pass on a plan that has never heard of the issues it names.",
+    file: "lib/release-channel.mjs",
+    from: "    const waiting = issues.filter((issue) => planStatuses?.[issue] !== \"done\");",
+    to: "    const waiting = issues.filter((issue) => planStatuses?.[issue] === \"done\");",
+    test: "tests/product/release-channel.test.mjs",
+    name: "every gate names real issues, and an issue the plan does not know is not passing"
+  },
+  {
+    reachable_from: ["scripts/verify-release-channel.mjs"],
+    guard: "the stable channel is the default branch",
+    reason: "#569. A default branch pointing at integration means every clone follows work that was merged an hour ago, which is the one thing separating main from dev exists to prevent.",
+    file: "lib/release-channel.mjs",
+    from: "  if (defaultBranch !== \"main\") problems.push",
+    to: "  if (false) problems.push",
+    test: "tests/product/release-channel.test.mjs",
+    name: "a channel that is not shaped for a stable release refuses, and says every reason at once"
+  },
+  {
+    reachable_from: ["scripts/verify-release-channel.mjs"],
+    guard: "protection is decided from enforcement that was observed",
+    reason: "#569. Required checks, no force push and no deletion are three separate facts, and a branch enforcing two of them is not protected. Dropping one axis lets a release cite protection it does not have.",
+    file: "lib/release-channel.mjs",
+    from: "      found.required_checks === true ? null : \"required checks\",",
+    to: "      null,",
+    test: "tests/product/release-channel.test.mjs",
+    name: "a channel that is not shaped for a stable release refuses, and says every reason at once"
+  },
+  {
     reachable_from: ["lib/cli.mjs"],
     guard: "the quickstart loop never answers the operator's question",
     reason: "#575. An agent's own answer recorded as an operator's is what the relay exists to prevent, and afterwards it is indistinguishable from the real thing. Running past a pending challenge is how that recording happens without anyone deciding to make it.",
@@ -8922,6 +8962,24 @@ export const GUARDS = [
     name: 'a legacy cycle aggregate names the stored scorer that produced its runs, not the current build'
   },
   {
+    guard: 'the legacy card resolves its stored band through the shared band key',
+    reason: 'the scorer stored "HIGH RELIABILITY" with a space while every palette and name table keys HIGH_RELIABILITY; a lookup that bypasses the normalizer renders an earned verdict with the withheld palette, and the unknown-band palette is the only state the issue allows instead',
+    file: 'lib/report-card.mjs',
+    from: 'const band = issued ? bandKey(score.band) : "WITHHELD";',
+    to: 'const band = issued ? score.band : "WITHHELD";',
+    test: 'tests/product/legacy-band-provenance.test.mjs',
+    name: 'every stored band value is looked up through the shared band key, and every renderer resolves it'
+  },
+  {
+    guard: 'the html headline resolves its stored band through the shared band key',
+    reason: 'the html headline draws both the band line and the band class from the shared key; bypassing the normalizer draws the stored spaced string into a class that matches no palette and a name lookup that misses, exactly the raw rendering the unknown-band state exists to replace',
+    file: 'lib/report.mjs',
+    from: 'const band = bandKey(result.score?.band);',
+    to: 'const band = result.score?.band ?? "";',
+    test: 'tests/product/legacy-band-provenance.test.mjs',
+    name: 'every stored band value is looked up through the shared band key, and every renderer resolves it'
+  },
+  {
     guard: 'a cycle with no recorded result schema is withheld, not asserted legacy',
     reason: '#568 round 2 BLOCKER. assertUniformResultSchema returns null when no run in the cycle recorded a result schema at all -- an absence, not a value -- and folding that null case back into the legacy branch let the dashboard print "a legacy scorer aggregate, rendered as stored" over a cycle nothing ever observed to be legacy',
     file: 'lib/dashboard.mjs',
@@ -10356,6 +10414,7 @@ export const ACCOUNTED_GUARDS = [
   "an invocation nobody can attribute decides nothing",
   "an issue number is a number before it is a pattern",
   "an issue owns a surface",
+  "an issue the plan does not call done is waiting",
   "an issued legacy number needs a declared STRICT level",
   "an object whose every value is absent is not a considered field",
   "an observation run carries a provenance record too",
@@ -10594,6 +10653,7 @@ export const ACCOUNTED_GUARDS = [
   "missing-result refusal",
   "mutation totals separate pending library witnesses from command coverage",
   "naming something to preserve refuses the deletion recommendation",
+  "near-green is not a promotion condition",
   "no credential is looked up before the identity stage",
   "no deletion is authorized without a pre-deletion observation",
   "no eligible evidence is said to be none",
@@ -10683,6 +10743,7 @@ export const ACCOUNTED_GUARDS = [
   "profile undeclared run fields are digested",
   "profile unknown result schema is refused",
   "protection is compared as content, not as a projection",
+  "protection is decided from enforcement that was observed",
   "protection is re-checked live, not read from the stored flag",
   "provider credential formats are recognised",
   "provider/task network separation",
@@ -10862,6 +10923,7 @@ export const ACCOUNTED_GUARDS = [
   "the fresh observation's derivations are the ones checked",
   "the group sweep is recorded from the group",
   "the headline oracle names the ceiling every surface must carry",
+  "the html headline resolves its stored band through the shared band key",
   "the identity aggregation is recomputed from its agents",
   "the identity record is published field by field",
   "the identity record names the agents that ran",
@@ -10871,6 +10933,7 @@ export const ACCOUNTED_GUARDS = [
   "the ledger's owner replaces the declaration",
   "the legacy caption names a scorer only when the counted runs agree",
   "the legacy caption tests agreement among counted runs, not among readable ones",
+  "the legacy card resolves its stored band through the shared band key",
   "the legacy scorer caption prefers a run the median counted",
   "the manifest projects every contract axis with its disposition",
   "the matrix decides the process axis with the run's own helper",
@@ -10961,6 +11024,7 @@ export const ACCOUNTED_GUARDS = [
   "the shared card prints the evidence category statuses",
   "the spawn judge reads the gate's expectation table",
   "the spawn refuses a workspace inside the store",
+  "the stable channel is the default branch",
   "the staged credential copy is private",
   "the staged credential is scrubbed by value",
   "the staged secrets reach the scrubber",

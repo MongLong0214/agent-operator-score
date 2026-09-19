@@ -1,0 +1,12 @@
+{
+  "_comment": "The shape a promoted channel has. Read by verify:release-channel without --live so the decision is exercised on every run of the suite, including where there is no token. Live mode reads the repository instead; the two must agree before a release.",
+  "defaultBranch": "main",
+  "protection": {
+    "main": { "required_checks": true, "allow_force_push": false, "allow_deletion": false },
+    "dev": { "required_checks": true, "allow_force_push": false, "allow_deletion": false }
+  },
+  "tag": null,
+  "backMerged": null,
+  "versions": {},
+  "devOnlyMarkers": []
+}
