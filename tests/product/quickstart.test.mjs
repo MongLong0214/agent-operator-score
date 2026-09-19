@@ -113,6 +113,17 @@ test("a reply never carries a credential or a raw private path", () => {
   assert.equal(safeSummary(undefined), "");
 });
 
+test("the summary canary ignores placeholders but still detects adjacent credentials", () => {
+  const session = createSession({ sourceDigest: source });
+  const summary = "APP_SECRET=[redacted: assigned secret]";
+  const safe = agentReply({ session, status: "RUNNING", summary });
+  assert.equal(safe.safe_summary, summary);
+  assert.equal(safe.progress.summary_redacted, undefined);
+  const adjacent = agentReply({ session, status: "RUNNING", summary: `${summary} OTHER_SECRET=synthetic-value` });
+  assert.equal(adjacent.progress.summary_redacted, true);
+  assert.equal(adjacent.safe_summary, `${summary} OTHER_SECRET=[redacted: assigned secret]`);
+});
+
 test("every stop in the loop is reachable and names its reason", () => {
   // A stop with no code is a stop the caller has to guess at, and an agent driving this cannot
   // guess -- it will either retry forever or report success.

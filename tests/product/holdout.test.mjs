@@ -173,6 +173,35 @@ test("a secret typed into a reason never reaches the file", () => {
   assert.equal(acceptanceOf(ledger).gates[2].pass, true);
 });
 
+test("redacted assignment notes and reasons survive recording and reprinting", () => {
+  for (const quote of ["", "'", '"']) {
+    const raw = `APP_SECRET=${quote}synthetic-value${quote}`;
+    const safe = "APP_SECRET=[redacted: assigned secret]";
+    const ledger = judge(withSession({ note: raw }), {
+      session_digest: DIGEST, finding_id: "f1", rule: "secret-material-in-session",
+      severity: "high", judgement: "true-positive", reason: raw
+    });
+    assert.equal(ledger.sessions[0].note, safe);
+    assert.equal(ledger.judgements[0].reason, safe);
+    assert.equal(acceptanceOf(ledger).gates[2].value, 0);
+    const again = judge(ledger, {
+      session_digest: DIGEST, finding_id: "f1", rule: "secret-material-in-session",
+      severity: "high", judgement: "true-positive", reason: safe
+    });
+    assert.equal(again.judgements[0].reason, safe);
+    assert.equal(acceptanceOf(again).gates[2].value, 0);
+  }
+});
+
+test("acceptance counts adjacent credentials but not existing placeholders", () => {
+  const ledger = withSession();
+  ledger.sessions[0].note = "APP_SECRET=[redacted: assigned secret]";
+  assert.equal(acceptanceOf(ledger).gates[2].value, 0);
+  ledger.sessions[0].note += " OTHER_SECRET=synthetic-value";
+  assert.equal(acceptanceOf(ledger).gates[2].value, 1);
+  assert.equal(acceptanceOf(ledger).gates[2].pass, false);
+});
+
 test("the ledger has nowhere to put a transcript", () => {
   // Not a promise about what callers pass: the recorder copies named fields and never spreads, so
   // an extra key is dropped rather than trusted.
