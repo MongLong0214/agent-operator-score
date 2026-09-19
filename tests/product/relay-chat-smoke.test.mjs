@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { chmodSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { atomicWrite } from "../../lib/core.mjs";
 import { addAgent, makePlan, newestRecord, newestRunId, run } from "./helpers.mjs";
 
 // The coding-agent chat smoke #576 asks for.
@@ -64,7 +65,11 @@ const answerFor = (challenge) => {
  * The coding agent: watch for a published question, put the person's answer where AOS reads it.
  *
  * 0600 inside the 0700 relay directory, because `readRestrictedRelayResponseFile` accepts nothing
- * else -- the permission is part of the interface, not housekeeping.
+ * else -- the permission is part of the interface, not housekeeping. The write itself must be
+ * atomic: `atomicWrite` stages the bytes under a temp name in the same directory and renames them
+ * into place, so the binary's poll of the inbox never observes a file that exists but is still
+ * empty -- a plain `writeFileSync` creates the file before it writes to it, and a poll landing in
+ * that gap reads 0 bytes, which is outside `a relay response must be 1-16384 bytes` (#670).
  */
 const respondingAgent = (home, seen) => setInterval(() => {
   const found = findChallenge(home);
@@ -78,8 +83,7 @@ const respondingAgent = (home, seen) => setInterval(() => {
   if (challenge.status !== "ACTION_REQUIRED" || seen.has(challenge.challenge_id)) return;
   seen.add(challenge.challenge_id);
   const path = join(found.inbox, `${challenge.challenge_id}.json`);
-  writeFileSync(path, JSON.stringify(answerFor(challenge)), { encoding: "utf8", mode: 0o600 });
-  chmodSync(path, 0o600);
+  atomicWrite(path, JSON.stringify(answerFor(challenge)));
 }, 50);
 
 test("a coding agent answers the shipped binary's relay questions, and the run records them as an operator's", async () => {
@@ -119,7 +123,9 @@ test("a coding agent answers the shipped binary's relay questions, and the run r
     const record = newestRecord(cwd);
     const administration = record.reliance_administration;
     assert.notEqual(administration, null, "a --relay run recorded no reliance administration");
-    assert.deepEqual(administration.abandoned, [], "an episode went unanswered in a run whose questions were all answered");
+    assert.deepEqual(administration.abandoned, [],
+      `${administration.abandoned.length} episode(s) answered unusably rather than unanswered: ` +
+      `${administration.abandoned.map((one) => `${one.opportunity_id} (${one.reason})`).join("; ")}`);
     assert.equal(administration.administered.length, administration.planned,
       `${administration.administered.length} of ${administration.planned} questions were administered`);
     assert.equal(seen.size, administration.planned * 2, "each administered episode takes exactly two user turns");
