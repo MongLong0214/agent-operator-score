@@ -8,10 +8,10 @@
 > report ordinary progress as damage. Seven heads have turned over across the versions of this
 > document, one of them while a snapshot was being taken.
 
-- **Generated:** 2026-09-19T10:31:44Z
+- **Generated:** 2026-09-19T11:02:53Z
 - **Repository:** `MongLong0214/agent-operator-score`
-- **Observation digest:** `sha256:de02b0cecd6a3d3ba189253fc2394f14a9c8c0695c429cd7bb117f620e4bf5c1` (recursive over the whole record)
-- **`dev` at snapshot:** `73a30ec4e8a410408ac2f8c253d435f9e93674ce`
+- **Observation digest:** `sha256:6831f1157e1d4156950527f14df014b257d2ea2f45ea945562e188189be9e11f` (recursive over the whole record)
+- **`dev` at snapshot:** `b941707706c02acbd619b42c80cec987126d1591`
 - **`main` at snapshot:** `d2c68036ebf9f9fd7287258fd3cec252133ef846`
 - **Machine-readable source of truth:** [`fixtures/stale-branches/audit.json`](../fixtures/stale-branches/audit.json)
 - **Checked by:** `npm run verify:branch-audit`, `npm run verify:branch-cleanup-invariants`, `npm run verify:no-open-pr-head-deletion`
@@ -23,8 +23,8 @@ not hold exactly one row per audited branch, at the recorded SHA.
 ## Where these facts came from
 
 Every external fact was collected by `scripts/collect-branch-state.mjs`, which records the command
-line, exit code, byte count and a SHA-256 of the raw stdout beside each answer. **195 receipts** in
-total: 9 repository-wide, listed below, and 186 per-branch derivations.
+line, exit code, byte count and a SHA-256 of the raw stdout beside each answer. **164 receipts** in
+total: 9 repository-wide, listed below, and 155 per-branch derivations.
 
 That includes the graph facts, not only the queries around them. When a branch record below says it
 is contained in `dev`, the `git merge-base --is-ancestor` that decides it is a receipt; so are the
@@ -47,15 +47,15 @@ prove nothing.
 
 | command | exit | bytes | digest |
 |---|---|---|---|
-| `git ls-remote --heads origin` | 0 | 587 | `sha256:d59160c4c2f4f714b983114b1f8840036cfd0c31f69e74246d679fe18826b39d` |
-| `gh api --paginate --slurp repos/MongLong0214/agent-operator-score/branches?per_page=100` | 0 | 5326 | `sha256:d70d00ffd3179ecb2736d6c685a3052f9ed794c3ed65c8ef40aca649fc1bb4f2` |
-| `gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=open&per_page=100` | 0 | 58081 | `sha256:180f73cf0ba98ffb459a615d66a520838ceffa4d895fda378acf6aff6f3113e4` |
+| `git ls-remote --heads origin` | 0 | 502 | `sha256:9aa9dfce6db88bb8cefbe95b6a49e242d398726a9344f6b639f097061d0ffda6` |
+| `gh api --paginate --slurp repos/MongLong0214/agent-operator-score/branches?per_page=100` | 0 | 4839 | `sha256:1b811aee04505a0bc7a38a452bf2d07c89cf379030c8ae3e3b43cc86986149d2` |
+| `gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=open&per_page=100` | 0 | 38563 | `sha256:7264d3c82b4c964148a3d1161d1bbacc68b5b3355b49632a67d8fd27f91fb52d` |
 | `git ls-remote --tags origin` | 0 | 2323 | `sha256:e4110333eb2096c906041412784a350fe30b478de0af6caf9f24d61a5b2012db` |
 | `gh api repos/MongLong0214/agent-operator-score/branches/main/protection` | 0 | 1845 | `sha256:a61f822cb0c04a82978c62885dcf4f79608597db586540bd95de31ed00573aba` |
 | `gh api repos/MongLong0214/agent-operator-score/branches/dev/protection` | 0 | 2344 | `sha256:8004eb2fa626151263058188301efd870300edfe06c0164f09448c85d58ee69c` |
 | `gh api --paginate --slurp repos/MongLong0214/agent-operator-score/rulesets?per_page=100` | 0 | 4 | `sha256:cf1cbb66a638b4860a516671fb74850e6ccf787fe6c4c8d29e9c04efe880bd05` |
-| `gh api repos/MongLong0214/agent-operator-score` | 0 | 6762 | `sha256:8d2f140ef51da0d782a9ac141817a977f8902da57eff1698ef20ace3959234bd` |
-| `git fetch -q origin 73a30ec4e8a410408ac2f8c253d435f9e93674ce e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 dd46b88d7a9d06cc41776b8a8b51db25506060a7 d2c68036ebf9f9fd7287258fd3cec252133ef846 530335c80dcef292fb29cb23dff8ef1bb95188e4 01268d39a317e18d542a4319bc729da073353518 55b908cc8962ce75db98aa14a6dc0059d45c612a 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 36b823f22217e9d8be011318e295231c62a3f813 fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3 efe351c991797a8cde88c23b8e8933d9a90db11d 98353d24fdd6b932c717bd8b9a0971c22986f7b7 4566b33143155b91981d07308bd113ad8fad9b35 c371ac93d49a592925b24de5013bc9b3b303dd7d 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea d89a4b22a0e8de14fff316edcae18c3e6caadf9a 426c23d0f62fa2666135f978db0f5802ace7c8cc 120ce7c96feb961ee7c4599c2946f059b8d9b7c6 43bae4bf460939a743c837b8e0a05d8f9e044026 dc7f6563ec0d6e951fe984fa026eea8c5efc3aed ae648b7dca5574c6af938dc44b6802f1bf732929 bbfae658e87ac2de7c6326739704a877fb118301 aebcbd8b7105da88ae71d0e5a80be59b99e8cc53 8e84fbcb42f79d86263aab42a1291ecf09ddba7f 30d30485f4ade54238cba5aa1a8bc85452df7d39 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0` | 0 | 0 | `sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+| `gh api repos/MongLong0214/agent-operator-score` | 0 | 6761 | `sha256:4237eb666bbd38be052eafb53521d21c8c1085bc5cf1b8ee28eb7a4e384b6fe8` |
+| `git fetch -q origin b941707706c02acbd619b42c80cec987126d1591 e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 d2c68036ebf9f9fd7287258fd3cec252133ef846 530335c80dcef292fb29cb23dff8ef1bb95188e4 f9a459d02367ebcfcaa2224dade2758b09b95bdd 55b908cc8962ce75db98aa14a6dc0059d45c612a 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 36b823f22217e9d8be011318e295231c62a3f813 fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3 efe351c991797a8cde88c23b8e8933d9a90db11d 98353d24fdd6b932c717bd8b9a0971c22986f7b7 4566b33143155b91981d07308bd113ad8fad9b35 c371ac93d49a592925b24de5013bc9b3b303dd7d 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea d89a4b22a0e8de14fff316edcae18c3e6caadf9a 426c23d0f62fa2666135f978db0f5802ace7c8cc 120ce7c96feb961ee7c4599c2946f059b8d9b7c6 43bae4bf460939a743c837b8e0a05d8f9e044026 dc7f6563ec0d6e951fe984fa026eea8c5efc3aed ae648b7dca5574c6af938dc44b6802f1bf732929 bbfae658e87ac2de7c6326739704a877fb118301 aebcbd8b7105da88ae71d0e5a80be59b99e8cc53 8e84fbcb42f79d86263aab42a1291ecf09ddba7f 30d30485f4ade54238cba5aa1a8bc85452df7d39 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0` | 0 | 0 | `sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
 
 What the receipts cannot do is prove the observation came from GitHub rather than a text editor: an
 offline checker has no way to authenticate a transcript. Two things narrow that. The digest is
@@ -87,12 +87,11 @@ itself.
 | branch | head SHA | classification | in dev / main | commits reaching neither | release tags | open PR | recommendation |
 |---|---|---|---|---|---|---|---|
 | `fix/a-fixture-backed-agent-is-not-a-runtime` | `e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1` | MERGED | yes / yes | 0 | v0.1.11, v0.1.12, v0.1.13, v0.1.14, v0.1.15, v0.1.16, v0.1.17 | none | **safe_to_delete_after_578** |
-| `fix/collector-symlink-entrypoint` | `dd46b88d7a9d06cc41776b8a8b51db25506060a7` | ACTIVE | no / no | 4 | none | [#666](https://github.com/MongLong0214/agent-operator-score/pull/666) | **must_be_preserved** |
 | `task/issue-557-actual-effects` | `530335c80dcef292fb29cb23dff8ef1bb95188e4` | SUPERSEDED | no / no | 1 | none | none | **needs_decision** |
 | `task/issue-660` | `55b908cc8962ce75db98aa14a6dc0059d45c612a` | ACTIVE | no / no | 1 | none | [#667](https://github.com/MongLong0214/agent-operator-score/pull/667) | **must_be_preserved** |
 | `tmp/read-claude-artifact` | `2d6392f578dd2667d5f1f6ba5073a2c4311430eb` | MERGED | yes / yes | 0 | v0.1.16, v0.1.17 | none | **safe_to_delete_after_578** |
 
-`main` (`d2c68036ebf9f9fd7287258fd3cec252133ef846`) and `dev` (`73a30ec4e8a410408ac2f8c253d435f9e93674ce`) are excluded
+`main` (`d2c68036ebf9f9fd7287258fd3cec252133ef846`) and `dev` (`b941707706c02acbd619b42c80cec987126d1591`) are excluded
 by definition and are listed in the fixture's snapshot so a reader can see they were excluded rather
 than missed.
 
@@ -110,6 +109,7 @@ None was deleted by this audit; each was merged and removed by `delete_branch_on
 | `task/issue-558-routing-oracle` | `f81b17a378d9cbdef111e2cfbe76ccf4b88232ec` | [#614](https://github.com/MongLong0214/agent-operator-score/pull/614) 2026-09-03T21:29:53Z | `0616cfa47353c201c790bda0e3a802387e6e321c` | Audited as ACTIVE in the previous snapshot and gone from this one: PR #614 merged into dev and the head was removed by delete_branch_on_merge, not by this audit. |
 | `task/issue-572-branch-audit` | `fe7ac006e6f5b2b99ab1b068ecf8fe15e78d0dc5` | [#612](https://github.com/MongLong0214/agent-operator-score/pull/612) 2026-09-03T23:36:12Z | `381ef59d7be0f2212860683c595f20dc47395736` | The submission branch for this audit's schema-v5 snapshot. Merged into dev and removed by delete_branch_on_merge, not by this audit. |
 | `task/issue-574-discovery` | `f41d8402ee3120cb43e957bb4c7093adbe10af7c` | [#617](https://github.com/MongLong0214/agent-operator-score/pull/617) 2026-09-03T23:55:50Z | `b3d653a24bf39da602d7d4535d3b2514d039cb01` | Audited as ACTIVE in the previous snapshot and gone from this one: PR #617 merged into dev and delete_branch_on_merge removed the head. |
+| `fix/collector-symlink-entrypoint` | `dd46b88d7a9d06cc41776b8a8b51db25506060a7` | [#666](https://github.com/MongLong0214/agent-operator-score/pull/666) 2026-09-19T10:41:34Z | `b941707706c02acbd619b42c80cec987126d1591` | Audited as ACTIVE in the previous snapshot and gone from this one: PR #666 merged into dev while this refresh was in flight, and delete_branch_on_merge removed the head. Re-collected before this snapshot was finalized rather than left stale. |
 
 ## Per-branch audit
 
@@ -145,35 +145,6 @@ Receipted derivations: `git merge-base --is-ancestor` places the tip on both dev
 - Searched: The receipted GitHub-wide sweep in live_observation.reference_sweep (complete: every result the API reported was retrieved) and a receipted `git grep` over the whole tree. Every hit is this audit's own PR, issue #572's candidate list, or the previous audit PR. The receipted all-state PR history for this branch is empty: no pull request has ever used it as a head.
 - Bearing on deletion: `none`
 - Why it does not bear: Intent is a question about the past; data loss is a question about the present, and the present is established by receipted commands. The tip is an ancestor of both dev and main by `git merge-base --is-ancestor`, `git rev-list --count <tip> --not <dev> <main>` returns 0, and the commit is contained in seven release tags. There is no object on this ref that deleting the ref would remove, whatever it was created for.
-
-### `fix/collector-symlink-entrypoint`
-
-| field | value | derived by |
-|---|---|---|
-| current SHA | `dd46b88d7a9d06cc41776b8a8b51db25506060a7` | `git ls-remote --heads origin`, cross-checked against the REST branch list |
-| last update | 2026-09-19T19:02:26+09:00 (0 days before this snapshot) | `git-log-fix/collector-symlink-entrypoint` |
-| owner (last committer) | MongLong0214 <weplay0628@gmail.com> | `git-log-fix/collector-symlink-entrypoint` |
-| classification | **ACTIVE** | — |
-| PR history (all states) | #666 (OPEN) | `pr-history-fix/collector-symlink-entrypoint` |
-| contained in `dev` / `main` | no / no | `is-ancestor-dev-fix/collector-symlink-entrypoint`, `is-ancestor-main-fix/collector-symlink-entrypoint` |
-| unique commits vs `dev` / `main` | 4 / 700 | `rev-list-dev-fix/collector-symlink-entrypoint`, `rev-list-main-fix/collector-symlink-entrypoint` |
-| **commits reaching neither line** | **4** | `rev-list-neither-fix/collector-symlink-entrypoint` for the count, `rev-list-ids-neither-fix/collector-symlink-entrypoint` for the ids |
-| release-tag containment | none | one `git merge-base --is-ancestor` per tag: `tag-contains-<tag>-fix/collector-symlink-entrypoint`, 19 of them |
-| superseding PR/issue/SHA | none recorded | — |
-| to preserve | the collector-symlink-regression fix and its isolating test, reachable from no other ref; any commits made since, reachable from no other ref while this PR is open | — |
-| protection / ruleset | no branch protection, and the repository has no rulesets configured | `rest-branches` |
-| **recommendation** | **must_be_preserved** | — |
-
-| reference scan | result |
-|---|---|
-| GitHub-wide issues (`repo:MongLong0214/agent-operator-score "fix/collector-symlink-entrypoint"`) | none found |
-| GitHub-wide pull requests | [#669](https://github.com/MongLong0214/agent-operator-score/issues/669) (open) |
-| sweep completeness | complete -- all 1 result(s) the API reported were retrieved |
-| repository tree (`git-grep-fix/collector-symlink-entrypoint`) | none found |
-
-Head of open PR #666 ("fix(collector): a symlinked invocation collected nothing and exited 0") targeting dev, under review. Receipted derivations show 4 commit(s) reaching neither dev nor main -- collected as ids, not only as a count -- and no release tag containing it; that work exists on no other ref. Deleting the head branch of an open pull request is on this issue's own prohibited-actions list, and the deletion gate re-checks the live pull request state against a freshly collected observation rather than trusting this record.
-
-Nothing about this branch was left unestablished: containment, PR history, tag membership, protection and references were each derived by a receipted command.
 
 ### `task/issue-557-actual-effects`
 
@@ -256,9 +227,9 @@ Nothing about this branch was left unestablished: containment, PR history, tag m
 | GitHub-wide issues (`repo:MongLong0214/agent-operator-score "tmp/read-claude-artifact"`) | [#572](https://github.com/MongLong0214/agent-operator-score/issues/572) (open) |
 | GitHub-wide pull requests | [#669](https://github.com/MongLong0214/agent-operator-score/issues/669) (open), [#592](https://github.com/MongLong0214/agent-operator-score/issues/592) (closed) |
 | sweep completeness | complete -- all 3 result(s) the API reported were retrieved |
-| repository tree (`git-grep-tmp/read-claude-artifact`) | 73a30ec4e8a410408ac2f8c253d435f9e93674ce:tests/mutation/manifest.mjs; 73a30ec4e8a410408ac2f8c253d435f9e93674ce:tests/mutation/manifest.mjs; 73a30ec4e8a410408ac2f8c253d435f9e93674ce:tests/product/branch-cleanup-invariants.test.mjs |
+| repository tree (`git-grep-tmp/read-claude-artifact`) | b941707706c02acbd619b42c80cec987126d1591:tests/mutation/manifest.mjs; b941707706c02acbd619b42c80cec987126d1591:tests/mutation/manifest.mjs; b941707706c02acbd619b42c80cec987126d1591:tests/product/branch-cleanup-invariants.test.mjs |
 
-Receipted derivations place the tip on both dev and main with 0 commits reaching neither line, and in release tags v0.1.16, v0.1.17. It is the merge commit of PR #538 and the branch never advanced past it (it is now 729 commits behind dev and 33 behind main). It is a tmp/* branch, which repository policy caps at seven days or task end; it is well past that. The all-state PR history is empty. The complete GitHub-wide reference sweep finds nothing outside this audit's own issue thread and the earlier audit PRs; the tree scan now finds three hits, each a literal mention of this branch's name inside mutation-test fixtures added by unrelated later work (#568), not a dependency on its content.
+Receipted derivations place the tip on both dev and main with 0 commits reaching neither line, and in release tags v0.1.16, v0.1.17. It is the merge commit of PR #538 and the branch never advanced past it (it is now 734 commits behind dev and 33 behind main). It is a tmp/* branch, which repository policy caps at seven days or task end; it is well past that. The all-state PR history is empty. The complete GitHub-wide reference sweep finds nothing outside this audit's own issue thread and the earlier audit PRs; the tree scan now finds three hits, each a literal mention of this branch's name inside mutation-test fixtures added by unrelated later work (#568), not a dependency on its content.
 
 **Could not establish: what the branch was used to read, and whether anything was ever committed to it and later discarded**
 
@@ -318,7 +289,7 @@ Two things remain unestablishable from inside the repository:
 Recorded so a later reader can see how far the repository has moved. What must not change *across a
 deletion* is compared between the two observations that bracket it, not against this.
 
-- `main`: `d2c68036ebf9f9fd7287258fd3cec252133ef846`, `dev`: `73a30ec4e8a410408ac2f8c253d435f9e93674ce`
+- `main`: `d2c68036ebf9f9fd7287258fd3cec252133ef846`, `dev`: `b941707706c02acbd619b42c80cec987126d1591`
 - protection: the complete objects for both refs (12 fields each)
 - rulesets: 0 configured
 - `delete_branch_on_merge`: true, default branch `dev`
@@ -365,9 +336,8 @@ commit, and nothing would notice.
 
 | PR | head branch | head SHA | base |
 |---|---|---|---|
-| [#666](https://github.com/MongLong0214/agent-operator-score/pull/666) | `fix/collector-symlink-entrypoint` | `dd46b88d7a9d06cc41776b8a8b51db25506060a7` | dev |
 | [#667](https://github.com/MongLong0214/agent-operator-score/pull/667) | `task/issue-660` | `55b908cc8962ce75db98aa14a6dc0059d45c612a` | dev |
-| [#669](https://github.com/MongLong0214/agent-operator-score/pull/669) | `task/issue-572` | `01268d39a317e18d542a4319bc729da073353518` | dev |
+| [#669](https://github.com/MongLong0214/agent-operator-score/pull/669) | `task/issue-572` | `f9a459d02367ebcfcaa2224dade2758b09b95bdd` | dev |
 
 ## Repository branch policy
 

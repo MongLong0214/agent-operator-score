@@ -4,7 +4,7 @@
   "issue": 572,
   "phase": "read-only-audit",
   "snapshot_warning": "PHASE A SNAPSHOT, TAKEN WHILE A BATCH OF AGENTS IS PUSHING TO THIS REPOSITORY. This is a point-in-time record, not a deletion list. Do not act on it. Phase B must collect its own observations -- one immediately before the deletion and one immediately after -- with scripts/collect-branch-state.mjs, and authorize against those. liveEligibility refuses outright without a freshly collected observation, and the invariants are compared between the two fresh observations, never against this file. This baseline is historical context: the repository goes on moving, and a Phase B compared against a Phase A snapshot would report ordinary progress as damage.",
-  "generated_at": "2026-09-19T10:31:44Z",
+  "generated_at": "2026-09-19T11:02:53Z",
   "method": "Read-only, and every asserted derivation is a command run by scripts/collect-branch-state.mjs with its command line, exit code, byte count and a SHA-256 of its raw stdout recorded beside the answer. That includes the graph facts, not only the repository queries around them: `git merge-base --is-ancestor` against dev and main, `git rev-list --count` in both directions and for commits reaching neither line, `git rev-list` for the ids of the commits reaching neither line, one `git merge-base --is-ancestor` per tag reported by `git ls-remote --tags origin`, `git grep` over the whole tree, `git log -1`, and an all-state paginated `gh api repos/<owner>/<repo>/pulls?state=all&head=<owner>:<branch>` per branch. Head lists are taken over two independent transports and cross-checked. Every list endpoint is paginated to the end, and each GitHub-wide search records whether it retrieved every result the API reported -- a truncated sweep establishes nothing and says so. No ref was created, deleted, renamed or force-pushed to produce this file.",
   "excluded_refs": [
     "main",
@@ -13,20 +13,16 @@
   "live_observation": {
     "schema": "aos-branch-live-observation.v3",
     "repository": "MongLong0214/agent-operator-score",
-    "collected_at": "2026-09-19T10:31:44Z",
+    "collected_at": "2026-09-19T11:02:53Z",
     "collector": "scripts/collect-branch-state.mjs",
     "heads": [
       {
         "name": "dev",
-        "sha": "73a30ec4e8a410408ac2f8c253d435f9e93674ce"
+        "sha": "b941707706c02acbd619b42c80cec987126d1591"
       },
       {
         "name": "fix/a-fixture-backed-agent-is-not-a-runtime",
         "sha": "e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1"
-      },
-      {
-        "name": "fix/collector-symlink-entrypoint",
-        "sha": "dd46b88d7a9d06cc41776b8a8b51db25506060a7"
       },
       {
         "name": "main",
@@ -38,7 +34,7 @@
       },
       {
         "name": "task/issue-572",
-        "sha": "01268d39a317e18d542a4319bc729da073353518"
+        "sha": "f9a459d02367ebcfcaa2224dade2758b09b95bdd"
       },
       {
         "name": "task/issue-660",
@@ -52,17 +48,12 @@
     "rest_heads": [
       {
         "name": "dev",
-        "sha": "73a30ec4e8a410408ac2f8c253d435f9e93674ce",
+        "sha": "b941707706c02acbd619b42c80cec987126d1591",
         "protected": true
       },
       {
         "name": "fix/a-fixture-backed-agent-is-not-a-runtime",
         "sha": "e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1",
-        "protected": false
-      },
-      {
-        "name": "fix/collector-symlink-entrypoint",
-        "sha": "dd46b88d7a9d06cc41776b8a8b51db25506060a7",
         "protected": false
       },
       {
@@ -77,7 +68,7 @@
       },
       {
         "name": "task/issue-572",
-        "sha": "01268d39a317e18d542a4319bc729da073353518",
+        "sha": "f9a459d02367ebcfcaa2224dade2758b09b95bdd",
         "protected": false
       },
       {
@@ -93,13 +84,6 @@
     ],
     "open_prs": [
       {
-        "number": 666,
-        "head_branch": "fix/collector-symlink-entrypoint",
-        "head_sha": "dd46b88d7a9d06cc41776b8a8b51db25506060a7",
-        "base": "dev",
-        "state": "OPEN"
-      },
-      {
         "number": 667,
         "head_branch": "task/issue-660",
         "head_sha": "55b908cc8962ce75db98aa14a6dc0059d45c612a",
@@ -109,7 +93,7 @@
       {
         "number": 669,
         "head_branch": "task/issue-572",
-        "head_sha": "01268d39a317e18d542a4319bc729da073353518",
+        "head_sha": "f9a459d02367ebcfcaa2224dade2758b09b95bdd",
         "base": "dev",
         "state": "OPEN"
       }
@@ -484,7 +468,7 @@
           "source": "rev-list-main-fix/a-fixture-backed-agent-is-not-a-runtime"
         },
         "behind_dev": {
-          "value": 781,
+          "value": 786,
           "source": "rev-list-behind-dev-fix/a-fixture-backed-agent-is-not-a-runtime"
         },
         "behind_main": {
@@ -541,92 +525,6 @@
           "source": "pr-history-fix/a-fixture-backed-agent-is-not-a-runtime"
         }
       },
-      "fix/collector-symlink-entrypoint": {
-        "last_commit": {
-          "date": "2026-09-19T19:02:26+09:00",
-          "author_name": "MongLong0214",
-          "author_email": "weplay0628@gmail.com",
-          "source": "git-log-fix/collector-symlink-entrypoint"
-        },
-        "ancestor_of_dev": {
-          "value": false,
-          "source": "is-ancestor-dev-fix/collector-symlink-entrypoint"
-        },
-        "ancestor_of_main": {
-          "value": false,
-          "source": "is-ancestor-main-fix/collector-symlink-entrypoint"
-        },
-        "unique_vs_dev": {
-          "value": 4,
-          "source": "rev-list-dev-fix/collector-symlink-entrypoint"
-        },
-        "unique_vs_main": {
-          "value": 700,
-          "source": "rev-list-main-fix/collector-symlink-entrypoint"
-        },
-        "behind_dev": {
-          "value": 0,
-          "source": "rev-list-behind-dev-fix/collector-symlink-entrypoint"
-        },
-        "behind_main": {
-          "value": 0,
-          "source": "rev-list-behind-main-fix/collector-symlink-entrypoint"
-        },
-        "unique_vs_dev_and_main": {
-          "value": 4,
-          "source": "rev-list-neither-fix/collector-symlink-entrypoint"
-        },
-        "unique_commit_ids_vs_dev_and_main": {
-          "value": [
-            "dd46b88d7a9d06cc41776b8a8b51db25506060a7",
-            "39ef7ba219da5be9750ec2cdb69cdd9f7985022f",
-            "ebafe26421f29fd9e81604a897c0f3a61739a1fb",
-            "8d31b4c59fd464fbc4f8b2d28de5383fc8a96bd0"
-          ],
-          "source": "rev-list-ids-neither-fix/collector-symlink-entrypoint"
-        },
-        "tags_containing": {
-          "value": [],
-          "source": [
-            "tag-contains-archive/pre-v0.1.0-governance-fix/collector-symlink-entrypoint",
-            "tag-contains-v0.1.0-fix/collector-symlink-entrypoint",
-            "tag-contains-v0.1.1-fix/collector-symlink-entrypoint",
-            "tag-contains-v0.1.10-fix/collector-symlink-entrypoint",
-            "tag-contains-v0.1.11-fix/collector-symlink-entrypoint",
-            "tag-contains-v0.1.12-fix/collector-symlink-entrypoint",
-            "tag-contains-v0.1.13-fix/collector-symlink-entrypoint",
-            "tag-contains-v0.1.14-fix/collector-symlink-entrypoint",
-            "tag-contains-v0.1.15-fix/collector-symlink-entrypoint",
-            "tag-contains-v0.1.16-fix/collector-symlink-entrypoint",
-            "tag-contains-v0.1.17-fix/collector-symlink-entrypoint",
-            "tag-contains-v0.1.2-fix/collector-symlink-entrypoint",
-            "tag-contains-v0.1.3-fix/collector-symlink-entrypoint",
-            "tag-contains-v0.1.4-fix/collector-symlink-entrypoint",
-            "tag-contains-v0.1.5-fix/collector-symlink-entrypoint",
-            "tag-contains-v0.1.6-fix/collector-symlink-entrypoint",
-            "tag-contains-v0.1.7-fix/collector-symlink-entrypoint",
-            "tag-contains-v0.1.8-fix/collector-symlink-entrypoint",
-            "tag-contains-v0.1.9-fix/collector-symlink-entrypoint"
-          ]
-        },
-        "tree_scan": {
-          "value": [],
-          "source": "git-grep-fix/collector-symlink-entrypoint"
-        },
-        "pr_history": {
-          "value": [
-            {
-              "number": 666,
-              "state": "OPEN",
-              "merged_at": null,
-              "base": "dev",
-              "head_sha": "dd46b88d7a9d06cc41776b8a8b51db25506060a7"
-            }
-          ],
-          "complete": true,
-          "source": "pr-history-fix/collector-symlink-entrypoint"
-        }
-      },
       "task/issue-557-actual-effects": {
         "last_commit": {
           "date": "2026-09-04T09:28:51+09:00",
@@ -651,7 +549,7 @@
           "source": "rev-list-main-task/issue-557-actual-effects"
         },
         "behind_dev": {
-          "value": 346,
+          "value": 351,
           "source": "rev-list-behind-dev-task/issue-557-actual-effects"
         },
         "behind_main": {
@@ -712,7 +610,7 @@
       },
       "task/issue-572": {
         "last_commit": {
-          "date": "2026-09-19T19:30:59+09:00",
+          "date": "2026-09-19T19:39:35+09:00",
           "author_name": "MongLong0214",
           "author_email": "weplay0628@gmail.com",
           "source": "git-log-task/issue-572"
@@ -726,15 +624,15 @@
           "source": "is-ancestor-main-task/issue-572"
         },
         "unique_vs_dev": {
-          "value": 1,
+          "value": 2,
           "source": "rev-list-dev-task/issue-572"
         },
         "unique_vs_main": {
-          "value": 697,
+          "value": 698,
           "source": "rev-list-main-task/issue-572"
         },
         "behind_dev": {
-          "value": 0,
+          "value": 5,
           "source": "rev-list-behind-dev-task/issue-572"
         },
         "behind_main": {
@@ -742,11 +640,12 @@
           "source": "rev-list-behind-main-task/issue-572"
         },
         "unique_vs_dev_and_main": {
-          "value": 1,
+          "value": 2,
           "source": "rev-list-neither-task/issue-572"
         },
         "unique_commit_ids_vs_dev_and_main": {
           "value": [
+            "f9a459d02367ebcfcaa2224dade2758b09b95bdd",
             "01268d39a317e18d542a4319bc729da073353518"
           ],
           "source": "rev-list-ids-neither-task/issue-572"
@@ -786,7 +685,7 @@
               "state": "OPEN",
               "merged_at": null,
               "base": "dev",
-              "head_sha": "01268d39a317e18d542a4319bc729da073353518"
+              "head_sha": "f9a459d02367ebcfcaa2224dade2758b09b95bdd"
             }
           ],
           "complete": true,
@@ -817,7 +716,7 @@
           "source": "rev-list-main-task/issue-660"
         },
         "behind_dev": {
-          "value": 4,
+          "value": 9,
           "source": "rev-list-behind-dev-task/issue-660"
         },
         "behind_main": {
@@ -900,7 +799,7 @@
           "source": "rev-list-main-tmp/read-claude-artifact"
         },
         "behind_dev": {
-          "value": 729,
+          "value": 734,
           "source": "rev-list-behind-dev-tmp/read-claude-artifact"
         },
         "behind_main": {
@@ -944,9 +843,9 @@
         },
         "tree_scan": {
           "value": [
-            "73a30ec4e8a410408ac2f8c253d435f9e93674ce:tests/mutation/manifest.mjs",
-            "73a30ec4e8a410408ac2f8c253d435f9e93674ce:tests/mutation/manifest.mjs",
-            "73a30ec4e8a410408ac2f8c253d435f9e93674ce:tests/product/branch-cleanup-invariants.test.mjs"
+            "b941707706c02acbd619b42c80cec987126d1591:tests/mutation/manifest.mjs",
+            "b941707706c02acbd619b42c80cec987126d1591:tests/mutation/manifest.mjs",
+            "b941707706c02acbd619b42c80cec987126d1591:tests/product/branch-cleanup-invariants.test.mjs"
           ],
           "source": "git-grep-tmp/read-claude-artifact"
         },
@@ -981,20 +880,6 @@
             "is_pull_request": true,
             "state": "closed",
             "title": "docs(governance): read-only audit of stale remote branches (#572 Phase A)"
-          }
-        ]
-      },
-      {
-        "branch": "fix/collector-symlink-entrypoint",
-        "query": "repo:MongLong0214/agent-operator-score \"fix/collector-symlink-entrypoint\"",
-        "complete": true,
-        "total_count": 1,
-        "hits": [
-          {
-            "number": 669,
-            "is_pull_request": true,
-            "state": "open",
-            "title": "docs(governance): refresh #572 Phase A stale-branch audit against current origin"
           }
         ]
       },
@@ -1078,22 +963,22 @@
         "source": "git-ls-remote",
         "command": "git ls-remote --heads origin",
         "exit_code": 0,
-        "bytes": 587,
-        "digest": "sha256:d59160c4c2f4f714b983114b1f8840036cfd0c31f69e74246d679fe18826b39d"
+        "bytes": 502,
+        "digest": "sha256:9aa9dfce6db88bb8cefbe95b6a49e242d398726a9344f6b639f097061d0ffda6"
       },
       {
         "source": "rest-branches",
         "command": "gh api --paginate --slurp repos/MongLong0214/agent-operator-score/branches?per_page=100",
         "exit_code": 0,
-        "bytes": 5326,
-        "digest": "sha256:d70d00ffd3179ecb2736d6c685a3052f9ed794c3ed65c8ef40aca649fc1bb4f2"
+        "bytes": 4839,
+        "digest": "sha256:1b811aee04505a0bc7a38a452bf2d07c89cf379030c8ae3e3b43cc86986149d2"
       },
       {
         "source": "rest-open-prs",
         "command": "gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=open&per_page=100",
         "exit_code": 0,
-        "bytes": 58081,
-        "digest": "sha256:180f73cf0ba98ffb459a615d66a520838ceffa4d895fda378acf6aff6f3113e4"
+        "bytes": 38563,
+        "digest": "sha256:7264d3c82b4c964148a3d1161d1bbacc68b5b3355b49632a67d8fd27f91fb52d"
       },
       {
         "source": "git-ls-remote-tags",
@@ -1127,12 +1012,12 @@
         "source": "rest-repo",
         "command": "gh api repos/MongLong0214/agent-operator-score",
         "exit_code": 0,
-        "bytes": 6762,
-        "digest": "sha256:8d2f140ef51da0d782a9ac141817a977f8902da57eff1698ef20ace3959234bd"
+        "bytes": 6761,
+        "digest": "sha256:4237eb666bbd38be052eafb53521d21c8c1085bc5cf1b8ee28eb7a4e384b6fe8"
       },
       {
         "source": "git-fetch-observed",
-        "command": "git fetch -q origin 73a30ec4e8a410408ac2f8c253d435f9e93674ce e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 dd46b88d7a9d06cc41776b8a8b51db25506060a7 d2c68036ebf9f9fd7287258fd3cec252133ef846 530335c80dcef292fb29cb23dff8ef1bb95188e4 01268d39a317e18d542a4319bc729da073353518 55b908cc8962ce75db98aa14a6dc0059d45c612a 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 36b823f22217e9d8be011318e295231c62a3f813 fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3 efe351c991797a8cde88c23b8e8933d9a90db11d 98353d24fdd6b932c717bd8b9a0971c22986f7b7 4566b33143155b91981d07308bd113ad8fad9b35 c371ac93d49a592925b24de5013bc9b3b303dd7d 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea d89a4b22a0e8de14fff316edcae18c3e6caadf9a 426c23d0f62fa2666135f978db0f5802ace7c8cc 120ce7c96feb961ee7c4599c2946f059b8d9b7c6 43bae4bf460939a743c837b8e0a05d8f9e044026 dc7f6563ec0d6e951fe984fa026eea8c5efc3aed ae648b7dca5574c6af938dc44b6802f1bf732929 bbfae658e87ac2de7c6326739704a877fb118301 aebcbd8b7105da88ae71d0e5a80be59b99e8cc53 8e84fbcb42f79d86263aab42a1291ecf09ddba7f 30d30485f4ade54238cba5aa1a8bc85452df7d39 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0",
+        "command": "git fetch -q origin b941707706c02acbd619b42c80cec987126d1591 e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 d2c68036ebf9f9fd7287258fd3cec252133ef846 530335c80dcef292fb29cb23dff8ef1bb95188e4 f9a459d02367ebcfcaa2224dade2758b09b95bdd 55b908cc8962ce75db98aa14a6dc0059d45c612a 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 36b823f22217e9d8be011318e295231c62a3f813 fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3 efe351c991797a8cde88c23b8e8933d9a90db11d 98353d24fdd6b932c717bd8b9a0971c22986f7b7 4566b33143155b91981d07308bd113ad8fad9b35 c371ac93d49a592925b24de5013bc9b3b303dd7d 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea d89a4b22a0e8de14fff316edcae18c3e6caadf9a 426c23d0f62fa2666135f978db0f5802ace7c8cc 120ce7c96feb961ee7c4599c2946f059b8d9b7c6 43bae4bf460939a743c837b8e0a05d8f9e044026 dc7f6563ec0d6e951fe984fa026eea8c5efc3aed ae648b7dca5574c6af938dc44b6802f1bf732929 bbfae658e87ac2de7c6326739704a877fb118301 aebcbd8b7105da88ae71d0e5a80be59b99e8cc53 8e84fbcb42f79d86263aab42a1291ecf09ddba7f 30d30485f4ade54238cba5aa1a8bc85452df7d39 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0",
         "exit_code": 0,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -1146,7 +1031,7 @@
       },
       {
         "source": "git-grep-fix/a-fixture-backed-agent-is-not-a-runtime",
-        "command": "git grep -n --fixed-strings fix/a-fixture-backed-agent-is-not-a-runtime 73a30ec4e8a410408ac2f8c253d435f9e93674ce -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+        "command": "git grep -n --fixed-strings fix/a-fixture-backed-agent-is-not-a-runtime b941707706c02acbd619b42c80cec987126d1591 -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -1160,7 +1045,7 @@
       },
       {
         "source": "is-ancestor-dev-fix/a-fixture-backed-agent-is-not-a-runtime",
-        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 73a30ec4e8a410408ac2f8c253d435f9e93674ce",
+        "command": "git merge-base --is-ancestor e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 b941707706c02acbd619b42c80cec987126d1591",
         "exit_code": 0,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -1174,7 +1059,7 @@
       },
       {
         "source": "rev-list-dev-fix/a-fixture-backed-agent-is-not-a-runtime",
-        "command": "git rev-list --count 73a30ec4e8a410408ac2f8c253d435f9e93674ce..e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1",
+        "command": "git rev-list --count b941707706c02acbd619b42c80cec987126d1591..e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1",
         "exit_code": 0,
         "bytes": 2,
         "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
@@ -1188,10 +1073,10 @@
       },
       {
         "source": "rev-list-behind-dev-fix/a-fixture-backed-agent-is-not-a-runtime",
-        "command": "git rev-list --count e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1..73a30ec4e8a410408ac2f8c253d435f9e93674ce",
+        "command": "git rev-list --count e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1..b941707706c02acbd619b42c80cec987126d1591",
         "exit_code": 0,
         "bytes": 4,
-        "digest": "sha256:04e0e75067e564d696d0d38be18b52aca9e015c750ce94153f0f97edac76bcc9"
+        "digest": "sha256:4ded13e5143ba0fd5aae0431ad20a76f71f03787d574b85666ec191f81742298"
       },
       {
         "source": "rev-list-behind-main-fix/a-fixture-backed-agent-is-not-a-runtime",
@@ -1202,14 +1087,14 @@
       },
       {
         "source": "rev-list-neither-fix/a-fixture-backed-agent-is-not-a-runtime",
-        "command": "git rev-list --count e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 --not 73a30ec4e8a410408ac2f8c253d435f9e93674ce d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git rev-list --count e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 --not b941707706c02acbd619b42c80cec987126d1591 d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 0,
         "bytes": 2,
         "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
       },
       {
         "source": "rev-list-ids-neither-fix/a-fixture-backed-agent-is-not-a-runtime",
-        "command": "git rev-list e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 --not 73a30ec4e8a410408ac2f8c253d435f9e93674ce d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git rev-list e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 --not b941707706c02acbd619b42c80cec987126d1591 d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 0,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -1348,216 +1233,6 @@
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
-        "source": "git-log-fix/collector-symlink-entrypoint",
-        "command": "git log -1 --format=%cI%x09%an%x09%ae dd46b88d7a9d06cc41776b8a8b51db25506060a7",
-        "exit_code": 0,
-        "bytes": 60,
-        "digest": "sha256:a8c1b9d6db0d66bfb05b844e1c153d0d7e67d00eb389e91c778f25cf4be5c7f9"
-      },
-      {
-        "source": "git-grep-fix/collector-symlink-entrypoint",
-        "command": "git grep -n --fixed-strings fix/collector-symlink-entrypoint 73a30ec4e8a410408ac2f8c253d435f9e93674ce -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
-        "exit_code": 1,
-        "bytes": 0,
-        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "source": "pr-history-fix/collector-symlink-entrypoint",
-        "command": "gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=all&head=MongLong0214:fix/collector-symlink-entrypoint&per_page=100",
-        "exit_code": 0,
-        "bytes": 19517,
-        "digest": "sha256:c008f3fffb9ff3a441beff68ce87ec32cc6d5394ad2c5649f424ca5ba65557b3"
-      },
-      {
-        "source": "is-ancestor-dev-fix/collector-symlink-entrypoint",
-        "command": "git merge-base --is-ancestor dd46b88d7a9d06cc41776b8a8b51db25506060a7 73a30ec4e8a410408ac2f8c253d435f9e93674ce",
-        "exit_code": 1,
-        "bytes": 0,
-        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "source": "is-ancestor-main-fix/collector-symlink-entrypoint",
-        "command": "git merge-base --is-ancestor dd46b88d7a9d06cc41776b8a8b51db25506060a7 d2c68036ebf9f9fd7287258fd3cec252133ef846",
-        "exit_code": 1,
-        "bytes": 0,
-        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "source": "rev-list-dev-fix/collector-symlink-entrypoint",
-        "command": "git rev-list --count 73a30ec4e8a410408ac2f8c253d435f9e93674ce..dd46b88d7a9d06cc41776b8a8b51db25506060a7",
-        "exit_code": 0,
-        "bytes": 2,
-        "digest": "sha256:7de1555df0c2700329e815b93b32c571c3ea54dc967b89e81ab73b9972b72d1d"
-      },
-      {
-        "source": "rev-list-main-fix/collector-symlink-entrypoint",
-        "command": "git rev-list --count d2c68036ebf9f9fd7287258fd3cec252133ef846..dd46b88d7a9d06cc41776b8a8b51db25506060a7",
-        "exit_code": 0,
-        "bytes": 4,
-        "digest": "sha256:74c3cc29c8e42455948aca1dcc545d258f9d33c51dfd5e90d6cfa6ed5c9da357"
-      },
-      {
-        "source": "rev-list-behind-dev-fix/collector-symlink-entrypoint",
-        "command": "git rev-list --count dd46b88d7a9d06cc41776b8a8b51db25506060a7..73a30ec4e8a410408ac2f8c253d435f9e93674ce",
-        "exit_code": 0,
-        "bytes": 2,
-        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
-      },
-      {
-        "source": "rev-list-behind-main-fix/collector-symlink-entrypoint",
-        "command": "git rev-list --count dd46b88d7a9d06cc41776b8a8b51db25506060a7..d2c68036ebf9f9fd7287258fd3cec252133ef846",
-        "exit_code": 0,
-        "bytes": 2,
-        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
-      },
-      {
-        "source": "rev-list-neither-fix/collector-symlink-entrypoint",
-        "command": "git rev-list --count dd46b88d7a9d06cc41776b8a8b51db25506060a7 --not 73a30ec4e8a410408ac2f8c253d435f9e93674ce d2c68036ebf9f9fd7287258fd3cec252133ef846",
-        "exit_code": 0,
-        "bytes": 2,
-        "digest": "sha256:7de1555df0c2700329e815b93b32c571c3ea54dc967b89e81ab73b9972b72d1d"
-      },
-      {
-        "source": "rev-list-ids-neither-fix/collector-symlink-entrypoint",
-        "command": "git rev-list dd46b88d7a9d06cc41776b8a8b51db25506060a7 --not 73a30ec4e8a410408ac2f8c253d435f9e93674ce d2c68036ebf9f9fd7287258fd3cec252133ef846",
-        "exit_code": 0,
-        "bytes": 164,
-        "digest": "sha256:17b400341ef06c137eb9a6f91cc0c95b62b2f51f22b197cb86bf29f9ed2a1720"
-      },
-      {
-        "source": "tag-contains-archive/pre-v0.1.0-governance-fix/collector-symlink-entrypoint",
-        "command": "git merge-base --is-ancestor dd46b88d7a9d06cc41776b8a8b51db25506060a7 36b823f22217e9d8be011318e295231c62a3f813",
-        "exit_code": 1,
-        "bytes": 0,
-        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "source": "tag-contains-v0.1.0-fix/collector-symlink-entrypoint",
-        "command": "git merge-base --is-ancestor dd46b88d7a9d06cc41776b8a8b51db25506060a7 fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3",
-        "exit_code": 1,
-        "bytes": 0,
-        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "source": "tag-contains-v0.1.1-fix/collector-symlink-entrypoint",
-        "command": "git merge-base --is-ancestor dd46b88d7a9d06cc41776b8a8b51db25506060a7 efe351c991797a8cde88c23b8e8933d9a90db11d",
-        "exit_code": 1,
-        "bytes": 0,
-        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "source": "tag-contains-v0.1.10-fix/collector-symlink-entrypoint",
-        "command": "git merge-base --is-ancestor dd46b88d7a9d06cc41776b8a8b51db25506060a7 98353d24fdd6b932c717bd8b9a0971c22986f7b7",
-        "exit_code": 1,
-        "bytes": 0,
-        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "source": "tag-contains-v0.1.11-fix/collector-symlink-entrypoint",
-        "command": "git merge-base --is-ancestor dd46b88d7a9d06cc41776b8a8b51db25506060a7 4566b33143155b91981d07308bd113ad8fad9b35",
-        "exit_code": 1,
-        "bytes": 0,
-        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "source": "tag-contains-v0.1.12-fix/collector-symlink-entrypoint",
-        "command": "git merge-base --is-ancestor dd46b88d7a9d06cc41776b8a8b51db25506060a7 c371ac93d49a592925b24de5013bc9b3b303dd7d",
-        "exit_code": 1,
-        "bytes": 0,
-        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "source": "tag-contains-v0.1.13-fix/collector-symlink-entrypoint",
-        "command": "git merge-base --is-ancestor dd46b88d7a9d06cc41776b8a8b51db25506060a7 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea",
-        "exit_code": 1,
-        "bytes": 0,
-        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "source": "tag-contains-v0.1.14-fix/collector-symlink-entrypoint",
-        "command": "git merge-base --is-ancestor dd46b88d7a9d06cc41776b8a8b51db25506060a7 d89a4b22a0e8de14fff316edcae18c3e6caadf9a",
-        "exit_code": 1,
-        "bytes": 0,
-        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "source": "tag-contains-v0.1.15-fix/collector-symlink-entrypoint",
-        "command": "git merge-base --is-ancestor dd46b88d7a9d06cc41776b8a8b51db25506060a7 426c23d0f62fa2666135f978db0f5802ace7c8cc",
-        "exit_code": 1,
-        "bytes": 0,
-        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "source": "tag-contains-v0.1.16-fix/collector-symlink-entrypoint",
-        "command": "git merge-base --is-ancestor dd46b88d7a9d06cc41776b8a8b51db25506060a7 120ce7c96feb961ee7c4599c2946f059b8d9b7c6",
-        "exit_code": 1,
-        "bytes": 0,
-        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "source": "tag-contains-v0.1.17-fix/collector-symlink-entrypoint",
-        "command": "git merge-base --is-ancestor dd46b88d7a9d06cc41776b8a8b51db25506060a7 d2c68036ebf9f9fd7287258fd3cec252133ef846",
-        "exit_code": 1,
-        "bytes": 0,
-        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "source": "tag-contains-v0.1.2-fix/collector-symlink-entrypoint",
-        "command": "git merge-base --is-ancestor dd46b88d7a9d06cc41776b8a8b51db25506060a7 43bae4bf460939a743c837b8e0a05d8f9e044026",
-        "exit_code": 1,
-        "bytes": 0,
-        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "source": "tag-contains-v0.1.3-fix/collector-symlink-entrypoint",
-        "command": "git merge-base --is-ancestor dd46b88d7a9d06cc41776b8a8b51db25506060a7 dc7f6563ec0d6e951fe984fa026eea8c5efc3aed",
-        "exit_code": 1,
-        "bytes": 0,
-        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "source": "tag-contains-v0.1.4-fix/collector-symlink-entrypoint",
-        "command": "git merge-base --is-ancestor dd46b88d7a9d06cc41776b8a8b51db25506060a7 ae648b7dca5574c6af938dc44b6802f1bf732929",
-        "exit_code": 1,
-        "bytes": 0,
-        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "source": "tag-contains-v0.1.5-fix/collector-symlink-entrypoint",
-        "command": "git merge-base --is-ancestor dd46b88d7a9d06cc41776b8a8b51db25506060a7 bbfae658e87ac2de7c6326739704a877fb118301",
-        "exit_code": 1,
-        "bytes": 0,
-        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "source": "tag-contains-v0.1.6-fix/collector-symlink-entrypoint",
-        "command": "git merge-base --is-ancestor dd46b88d7a9d06cc41776b8a8b51db25506060a7 aebcbd8b7105da88ae71d0e5a80be59b99e8cc53",
-        "exit_code": 1,
-        "bytes": 0,
-        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "source": "tag-contains-v0.1.7-fix/collector-symlink-entrypoint",
-        "command": "git merge-base --is-ancestor dd46b88d7a9d06cc41776b8a8b51db25506060a7 8e84fbcb42f79d86263aab42a1291ecf09ddba7f",
-        "exit_code": 1,
-        "bytes": 0,
-        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "source": "tag-contains-v0.1.8-fix/collector-symlink-entrypoint",
-        "command": "git merge-base --is-ancestor dd46b88d7a9d06cc41776b8a8b51db25506060a7 30d30485f4ade54238cba5aa1a8bc85452df7d39",
-        "exit_code": 1,
-        "bytes": 0,
-        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "source": "tag-contains-v0.1.9-fix/collector-symlink-entrypoint",
-        "command": "git merge-base --is-ancestor dd46b88d7a9d06cc41776b8a8b51db25506060a7 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0",
-        "exit_code": 1,
-        "bytes": 0,
-        "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
         "source": "git-log-task/issue-557-actual-effects",
         "command": "git log -1 --format=%cI%x09%an%x09%ae 530335c80dcef292fb29cb23dff8ef1bb95188e4",
         "exit_code": 0,
@@ -1566,7 +1241,7 @@
       },
       {
         "source": "git-grep-task/issue-557-actual-effects",
-        "command": "git grep -n --fixed-strings task/issue-557-actual-effects 73a30ec4e8a410408ac2f8c253d435f9e93674ce -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+        "command": "git grep -n --fixed-strings task/issue-557-actual-effects b941707706c02acbd619b42c80cec987126d1591 -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -1575,12 +1250,12 @@
         "source": "pr-history-task/issue-557-actual-effects",
         "command": "gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=all&head=MongLong0214:task/issue-557-actual-effects&per_page=100",
         "exit_code": 0,
-        "bytes": 30721,
-        "digest": "sha256:9ea9cf9194b0fa375577db02e4928e36b28889c00aecbc6c0bcb969d4d043791"
+        "bytes": 30719,
+        "digest": "sha256:ac9399b70e493ec23706ab717256fa1c4264ae074bf736d2283549135eff99d1"
       },
       {
         "source": "is-ancestor-dev-task/issue-557-actual-effects",
-        "command": "git merge-base --is-ancestor 530335c80dcef292fb29cb23dff8ef1bb95188e4 73a30ec4e8a410408ac2f8c253d435f9e93674ce",
+        "command": "git merge-base --is-ancestor 530335c80dcef292fb29cb23dff8ef1bb95188e4 b941707706c02acbd619b42c80cec987126d1591",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -1594,7 +1269,7 @@
       },
       {
         "source": "rev-list-dev-task/issue-557-actual-effects",
-        "command": "git rev-list --count 73a30ec4e8a410408ac2f8c253d435f9e93674ce..530335c80dcef292fb29cb23dff8ef1bb95188e4",
+        "command": "git rev-list --count b941707706c02acbd619b42c80cec987126d1591..530335c80dcef292fb29cb23dff8ef1bb95188e4",
         "exit_code": 0,
         "bytes": 2,
         "digest": "sha256:4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
@@ -1608,10 +1283,10 @@
       },
       {
         "source": "rev-list-behind-dev-task/issue-557-actual-effects",
-        "command": "git rev-list --count 530335c80dcef292fb29cb23dff8ef1bb95188e4..73a30ec4e8a410408ac2f8c253d435f9e93674ce",
+        "command": "git rev-list --count 530335c80dcef292fb29cb23dff8ef1bb95188e4..b941707706c02acbd619b42c80cec987126d1591",
         "exit_code": 0,
         "bytes": 4,
-        "digest": "sha256:e118351a46ee253217def2dc00b4594b664e04462cca6c919e8f9116ad6c0c51"
+        "digest": "sha256:81648ca9fc259570270d372dc503656aea57fb7494f293fa0c0a2fae9dcf4fd3"
       },
       {
         "source": "rev-list-behind-main-task/issue-557-actual-effects",
@@ -1622,14 +1297,14 @@
       },
       {
         "source": "rev-list-neither-task/issue-557-actual-effects",
-        "command": "git rev-list --count 530335c80dcef292fb29cb23dff8ef1bb95188e4 --not 73a30ec4e8a410408ac2f8c253d435f9e93674ce d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git rev-list --count 530335c80dcef292fb29cb23dff8ef1bb95188e4 --not b941707706c02acbd619b42c80cec987126d1591 d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 0,
         "bytes": 2,
         "digest": "sha256:4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
       },
       {
         "source": "rev-list-ids-neither-task/issue-557-actual-effects",
-        "command": "git rev-list 530335c80dcef292fb29cb23dff8ef1bb95188e4 --not 73a30ec4e8a410408ac2f8c253d435f9e93674ce d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git rev-list 530335c80dcef292fb29cb23dff8ef1bb95188e4 --not b941707706c02acbd619b42c80cec987126d1591 d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 0,
         "bytes": 41,
         "digest": "sha256:fda71ef6c50c1917ee41e46251ce86e875d677d6c887a66ba66ae4a1ca1194a9"
@@ -1769,14 +1444,14 @@
       },
       {
         "source": "git-log-task/issue-572",
-        "command": "git log -1 --format=%cI%x09%an%x09%ae 01268d39a317e18d542a4319bc729da073353518",
+        "command": "git log -1 --format=%cI%x09%an%x09%ae f9a459d02367ebcfcaa2224dade2758b09b95bdd",
         "exit_code": 0,
         "bytes": 60,
-        "digest": "sha256:112495b68fe5303659d6df569ca0139f19c2313254ea96a14f286a945603cc21"
+        "digest": "sha256:28b8efc6b4a66e3b09af927def594802da8628bb67170a739ffd0cfb3dbb7d17"
       },
       {
         "source": "git-grep-task/issue-572",
-        "command": "git grep -n --fixed-strings task/issue-572 73a30ec4e8a410408ac2f8c253d435f9e93674ce -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+        "command": "git grep -n --fixed-strings task/issue-572 b941707706c02acbd619b42c80cec987126d1591 -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -1785,194 +1460,194 @@
         "source": "pr-history-task/issue-572",
         "command": "gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=all&head=MongLong0214:task/issue-572&per_page=100",
         "exit_code": 0,
-        "bytes": 20517,
-        "digest": "sha256:7f3f3d9fa54ef9faa7bcf7be3c53a765bd95d5bf499402b3264bbbd7620a1e08"
+        "bytes": 20515,
+        "digest": "sha256:1620bf00994bb0e0f915a981f638b547c099d0be97b5de86e323757333d666e3"
       },
       {
         "source": "is-ancestor-dev-task/issue-572",
-        "command": "git merge-base --is-ancestor 01268d39a317e18d542a4319bc729da073353518 73a30ec4e8a410408ac2f8c253d435f9e93674ce",
+        "command": "git merge-base --is-ancestor f9a459d02367ebcfcaa2224dade2758b09b95bdd b941707706c02acbd619b42c80cec987126d1591",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "is-ancestor-main-task/issue-572",
-        "command": "git merge-base --is-ancestor 01268d39a317e18d542a4319bc729da073353518 d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git merge-base --is-ancestor f9a459d02367ebcfcaa2224dade2758b09b95bdd d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "rev-list-dev-task/issue-572",
-        "command": "git rev-list --count 73a30ec4e8a410408ac2f8c253d435f9e93674ce..01268d39a317e18d542a4319bc729da073353518",
+        "command": "git rev-list --count b941707706c02acbd619b42c80cec987126d1591..f9a459d02367ebcfcaa2224dade2758b09b95bdd",
         "exit_code": 0,
         "bytes": 2,
-        "digest": "sha256:4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+        "digest": "sha256:53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3"
       },
       {
         "source": "rev-list-main-task/issue-572",
-        "command": "git rev-list --count d2c68036ebf9f9fd7287258fd3cec252133ef846..01268d39a317e18d542a4319bc729da073353518",
+        "command": "git rev-list --count d2c68036ebf9f9fd7287258fd3cec252133ef846..f9a459d02367ebcfcaa2224dade2758b09b95bdd",
         "exit_code": 0,
         "bytes": 4,
-        "digest": "sha256:547c5695f7bdae0c49c994d1b9afc0234dfaaa6905b91f4b9e4ad55088a5052b"
+        "digest": "sha256:4b6ea96fb508b6dfc3238c5d4fdff89fc81a27836f2dcd65f4e0d6967696dd6b"
       },
       {
         "source": "rev-list-behind-dev-task/issue-572",
-        "command": "git rev-list --count 01268d39a317e18d542a4319bc729da073353518..73a30ec4e8a410408ac2f8c253d435f9e93674ce",
+        "command": "git rev-list --count f9a459d02367ebcfcaa2224dade2758b09b95bdd..b941707706c02acbd619b42c80cec987126d1591",
         "exit_code": 0,
         "bytes": 2,
-        "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+        "digest": "sha256:f0b5c2c2211c8d67ed15e75e656c7862d086e9245420892a7de62cd9ec582a06"
       },
       {
         "source": "rev-list-behind-main-task/issue-572",
-        "command": "git rev-list --count 01268d39a317e18d542a4319bc729da073353518..d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git rev-list --count f9a459d02367ebcfcaa2224dade2758b09b95bdd..d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 0,
         "bytes": 2,
         "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
       },
       {
         "source": "rev-list-neither-task/issue-572",
-        "command": "git rev-list --count 01268d39a317e18d542a4319bc729da073353518 --not 73a30ec4e8a410408ac2f8c253d435f9e93674ce d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git rev-list --count f9a459d02367ebcfcaa2224dade2758b09b95bdd --not b941707706c02acbd619b42c80cec987126d1591 d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 0,
         "bytes": 2,
-        "digest": "sha256:4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+        "digest": "sha256:53c234e5e8472b6ac51c1ae1cab3fe06fad053beb8ebfd8977b010655bfdd3c3"
       },
       {
         "source": "rev-list-ids-neither-task/issue-572",
-        "command": "git rev-list 01268d39a317e18d542a4319bc729da073353518 --not 73a30ec4e8a410408ac2f8c253d435f9e93674ce d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git rev-list f9a459d02367ebcfcaa2224dade2758b09b95bdd --not b941707706c02acbd619b42c80cec987126d1591 d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 0,
-        "bytes": 41,
-        "digest": "sha256:a534a72d128356b5c442cb93f5477b792d74ee6ad7ce209384e7f4b385d3bc9b"
+        "bytes": 82,
+        "digest": "sha256:9b286cab96fbab51ce07ba7510904f62d6b3800dda9b299631bf0bcdd24906c9"
       },
       {
         "source": "tag-contains-archive/pre-v0.1.0-governance-task/issue-572",
-        "command": "git merge-base --is-ancestor 01268d39a317e18d542a4319bc729da073353518 36b823f22217e9d8be011318e295231c62a3f813",
+        "command": "git merge-base --is-ancestor f9a459d02367ebcfcaa2224dade2758b09b95bdd 36b823f22217e9d8be011318e295231c62a3f813",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.0-task/issue-572",
-        "command": "git merge-base --is-ancestor 01268d39a317e18d542a4319bc729da073353518 fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3",
+        "command": "git merge-base --is-ancestor f9a459d02367ebcfcaa2224dade2758b09b95bdd fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.1-task/issue-572",
-        "command": "git merge-base --is-ancestor 01268d39a317e18d542a4319bc729da073353518 efe351c991797a8cde88c23b8e8933d9a90db11d",
+        "command": "git merge-base --is-ancestor f9a459d02367ebcfcaa2224dade2758b09b95bdd efe351c991797a8cde88c23b8e8933d9a90db11d",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.10-task/issue-572",
-        "command": "git merge-base --is-ancestor 01268d39a317e18d542a4319bc729da073353518 98353d24fdd6b932c717bd8b9a0971c22986f7b7",
+        "command": "git merge-base --is-ancestor f9a459d02367ebcfcaa2224dade2758b09b95bdd 98353d24fdd6b932c717bd8b9a0971c22986f7b7",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.11-task/issue-572",
-        "command": "git merge-base --is-ancestor 01268d39a317e18d542a4319bc729da073353518 4566b33143155b91981d07308bd113ad8fad9b35",
+        "command": "git merge-base --is-ancestor f9a459d02367ebcfcaa2224dade2758b09b95bdd 4566b33143155b91981d07308bd113ad8fad9b35",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.12-task/issue-572",
-        "command": "git merge-base --is-ancestor 01268d39a317e18d542a4319bc729da073353518 c371ac93d49a592925b24de5013bc9b3b303dd7d",
+        "command": "git merge-base --is-ancestor f9a459d02367ebcfcaa2224dade2758b09b95bdd c371ac93d49a592925b24de5013bc9b3b303dd7d",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.13-task/issue-572",
-        "command": "git merge-base --is-ancestor 01268d39a317e18d542a4319bc729da073353518 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea",
+        "command": "git merge-base --is-ancestor f9a459d02367ebcfcaa2224dade2758b09b95bdd 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.14-task/issue-572",
-        "command": "git merge-base --is-ancestor 01268d39a317e18d542a4319bc729da073353518 d89a4b22a0e8de14fff316edcae18c3e6caadf9a",
+        "command": "git merge-base --is-ancestor f9a459d02367ebcfcaa2224dade2758b09b95bdd d89a4b22a0e8de14fff316edcae18c3e6caadf9a",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.15-task/issue-572",
-        "command": "git merge-base --is-ancestor 01268d39a317e18d542a4319bc729da073353518 426c23d0f62fa2666135f978db0f5802ace7c8cc",
+        "command": "git merge-base --is-ancestor f9a459d02367ebcfcaa2224dade2758b09b95bdd 426c23d0f62fa2666135f978db0f5802ace7c8cc",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.16-task/issue-572",
-        "command": "git merge-base --is-ancestor 01268d39a317e18d542a4319bc729da073353518 120ce7c96feb961ee7c4599c2946f059b8d9b7c6",
+        "command": "git merge-base --is-ancestor f9a459d02367ebcfcaa2224dade2758b09b95bdd 120ce7c96feb961ee7c4599c2946f059b8d9b7c6",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.17-task/issue-572",
-        "command": "git merge-base --is-ancestor 01268d39a317e18d542a4319bc729da073353518 d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git merge-base --is-ancestor f9a459d02367ebcfcaa2224dade2758b09b95bdd d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.2-task/issue-572",
-        "command": "git merge-base --is-ancestor 01268d39a317e18d542a4319bc729da073353518 43bae4bf460939a743c837b8e0a05d8f9e044026",
+        "command": "git merge-base --is-ancestor f9a459d02367ebcfcaa2224dade2758b09b95bdd 43bae4bf460939a743c837b8e0a05d8f9e044026",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.3-task/issue-572",
-        "command": "git merge-base --is-ancestor 01268d39a317e18d542a4319bc729da073353518 dc7f6563ec0d6e951fe984fa026eea8c5efc3aed",
+        "command": "git merge-base --is-ancestor f9a459d02367ebcfcaa2224dade2758b09b95bdd dc7f6563ec0d6e951fe984fa026eea8c5efc3aed",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.4-task/issue-572",
-        "command": "git merge-base --is-ancestor 01268d39a317e18d542a4319bc729da073353518 ae648b7dca5574c6af938dc44b6802f1bf732929",
+        "command": "git merge-base --is-ancestor f9a459d02367ebcfcaa2224dade2758b09b95bdd ae648b7dca5574c6af938dc44b6802f1bf732929",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.5-task/issue-572",
-        "command": "git merge-base --is-ancestor 01268d39a317e18d542a4319bc729da073353518 bbfae658e87ac2de7c6326739704a877fb118301",
+        "command": "git merge-base --is-ancestor f9a459d02367ebcfcaa2224dade2758b09b95bdd bbfae658e87ac2de7c6326739704a877fb118301",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.6-task/issue-572",
-        "command": "git merge-base --is-ancestor 01268d39a317e18d542a4319bc729da073353518 aebcbd8b7105da88ae71d0e5a80be59b99e8cc53",
+        "command": "git merge-base --is-ancestor f9a459d02367ebcfcaa2224dade2758b09b95bdd aebcbd8b7105da88ae71d0e5a80be59b99e8cc53",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.7-task/issue-572",
-        "command": "git merge-base --is-ancestor 01268d39a317e18d542a4319bc729da073353518 8e84fbcb42f79d86263aab42a1291ecf09ddba7f",
+        "command": "git merge-base --is-ancestor f9a459d02367ebcfcaa2224dade2758b09b95bdd 8e84fbcb42f79d86263aab42a1291ecf09ddba7f",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.8-task/issue-572",
-        "command": "git merge-base --is-ancestor 01268d39a317e18d542a4319bc729da073353518 30d30485f4ade54238cba5aa1a8bc85452df7d39",
+        "command": "git merge-base --is-ancestor f9a459d02367ebcfcaa2224dade2758b09b95bdd 30d30485f4ade54238cba5aa1a8bc85452df7d39",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       },
       {
         "source": "tag-contains-v0.1.9-task/issue-572",
-        "command": "git merge-base --is-ancestor 01268d39a317e18d542a4319bc729da073353518 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0",
+        "command": "git merge-base --is-ancestor f9a459d02367ebcfcaa2224dade2758b09b95bdd 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -1986,7 +1661,7 @@
       },
       {
         "source": "git-grep-task/issue-660",
-        "command": "git grep -n --fixed-strings task/issue-660 73a30ec4e8a410408ac2f8c253d435f9e93674ce -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+        "command": "git grep -n --fixed-strings task/issue-660 b941707706c02acbd619b42c80cec987126d1591 -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -1995,12 +1670,12 @@
         "source": "pr-history-task/issue-660",
         "command": "gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=all&head=MongLong0214:task/issue-660&per_page=100",
         "exit_code": 0,
-        "bytes": 18053,
-        "digest": "sha256:093580b487562d523985e31d4d2d41ec8084e889c6c7b5388a49c7dafa0c03a3"
+        "bytes": 18051,
+        "digest": "sha256:d58c19864eb25bb7a4096d9133413fbeb8990e4ff541371bf489ebb33e80e08b"
       },
       {
         "source": "is-ancestor-dev-task/issue-660",
-        "command": "git merge-base --is-ancestor 55b908cc8962ce75db98aa14a6dc0059d45c612a 73a30ec4e8a410408ac2f8c253d435f9e93674ce",
+        "command": "git merge-base --is-ancestor 55b908cc8962ce75db98aa14a6dc0059d45c612a b941707706c02acbd619b42c80cec987126d1591",
         "exit_code": 1,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -2014,7 +1689,7 @@
       },
       {
         "source": "rev-list-dev-task/issue-660",
-        "command": "git rev-list --count 73a30ec4e8a410408ac2f8c253d435f9e93674ce..55b908cc8962ce75db98aa14a6dc0059d45c612a",
+        "command": "git rev-list --count b941707706c02acbd619b42c80cec987126d1591..55b908cc8962ce75db98aa14a6dc0059d45c612a",
         "exit_code": 0,
         "bytes": 2,
         "digest": "sha256:4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
@@ -2028,10 +1703,10 @@
       },
       {
         "source": "rev-list-behind-dev-task/issue-660",
-        "command": "git rev-list --count 55b908cc8962ce75db98aa14a6dc0059d45c612a..73a30ec4e8a410408ac2f8c253d435f9e93674ce",
+        "command": "git rev-list --count 55b908cc8962ce75db98aa14a6dc0059d45c612a..b941707706c02acbd619b42c80cec987126d1591",
         "exit_code": 0,
         "bytes": 2,
-        "digest": "sha256:7de1555df0c2700329e815b93b32c571c3ea54dc967b89e81ab73b9972b72d1d"
+        "digest": "sha256:2e6d31a5983a91251bfae5aefa1c0a19d8ba3cf601d0e8a706b4cfa9661a6b8a"
       },
       {
         "source": "rev-list-behind-main-task/issue-660",
@@ -2042,14 +1717,14 @@
       },
       {
         "source": "rev-list-neither-task/issue-660",
-        "command": "git rev-list --count 55b908cc8962ce75db98aa14a6dc0059d45c612a --not 73a30ec4e8a410408ac2f8c253d435f9e93674ce d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git rev-list --count 55b908cc8962ce75db98aa14a6dc0059d45c612a --not b941707706c02acbd619b42c80cec987126d1591 d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 0,
         "bytes": 2,
         "digest": "sha256:4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
       },
       {
         "source": "rev-list-ids-neither-task/issue-660",
-        "command": "git rev-list 55b908cc8962ce75db98aa14a6dc0059d45c612a --not 73a30ec4e8a410408ac2f8c253d435f9e93674ce d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git rev-list 55b908cc8962ce75db98aa14a6dc0059d45c612a --not b941707706c02acbd619b42c80cec987126d1591 d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 0,
         "bytes": 41,
         "digest": "sha256:9d679a900b5f827ce592131edbcdb072835581fa5e69bfe4cc66dd7c1f9f9ebc"
@@ -2196,10 +1871,10 @@
       },
       {
         "source": "git-grep-tmp/read-claude-artifact",
-        "command": "git grep -n --fixed-strings tmp/read-claude-artifact 73a30ec4e8a410408ac2f8c253d435f9e93674ce -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+        "command": "git grep -n --fixed-strings tmp/read-claude-artifact b941707706c02acbd619b42c80cec987126d1591 -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
         "exit_code": 0,
         "bytes": 772,
-        "digest": "sha256:47015d23cf3472c85a64b40b6808622d90eff3672544e2aa09dd03dbfc40ab21"
+        "digest": "sha256:d20cf885b87977c4dffbb2b0a74e9e0af387ac89695a9814785063c5cbaafc58"
       },
       {
         "source": "pr-history-tmp/read-claude-artifact",
@@ -2210,7 +1885,7 @@
       },
       {
         "source": "is-ancestor-dev-tmp/read-claude-artifact",
-        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 73a30ec4e8a410408ac2f8c253d435f9e93674ce",
+        "command": "git merge-base --is-ancestor 2d6392f578dd2667d5f1f6ba5073a2c4311430eb b941707706c02acbd619b42c80cec987126d1591",
         "exit_code": 0,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -2224,7 +1899,7 @@
       },
       {
         "source": "rev-list-dev-tmp/read-claude-artifact",
-        "command": "git rev-list --count 73a30ec4e8a410408ac2f8c253d435f9e93674ce..2d6392f578dd2667d5f1f6ba5073a2c4311430eb",
+        "command": "git rev-list --count b941707706c02acbd619b42c80cec987126d1591..2d6392f578dd2667d5f1f6ba5073a2c4311430eb",
         "exit_code": 0,
         "bytes": 2,
         "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
@@ -2238,10 +1913,10 @@
       },
       {
         "source": "rev-list-behind-dev-tmp/read-claude-artifact",
-        "command": "git rev-list --count 2d6392f578dd2667d5f1f6ba5073a2c4311430eb..73a30ec4e8a410408ac2f8c253d435f9e93674ce",
+        "command": "git rev-list --count 2d6392f578dd2667d5f1f6ba5073a2c4311430eb..b941707706c02acbd619b42c80cec987126d1591",
         "exit_code": 0,
         "bytes": 4,
-        "digest": "sha256:f167f2fcbf3c641b8857e859ba871b5feb29f5a1f6ce3255861057b0d65549e8"
+        "digest": "sha256:c65d91cdd130eaca9e3fc56c55ec25054d56cc9e2666765c2cbf626c80be574e"
       },
       {
         "source": "rev-list-behind-main-tmp/read-claude-artifact",
@@ -2252,14 +1927,14 @@
       },
       {
         "source": "rev-list-neither-tmp/read-claude-artifact",
-        "command": "git rev-list --count 2d6392f578dd2667d5f1f6ba5073a2c4311430eb --not 73a30ec4e8a410408ac2f8c253d435f9e93674ce d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git rev-list --count 2d6392f578dd2667d5f1f6ba5073a2c4311430eb --not b941707706c02acbd619b42c80cec987126d1591 d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 0,
         "bytes": 2,
         "digest": "sha256:9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
       },
       {
         "source": "rev-list-ids-neither-tmp/read-claude-artifact",
-        "command": "git rev-list 2d6392f578dd2667d5f1f6ba5073a2c4311430eb --not 73a30ec4e8a410408ac2f8c253d435f9e93674ce d2c68036ebf9f9fd7287258fd3cec252133ef846",
+        "command": "git rev-list 2d6392f578dd2667d5f1f6ba5073a2c4311430eb --not b941707706c02acbd619b42c80cec987126d1591 d2c68036ebf9f9fd7287258fd3cec252133ef846",
         "exit_code": 0,
         "bytes": 0,
         "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -2402,58 +2077,47 @@
         "command": "gh api --paginate --slurp search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20%22fix%2Fa-fixture-backed-agent-is-not-a-runtime%22&per_page=100",
         "exit_code": 0,
         "bytes": 33143,
-        "digest": "sha256:c8bda66700da1a18c16ae16cd5e591670c1cac8f0f7129b2946a76a397fcaf1c"
-      },
-      {
-        "source": "search-fix/collector-symlink-entrypoint",
-        "command": "gh api --paginate --slurp search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20%22fix%2Fcollector-symlink-entrypoint%22&per_page=100",
-        "exit_code": 0,
-        "bytes": 5820,
-        "digest": "sha256:74824d0f489e3961c8f9bc976bb9c669f4e55b9c7dac58e467ea3c9a92c4df75"
+        "digest": "sha256:c86e1221c0caa18e62c1641c6d9f7b87e82c6ec05b1ee081e85cf2cf71e45646"
       },
       {
         "source": "search-task/issue-557-actual-effects",
         "command": "gh api --paginate --slurp search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20%22task%2Fissue-557-actual-effects%22&per_page=100",
         "exit_code": 0,
         "bytes": 5820,
-        "digest": "sha256:74824d0f489e3961c8f9bc976bb9c669f4e55b9c7dac58e467ea3c9a92c4df75"
+        "digest": "sha256:76aa968b886594128a4ce6b30f25f535231d38a59300c7f056f49e6010bdb5f5"
       },
       {
         "source": "search-task/issue-572",
         "command": "gh api --paginate --slurp search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20%22task%2Fissue-572%22&per_page=100",
         "exit_code": 0,
         "bytes": 18014,
-        "digest": "sha256:619539f7be8aa87103bfd46192d8b1dfc2faf5c16bb0c11da27416ca93f37bc3"
+        "digest": "sha256:063d7b46dca45a6cc970876a34be431a63a4d4c507bc080f5e0ca56056a8e3f4"
       },
       {
         "source": "search-task/issue-660",
         "command": "gh api --paginate --slurp search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20%22task%2Fissue-660%22&per_page=100",
         "exit_code": 0,
         "bytes": 5820,
-        "digest": "sha256:74824d0f489e3961c8f9bc976bb9c669f4e55b9c7dac58e467ea3c9a92c4df75"
+        "digest": "sha256:76aa968b886594128a4ce6b30f25f535231d38a59300c7f056f49e6010bdb5f5"
       },
       {
         "source": "search-tmp/read-claude-artifact",
         "command": "gh api --paginate --slurp search/issues?q=repo%3AMongLong0214%2Fagent-operator-score%20%22tmp%2Fread-claude-artifact%22&per_page=100",
         "exit_code": 0,
         "bytes": 33143,
-        "digest": "sha256:c8bda66700da1a18c16ae16cd5e591670c1cac8f0f7129b2946a76a397fcaf1c"
+        "digest": "sha256:c86e1221c0caa18e62c1641c6d9f7b87e82c6ec05b1ee081e85cf2cf71e45646"
       }
     ],
-    "digest": "sha256:de02b0cecd6a3d3ba189253fc2394f14a9c8c0695c429cd7bb117f620e4bf5c1"
+    "digest": "sha256:6831f1157e1d4156950527f14df014b257d2ea2f45ea945562e188189be9e11f"
   },
   "ls_remote_snapshot": [
     {
       "name": "dev",
-      "sha": "73a30ec4e8a410408ac2f8c253d435f9e93674ce"
+      "sha": "b941707706c02acbd619b42c80cec987126d1591"
     },
     {
       "name": "fix/a-fixture-backed-agent-is-not-a-runtime",
       "sha": "e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1"
-    },
-    {
-      "name": "fix/collector-symlink-entrypoint",
-      "sha": "dd46b88d7a9d06cc41776b8a8b51db25506060a7"
     },
     {
       "name": "main",
@@ -2476,7 +2140,7 @@
   "invariant_baseline": {
     "note": "Historical context, not the deletion comparison. What must not change across a deletion is compared between two observations collected either side of it (boundaryInvariantFindings); this baseline records what Phase A saw so a later reader can see how far the repository has moved since.",
     "main_sha": "d2c68036ebf9f9fd7287258fd3cec252133ef846",
-    "dev_sha": "73a30ec4e8a410408ac2f8c253d435f9e93674ce",
+    "dev_sha": "b941707706c02acbd619b42c80cec987126d1591",
     "tags": [
       {
         "name": "archive/pre-v0.1.0-governance",
@@ -2826,12 +2490,6 @@
     "default_branch": "dev",
     "open_pr_heads": [
       {
-        "pr": 666,
-        "branch": "fix/collector-symlink-entrypoint",
-        "sha": "dd46b88d7a9d06cc41776b8a8b51db25506060a7",
-        "base": "dev"
-      },
-      {
         "pr": 667,
         "branch": "task/issue-660",
         "sha": "55b908cc8962ce75db98aa14a6dc0059d45c612a",
@@ -2840,7 +2498,7 @@
       {
         "pr": 669,
         "branch": "task/issue-572",
-        "sha": "01268d39a317e18d542a4319bc729da073353518",
+        "sha": "f9a459d02367ebcfcaa2224dade2758b09b95bdd",
         "base": "dev"
       }
     ]
@@ -2877,6 +2535,10 @@
     {
       "generated_at": "2026-09-19T10:31:44Z",
       "note": "Correction, same content otherwise: task/issue-572 is now pushed and its PR (#669, targeting dev) is open, so heads_created_after_this_snapshot now records that real number instead of leaving it blank -- a reviewer had flagged the previous revision's placeholder as an unmeasured guess, correctly, and the exception is now earned the way auditCoverageFindings actually checks it: a freshly collected observation showing an open pull request with this branch as its head. Re-collecting also caught real drift in the interim: fix/collector-symlink-entrypoint (PR #666) picked up two more commits (a sync merge with dev and a re-merge of its own remote), all still reaching neither dev nor main; its numbers below are re-derived from this observation, not carried over from the previous one."
+    },
+    {
+      "generated_at": "2026-09-19T11:02:53Z",
+      "note": "Re-collected after merging origin/dev (b941707706c02acbd619b42c80cec987126d1591, PR #666) into task/issue-572. fix/collector-symlink-entrypoint merged and delete_branch_on_merge removed it from origin between the previous two collections; it moves to previously_recorded_heads_now_absent (PR #666, merged 2026-09-19T10:41:34Z) instead of being carried forward as an ACTIVE branch that must be preserved, which the stored audit would otherwise have kept asserting about a branch no longer on the remote. The mutation guard \"stale-branch audit preserves orphaned unmerged work\" (tests/mutation/manifest.mjs) is re-pointed in the same commit: its anchor named task/issue-557-actual-effects's now-superseded \"Head of open PR #618\" text, which this refresh's own reclassification of that branch removed, and a PR-number-bearing anchor breaks again the next time the PR it names closes. It is repointed at task/issue-660 (PR #667), the shortest still-unique text that does not embed a PR number, with a reason sentence saying so for whoever refreshes this next. No other audited branch's derivations moved."
     }
   ],
   "previously_recorded_heads_now_absent": [
@@ -2967,6 +2629,17 @@
         "merge_commit": "b3d653a24bf39da602d7d4535d3b2514d039cb01"
       },
       "note": "Audited as ACTIVE in the previous snapshot and gone from this one: PR #617 merged into dev and delete_branch_on_merge removed the head."
+    },
+    {
+      "name": "fix/collector-symlink-entrypoint",
+      "prior_sha": "dd46b88d7a9d06cc41776b8a8b51db25506060a7",
+      "fate": {
+        "pr": 666,
+        "state": "MERGED",
+        "merged_at": "2026-09-19T10:41:34Z",
+        "merge_commit": "b941707706c02acbd619b42c80cec987126d1591"
+      },
+      "note": "Audited as ACTIVE in the previous snapshot and gone from this one: PR #666 merged into dev while this refresh was in flight, and delete_branch_on_merge removed the head. Re-collected before this snapshot was finalized rather than left stale."
     }
   ],
   "heads_created_after_this_snapshot": [
@@ -2992,7 +2665,7 @@
       "unique_commits_vs_dev": 0,
       "unique_commits_vs_main": 0,
       "unique_commits_vs_dev_and_main": 0,
-      "behind_dev": 781,
+      "behind_dev": 786,
       "behind_main": 85,
       "release_tags_containing": [
         "v0.1.11",
@@ -3008,7 +2681,7 @@
       "preserve": [],
       "references": {
         "tree_scan": {
-          "command": "git grep -n --fixed-strings fix/a-fixture-backed-agent-is-not-a-runtime 73a30ec4e8a410408ac2f8c253d435f9e93674ce -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+          "command": "git grep -n --fixed-strings fix/a-fixture-backed-agent-is-not-a-runtime b941707706c02acbd619b42c80cec987126d1591 -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
           "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "hits": []
         },
@@ -3058,75 +2731,6 @@
       "reason": "Receipted derivations: `git merge-base --is-ancestor` places the tip on both dev and main, `git rev-list --count` returns 0 commits reaching neither line, one `git merge-base --is-ancestor` per tag places it in seven release tags, and the all-state PR history is empty -- no pull request ever used it as a head. The branch never carried a commit of its own: it points at the merge commit of PR #511 and never advanced. The complete GitHub-wide sweep and the tree scan find no reference outside this audit, issue #572's candidate list and the previous audit's PR. Deleting it, once #578 and #588 have cleared and a fresh observation still shows it at this commit with no PR open, removes a name and no content."
     },
     {
-      "name": "fix/collector-symlink-entrypoint",
-      "head_sha": "dd46b88d7a9d06cc41776b8a8b51db25506060a7",
-      "author_name": "MongLong0214",
-      "author_email": "weplay0628@gmail.com",
-      "last_commit_date": "2026-09-19T19:02:26+09:00",
-      "age_days": 0,
-      "classification": "ACTIVE",
-      "merged_into_dev": false,
-      "merged_into_main": false,
-      "unique_commits_vs_dev": 4,
-      "unique_commits_vs_main": 700,
-      "unique_commits_vs_dev_and_main": 4,
-      "behind_dev": 0,
-      "behind_main": 0,
-      "release_tags_containing": [],
-      "open_pr": {
-        "number": 666,
-        "url": "https://github.com/MongLong0214/agent-operator-score/pull/666",
-        "state": "OPEN",
-        "base": "dev",
-        "head_sha": "dd46b88d7a9d06cc41776b8a8b51db25506060a7"
-      },
-      "superseding": null,
-      "preserve": [
-        "the collector-symlink-regression fix and its isolating test, reachable from no other ref",
-        "any commits made since, reachable from no other ref while this PR is open"
-      ],
-      "references": {
-        "tree_scan": {
-          "command": "git grep -n --fixed-strings fix/collector-symlink-entrypoint 73a30ec4e8a410408ac2f8c253d435f9e93674ce -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
-          "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          "hits": []
-        },
-        "github_search": {
-          "query": "repo:MongLong0214/agent-operator-score \"fix/collector-symlink-entrypoint\"",
-          "complete": true,
-          "total_count": 1,
-          "issues": [],
-          "prs": [
-            {
-              "number": 669,
-              "state": "open",
-              "title": "docs(governance): refresh #572 Phase A stale-branch audit against current origin"
-            }
-          ]
-        },
-        "pr_history": [
-          {
-            "number": 666,
-            "state": "OPEN",
-            "merged_at": null,
-            "base": "dev",
-            "head_sha": "dd46b88d7a9d06cc41776b8a8b51db25506060a7"
-          }
-        ],
-        "workflows": [],
-        "skills": [],
-        "commands": [],
-        "scripts": [],
-        "schemas": [],
-        "contracts": [],
-        "docs": []
-      },
-      "branch_protected": false,
-      "unestablished": [],
-      "recommendation": "must_be_preserved",
-      "reason": "Head of open PR #666 (\"fix(collector): a symlinked invocation collected nothing and exited 0\") targeting dev, under review. Receipted derivations show 4 commit(s) reaching neither dev nor main -- collected as ids, not only as a count -- and no release tag containing it; that work exists on no other ref. Deleting the head branch of an open pull request is on this issue's own prohibited-actions list, and the deletion gate re-checks the live pull request state against a freshly collected observation rather than trusting this record."
-    },
-    {
       "name": "task/issue-557-actual-effects",
       "head_sha": "530335c80dcef292fb29cb23dff8ef1bb95188e4",
       "author_name": "MongLong0214",
@@ -3139,7 +2743,7 @@
       "unique_commits_vs_dev": 1,
       "unique_commits_vs_main": 351,
       "unique_commits_vs_dev_and_main": 1,
-      "behind_dev": 346,
+      "behind_dev": 351,
       "behind_main": 0,
       "release_tags_containing": [],
       "open_pr": null,
@@ -3156,7 +2760,7 @@
       ],
       "references": {
         "tree_scan": {
-          "command": "git grep -n --fixed-strings task/issue-557-actual-effects 73a30ec4e8a410408ac2f8c253d435f9e93674ce -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+          "command": "git grep -n --fixed-strings task/issue-557-actual-effects b941707706c02acbd619b42c80cec987126d1591 -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
           "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "hits": []
         },
@@ -3208,7 +2812,7 @@
       "unique_commits_vs_dev": 1,
       "unique_commits_vs_main": 693,
       "unique_commits_vs_dev_and_main": 1,
-      "behind_dev": 4,
+      "behind_dev": 9,
       "behind_main": 0,
       "release_tags_containing": [],
       "open_pr": {
@@ -3224,7 +2828,7 @@
       ],
       "references": {
         "tree_scan": {
-          "command": "git grep -n --fixed-strings task/issue-660 73a30ec4e8a410408ac2f8c253d435f9e93674ce -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+          "command": "git grep -n --fixed-strings task/issue-660 b941707706c02acbd619b42c80cec987126d1591 -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
           "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "hits": []
         },
@@ -3276,7 +2880,7 @@
       "unique_commits_vs_dev": 0,
       "unique_commits_vs_main": 0,
       "unique_commits_vs_dev_and_main": 0,
-      "behind_dev": 729,
+      "behind_dev": 734,
       "behind_main": 33,
       "release_tags_containing": [
         "v0.1.16",
@@ -3287,12 +2891,12 @@
       "preserve": [],
       "references": {
         "tree_scan": {
-          "command": "git grep -n --fixed-strings tmp/read-claude-artifact 73a30ec4e8a410408ac2f8c253d435f9e93674ce -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
-          "digest": "sha256:47015d23cf3472c85a64b40b6808622d90eff3672544e2aa09dd03dbfc40ab21",
+          "command": "git grep -n --fixed-strings tmp/read-claude-artifact b941707706c02acbd619b42c80cec987126d1591 -- :!docs/STALE_BRANCH_AUDIT.md :!fixtures/stale-branches/",
+          "digest": "sha256:d20cf885b87977c4dffbb2b0a74e9e0af387ac89695a9814785063c5cbaafc58",
           "hits": [
-            "73a30ec4e8a410408ac2f8c253d435f9e93674ce:tests/mutation/manifest.mjs",
-            "73a30ec4e8a410408ac2f8c253d435f9e93674ce:tests/mutation/manifest.mjs",
-            "73a30ec4e8a410408ac2f8c253d435f9e93674ce:tests/product/branch-cleanup-invariants.test.mjs"
+            "b941707706c02acbd619b42c80cec987126d1591:tests/mutation/manifest.mjs",
+            "b941707706c02acbd619b42c80cec987126d1591:tests/mutation/manifest.mjs",
+            "b941707706c02acbd619b42c80cec987126d1591:tests/product/branch-cleanup-invariants.test.mjs"
           ]
         },
         "github_search": {
@@ -3338,7 +2942,7 @@
         }
       ],
       "recommendation": "safe_to_delete_after_578",
-      "reason": "Receipted derivations place the tip on both dev and main with 0 commits reaching neither line, and in release tags v0.1.16, v0.1.17. It is the merge commit of PR #538 and the branch never advanced past it (it is now 729 commits behind dev and 33 behind main). It is a tmp/* branch, which repository policy caps at seven days or task end; it is well past that. The all-state PR history is empty. The complete GitHub-wide reference sweep finds nothing outside this audit's own issue thread and the earlier audit PRs; the tree scan now finds three hits, each a literal mention of this branch's name inside mutation-test fixtures added by unrelated later work (#568), not a dependency on its content."
+      "reason": "Receipted derivations place the tip on both dev and main with 0 commits reaching neither line, and in release tags v0.1.16, v0.1.17. It is the merge commit of PR #538 and the branch never advanced past it (it is now 734 commits behind dev and 33 behind main). It is a tmp/* branch, which repository policy caps at seven days or task end; it is well past that. The all-state PR history is empty. The complete GitHub-wide reference sweep finds nothing outside this audit's own issue thread and the earlier audit PRs; the tree scan now finds three hits, each a literal mention of this branch's name inside mutation-test fixtures added by unrelated later work (#568), not a dependency on its content."
     }
   ],
   "closes_issue": false,
