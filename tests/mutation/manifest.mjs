@@ -9990,6 +9990,43 @@ export const GUARDS = [
     to: "  const relianceAdministration = false ? null : createRelianceAdministration({",
     test: "tests/product/relay-chat-smoke.test.mjs",
     name: "without --relay the shipped binary asks nothing and says the journal is empty rather than measured"
+  },
+  // #571: `scripts/build-release.mjs`, the producer that runs `npm pack` and hands the result to
+  // `lib/release-artifacts.mjs`. That library's own verdicts (`packageBoundary`, `versionConsistency`,
+  // `sourceAuthority`) are already unit-tested; what only this script can get wrong is losing one of
+  // those three verdicts on the way to an exit code. Each array below is independently load-bearing --
+  // dropping any one back to `[]` lets a release with that specific defect through silently while the
+  // script still refuses on the other two, which is why each has its own guard rather than one guard
+  // on the shared `problems.length > 0` gate they all feed.
+  {
+    reachable_from: ["scripts/build-release.mjs"],
+    guard: "the release build script surfaces every package boundary finding, not just whether one exists",
+    reason: "#571. A forbidden or unexpected file in the real `npm pack` output must reach the exit code, or a release could ship exactly the credential and workspace material `packageBoundary` exists to catch.",
+    file: "scripts/build-release.mjs",
+    from: "const boundaryProblems = [...boundary.unsafe, ...boundary.forbidden, ...boundary.unexpected].map((one) => `package boundary: ${one}`);",
+    to: "const boundaryProblems = [];",
+    test: "tests/product/build-release.test.mjs",
+    name: "the build script refuses when the package boundary finds a forbidden or unexpected file"
+  },
+  {
+    reachable_from: ["scripts/build-release.mjs"],
+    guard: "the release build script surfaces every version-surface mismatch",
+    reason: "#571. `versionConsistency` finds the drift; if this script stopped reading its verdict, a plugin manifest or marketplace listing lagging the release version would ship without a warning, which is the exact `near-green` failure `docs/RELEASE.md` names.",
+    file: "scripts/build-release.mjs",
+    from: "const versionProblems = versionCheck.mismatched.map((one) => `version: ${one}`);",
+    to: "const versionProblems = [];",
+    test: "tests/product/build-release.test.mjs",
+    name: "the build script refuses when a version surface disagrees with the release version"
+  },
+  {
+    reachable_from: ["scripts/build-release.mjs"],
+    guard: "the release build script surfaces every source-authority problem",
+    reason: "#571. `sourceAuthority` is the check named for exactly this: a release cut from `dev` that names `main` in one field and `dev` in another. Dropping this array lets the two silently disagree.",
+    file: "scripts/build-release.mjs",
+    from: "const authorityProblems = authority.problems.map((one) => `source authority: ${one}`);",
+    to: "const authorityProblems = [];",
+    test: "tests/product/build-release.test.mjs",
+    name: "the build script refuses when main and the built commit are not the same source"
   }
 ];
 
@@ -11001,6 +11038,9 @@ export const ACCOUNTED_GUARDS = [
   "the record cites the pre-deletion observation it was checked against",
   "the references a record reports are the ones the sweep returned",
   "the relay administration runs only when the operator asked to be asked",
+  "the release build script surfaces every package boundary finding, not just whether one exists",
+  "the release build script surfaces every source-authority problem",
+  "the release build script surfaces every version-surface mismatch",
   "the release-canary script exits non-zero when the gate does not accept the record",
   "the release-canary script fails closed with no evidence file",
   "the reliance evidence survives its trace",
