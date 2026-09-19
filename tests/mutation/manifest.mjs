@@ -3631,7 +3631,7 @@ export const GUARDS = [
     from: "      if (outstanding > 0 && (record.supersedes_commits ?? []).length !== outstanding) {",
     to: "      if (false && outstanding > 0 && (record.supersedes_commits ?? []).length !== outstanding) {",
     test: "tests/product/stale-branch-audit.test.mjs",
-    name: "SUPERSEDED must account for every commit that reaches neither dev nor main"
+    name: "SUPERSEDED is refused when the superseding record's commit count does not match the outstanding count"
   },
   {
     guard: "UNIQUE_WORK carries the plan that gets the work off the branch",
@@ -4514,7 +4514,7 @@ export const GUARDS = [
   {
     guard: "stale-branch audit preserves orphaned unmerged work",
     reason:
-      "a branch whose only copy of real work sits nowhere else must never read as safe to delete: that is the loss #578's evidence-preservation gate exists to prevent. The anchor below is bound to the committed snapshot, not to the code: it names whichever branch the fixture currently records as ACTIVE, and it must be re-pointed at a still-open, still-must_be_preserved branch every time the audit is refreshed, the way it was re-pointed off task/issue-557-actual-effects (\"Head of open PR #618\") once that branch's PR merged and its recommendation changed. It deliberately no longer embeds a PR number, so closing whichever PR is current does not break it the same way again.",
+      "a branch whose only copy of real work sits nowhere else must never read as safe to delete: that is the loss #578's evidence-preservation gate exists to prevent. The anchor below is bound to the committed snapshot, not to the code: it names whichever branch the fixture currently records as ACTIVE, and it must be re-pointed at a still-open, still-must_be_preserved branch every time the audit is refreshed, the way it was re-pointed off task/issue-557-actual-effects (\"Head of open PR #618\") once that branch's PR merged and its recommendation changed. It still breaks the same way, on the same schedule: `\"recommendation\": \"must_be_preserved\",` must occur exactly once, so it goes to zero occurrences the moment the branch it now names (task/issue-660, PR #667) merges and no other branch is ACTIVE, and to two or more the moment a future refresh has more than one ACTIVE branch at once.",
     file: "fixtures/stale-branches/audit.json",
     from: "\"recommendation\": \"must_be_preserved\",",
     to: "\"recommendation\": \"safe_to_delete_after_578\",",
