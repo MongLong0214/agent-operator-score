@@ -14,6 +14,7 @@ import {
   unestablishedFindings
 } from "../../scripts/branch-audit.mjs";
 import { REQUIRED_DERIVATIONS, citedSources, observationDigest, verifyObservation } from "../../scripts/collect-branch-state.mjs";
+import { buildFixtureRepository, withFakeGitHub } from "./branch-state-fixture.mjs";
 
 // #572 phase one is a read-only audit: no branch may be deleted, renamed or force-pushed until #578
 // and #588 have preserved the evidence. An audit is only worth having if it is checkable rather than
@@ -979,5 +980,39 @@ test("a record that under-reports the references the sweep returned is refused",
   ]) {
     const forged = withBranch(audit, withHits.name, { references: { ...withHits.references, github_search: { ...withHits.references.github_search, ...patch } } });
     assert.notDeepEqual(derivationFindings(forged), [], `a record dropping ${JSON.stringify(patch)} from its reference scan passed`);
+  }
+});
+
+test("the collector runs when invoked through a symlinked path, and does not exit 0 having collected nothing", async () => {
+  // `import.meta.url` is already a realpath and `process.argv[1]` is whatever was typed. On macOS
+  // `/tmp` is a symlink to `/private/tmp`, so a string comparison between the two made this script
+  // skip its whole body and exit 0 -- which reads to every caller exactly like a successful
+  // collection. Measured before the fix: the same command through a `/tmp` symlink exited 0 and
+  // wrote no file.
+  //
+  // A collector that silently collects nothing is worse than one that crashes, because the audit
+  // downstream reads its absence as an answer. The witness is the symlinked invocation; the direct
+  // one passes either way and would have proved nothing.
+  const { symlinkSync } = await import("node:fs");
+  const { spawnSync } = await import("node:child_process");
+
+  const script = fileURLToPath(new URL("../../scripts/collect-branch-state.mjs", import.meta.url));
+  const fixture = buildFixtureRepository();
+  try {
+    const link = join(fixture.root, "collect-via-link.mjs");
+    symlinkSync(script, link);
+    const out = join(fixture.root, "observation.json");
+    const result = withFakeGitHub(fixture, () => spawnSync(process.execPath, [link, fixture.repository, out], {
+      cwd: fixture.work, encoding: "utf8", timeout: 300000
+    }));
+    assert.equal(result.status, 0, result.stderr?.slice(0, 600));
+    assert.ok(existsSync(out),
+      "the collector exited 0 through a symlinked path without writing an observation, which is indistinguishable from a successful collection");
+    const observation = JSON.parse(readFileSync(out, "utf8"));
+    assert.equal(observation.repository, fixture.repository);
+    assert.deepEqual(verifyObservation(observation), []);
+    assert.equal(observation.digest, observationDigest(observation));
+  } finally {
+    fixture.cleanup();
   }
 });
