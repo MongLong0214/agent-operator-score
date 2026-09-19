@@ -193,3 +193,67 @@ Reviewing that diff is a person's job; what this removes is the possibility of i
 **The version comment is not verified against the upstream release.** Nothing here confirms that
 `fbc6f39…` really is what `v5.1.0` tagged. A reviewer or Dependabot establishes that; this check
 establishes that a claim was made in a checkable form.
+
+# Release artifacts (#571)
+
+Everything above is about the pipeline that builds this repository. This section is about the one
+thing that pipeline eventually produces: the tarball a stranger downloads, and the two records that
+say what is in it and where it came from. `.npmignore` behaving as expected is not a contract; it is
+a default that silently changes when a dependency, a config file or an editor adds a new dotfile.
+`lib/release-artifacts.mjs` is the contract, `scripts/build-release.mjs` is what runs it, and neither
+publishes anything — this is the producing and verifying half of a release, not the shipping half.
+
+## What the script does, and does not do
+
+    node scripts/build-release.mjs                       # builds this repository's own package
+    node scripts/build-release.mjs --json                # the same, machine-readable
+    node scripts/build-release.mjs --out <dir>            # writes the tarball and both records there
+    node scripts/build-release.mjs --sbom <path>          # binds an SBOM already produced elsewhere
+
+It runs `npm pack --dry-run --json` first and hands the file list straight to `packageBoundary` —
+the same allow/deny contract `tests/product/release-artifacts.test.mjs` measures against a real pack
+of this repository, not against invented paths. Any finding there — a forbidden file, a path outside
+the allowlist, an escaping or non-regular entry — refuses the release before anything is written to
+disk. Only once the package, the version surfaces (`package.json`, the plugin manifest, the
+marketplace listing, the release tag) and the five commit identities (`sourceAuthority`) all agree
+does it run a real `npm pack`, hash the tarball it produced, and write the two records a release
+publishes: an `aos-agent-install.v2` install manifest and an `aos-release-provenance.v2` provenance
+record. All three refusal checks report every reason at once, for the same reason `packageBoundary`
+itself does — a release that only ever hears about the first defect turns fixing it into a search
+for the next one.
+
+**It does not tag, publish or open a GitHub release.** Attaching these three files to an actual
+release, pushing the tag, and running `npm publish` (which this `private: true` package refuses
+regardless) are later, separate, human steps — the same split `docs/RELEASE.md` already describes
+between cutting a release branch and merging it through required checks.
+
+## What `core_digest` is, and is not, a promise about
+
+`buildProvenance` excludes `built_at` from `core_digest` on purpose: two builds of the same source
+must not disagree only because the clock moved. What it does *not* exclude is
+`install_manifest_digest`, and that digest is not clock-free — `buildInstallManifest`'s own digest
+covers `generated_at`, because an install manifest is a consumer-facing artifact whose whole job is
+letting an installer verify it received the exact bytes it was pointed at, timestamp included. So
+`core_digest` will differ between two independent runs of `build-release.mjs` against the identical
+commit, even though `package_sha256` and `package_file_manifest_digest` — the fields that actually
+describe the shipped content — will not. Measured, not assumed: packing this repository twice a
+second apart produces the same tarball byte for byte (`npm`'s own pack step is deterministic given
+identical input), and two runs of `build-release.mjs` against it produce the same `package_sha256`
+and a different `core_digest`, because each run mints its own install manifest instance. That is the
+correct reading, not a bug to route around: a provenance record vouches for *the specific install
+manifest it was generated alongside*, and two runs genuinely produce two different manifest
+instances, however identical their content. A reproducibility check across rebuilds compares
+`package_sha256` and `package_file_manifest_digest`, not `core_digest`.
+
+## The five verify scripts
+
+    npm run verify:release-assets          # the full pipeline, against this repository's own package
+    npm run verify:stable-install-manifest # an install manifest's digest covers everything but itself
+    npm run verify:package-boundary        # the allow/deny contract, against a real pack and by hand
+    npm run verify:release-provenance      # the provenance core is reproducible and excludes built_at
+    npm run verify:version-consistency     # every surface that states a version is compared, by name
+
+Each selects real tests in `tests/product/release-artifacts.test.mjs` and
+`tests/product/build-release.test.mjs` by name — `tests/product/verification-scripts.test.mjs`
+refuses a verify script whose pattern selects nothing, which is what keeps this list from silently
+drifting into five names that all happen to run the same one test.
