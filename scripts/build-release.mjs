@@ -13,9 +13,9 @@
 // ship, measures it, and writes the tarball plus the two records a release publishes --
 // `aos-agent-install.v2` and `aos-release-provenance.v2` -- to `--out`. Uploading those three files
 // to an actual release is a later, separate, human step.
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { VERSION, readJsonIfExists, sha256Value, writeJson } from "../lib/core.mjs";
@@ -159,8 +159,70 @@ const generatedAt = new Date().toISOString();
 const releaseUrl = (name) => `https://github.com/${repository}/releases/download/${tag}/${name}`;
 
 const artifacts = [{ kind: "npm-tarball", name: packedMeta.filename, sha256: packageSha256, url: releaseUrl(packedMeta.filename) }];
-const sbomDigest = flags.sbom ? fileByteDigest(flags.sbom) : null;
-const sbomUrl = flags.sbom ? releaseUrl("sbom.spdx.json") : null;
+
+// The SBOM describes the artifact, not the checkout, so it lists what the tarball carries: this
+// package and its runtime dependencies. A devDependency is excluded because it is not in the
+// tarball -- claiming otherwise would describe a supply chain the consumer does not receive. This
+// repository currently ships no runtime dependency at all, so `components` is legitimately empty,
+// and an empty list is a statement rather than a gap.
+//
+// Generated from `package-lock.json` rather than by a generator dependency: adding a third-party
+// tool to the build in order to describe the build's third-party surface is a trade this issue
+// should not make silently. `--sbom <path>` still overrides with one produced elsewhere.
+const buildSbom = () => {
+  const lock = readJsonIfExists(join(dir, "package-lock.json")) ?? {};
+  const components = Object.entries(lock.packages ?? {})
+    .filter(([path, entry]) => path !== "" && entry.dev !== true && entry.optional !== true)
+    .map(([path, entry]) => {
+      const name = path.replace(/^(?:.*\/)?node_modules\//u, "");
+      const component = {
+        type: "library",
+        name,
+        version: entry.version ?? null,
+        purl: `pkg:npm/${name.replace(/^@/u, "%40")}@${entry.version ?? ""}`
+      };
+      // `integrity` is the registry's own digest of the tarball npm installed. It is the only
+      // per-dependency hash this lockfile actually carries; deriving one any other way would be
+      // asserting something nobody measured.
+      if (typeof entry.integrity === "string") {
+        const [algorithm, value] = entry.integrity.split("-");
+        if (algorithm === "sha512" || algorithm === "sha256") {
+          component.hashes = [{ alg: algorithm === "sha512" ? "SHA-512" : "SHA-256", content: Buffer.from(value, "base64").toString("hex") }];
+        }
+      }
+      return component;
+    })
+    .sort((a, b) => (a.purl < b.purl ? -1 : a.purl > b.purl ? 1 : 0));
+  return {
+    bomFormat: "CycloneDX",
+    specVersion: "1.5",
+    version: 1,
+    metadata: {
+      timestamp: generatedAt,
+      component: {
+        type: "application",
+        name: pkg.name,
+        version: VERSION,
+        purl: `pkg:npm/${pkg.name}@${VERSION}`,
+        // Bare hex: CycloneDX types `hashes[].content` as the digest itself, while `fileByteDigest`
+        // returns it `sha256:`-prefixed for this repository's own records.
+        hashes: [{ alg: "SHA-256", content: packageSha256.replace(/^sha256:/u, "") }]
+      },
+      properties: [
+        { name: "aos:source_commit", value: commit },
+        { name: "aos:release_tag", value: tag },
+        { name: "aos:scope", value: "runtime dependencies of the published tarball; devDependencies are excluded because they are not in it" }
+      ]
+    },
+    components
+  };
+};
+
+const sbomPath = join(outDir, "sbom.cyclonedx.json");
+if (!flags.sbom) writeJson(sbomPath, buildSbom());
+const sbomFile = flags.sbom ? resolve(process.cwd(), flags.sbom) : sbomPath;
+const sbomDigest = fileByteDigest(sbomFile);
+const sbomUrl = releaseUrl(flags.sbom ? "sbom.spdx.json" : "sbom.cyclonedx.json");
 
 const installManifest = buildInstallManifest({
   repository,
@@ -205,6 +267,14 @@ const provenancePath = join(outDir, "provenance.json");
 writeJson(installManifestPath, installManifest);
 writeJson(provenancePath, provenance);
 
+// Written last, because it hashes the files above. `checksumsUrl` in the install manifest has always
+// named this file; until now nothing wrote it, so the manifest pointed a consumer at a URL that
+// would 404. Plain `shasum -c` format, so verifying needs no tool this project ships.
+const checksumsPath = join(outDir, "SHA256SUMS");
+const checksumLines = [tarballPath, sbomFile, installManifestPath, provenancePath]
+  .map((path) => `${fileByteDigest(path).replace(/^sha256:/u, "")}  ${basename(path)}`);
+writeFileSync(checksumsPath, `${checksumLines.join("\n")}\n`, "utf8");
+
 const result = {
   ok: true,
   tag,
@@ -214,7 +284,7 @@ const result = {
   packageFileManifestDigest: fileManifestDigest,
   installManifest,
   provenance,
-  out: { dir: outDir, tarball: tarballPath, installManifest: installManifestPath, provenance: provenancePath }
+  out: { dir: outDir, tarball: tarballPath, sbom: sbomFile, checksums: checksumsPath, installManifest: installManifestPath, provenance: provenancePath }
 };
 
 if (json) {
@@ -224,5 +294,7 @@ if (json) {
   process.stdout.write(`file manifest  ${fileManifestDigest}\n`);
   process.stdout.write(`install manifest  ${installManifest.manifest_digest}  ${installManifestPath}\n`);
   process.stdout.write(`provenance  ${provenance.core_digest}  ${provenancePath}\n`);
+  process.stdout.write(`sbom  ${sbomDigest}  ${sbomFile}\n`);
+  process.stdout.write(`checksums  ${checksumsPath}\n`);
   process.stdout.write(`wrote to ${outDir}\n`);
 }

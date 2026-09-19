@@ -207,8 +207,8 @@ publishes anything — this is the producing and verifying half of a release, no
 
     node scripts/build-release.mjs                       # builds this repository's own package
     node scripts/build-release.mjs --json                # the same, machine-readable
-    node scripts/build-release.mjs --out <dir>            # writes the tarball and both records there
-    node scripts/build-release.mjs --sbom <path>          # binds an SBOM already produced elsewhere
+    node scripts/build-release.mjs --out <dir>            # writes all five release assets there
+    node scripts/build-release.mjs --sbom <path>          # binds an SBOM produced elsewhere instead
 
 It runs `npm pack --dry-run --json` first and hands the file list straight to `packageBoundary` —
 the same allow/deny contract `tests/product/release-artifacts.test.mjs` measures against a real pack
@@ -216,13 +216,21 @@ of this repository, not against invented paths. Any finding there — a forbidde
 the allowlist, an escaping or non-regular entry — refuses the release before anything is written to
 disk. Only once the package, the version surfaces (`package.json`, the plugin manifest, the
 marketplace listing, the release tag) and the five commit identities (`sourceAuthority`) all agree
-does it run a real `npm pack`, hash the tarball it produced, and write the two records a release
-publishes: an `aos-agent-install.v2` install manifest and an `aos-release-provenance.v2` provenance
-record. All three refusal checks report every reason at once, for the same reason `packageBoundary`
+does it run a real `npm pack`, hash the tarball it produced, and write the four files that go
+beside it: an `aos-agent-install.v2` install manifest, an `aos-release-provenance.v2` provenance
+record, a CycloneDX SBOM, and `SHA256SUMS` over all four. All three refusal checks report every reason at once, for the same reason `packageBoundary`
 itself does — a release that only ever hears about the first defect turns fixing it into a search
 for the next one.
 
-**It does not tag, publish or open a GitHub release.** Attaching these three files to an actual
+The SBOM is generated from the lockfile rather than by a generator dependency: adding a third-party
+tool to the build in order to describe the build's third-party surface is a trade this repository
+should not make silently. It describes the *artifact*, so it lists the tarball's runtime dependencies
+and excludes devDependencies, which are not in it — this package currently ships none at all, so
+`components` is legitimately empty, and an empty list is a statement rather than a gap. `SHA256SUMS`
+is written last, in plain `shasum -c` format, because it hashes the other four; until it existed the
+install manifest's `checksums_url` named a file nothing wrote.
+
+**It does not tag, publish or open a GitHub release.** Attaching these five files to an actual
 release, pushing the tag, and running `npm publish` (which this `private: true` package refuses
 regardless) are later, separate, human steps — the same split `docs/RELEASE.md` already describes
 between cutting a release branch and merging it through required checks.
