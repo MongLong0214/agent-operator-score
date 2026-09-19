@@ -672,18 +672,47 @@ test("SUPERSEDED without a complete superseding record is refused, component by 
   }
 });
 
-test("SUPERSEDED must account for every commit that reaches neither dev nor main", () => {
+// Split from one test into two. The original forged a single fixed-length id ("0".repeat(40)) onto
+// whichever branch `.find()` happened to return, so it only caught an under-accounting when that
+// branch's real outstanding count was not 1 -- an arithmetic coincidence of the fixture, not
+// coverage of the rule. Deriving the forged length from the branch's own count makes each assertion
+// true at any fixture value, including 1, and neither can pass or fail because some other branch
+// merged.
+test("SUPERSEDED is refused when the superseding record's commit count does not match the outstanding count", () => {
   const audit = loadAudit();
   const active = audit.branches.find((entry) => entry.open_pr);
+  const outstanding = active.unique_commits_vs_dev_and_main;
+  // Deliberately one too many, whatever `outstanding` is -- a length mismatch in either direction is
+  // the defect classificationFindings' count check exists to catch.
+  const wrongLengthIds = Array.from({ length: outstanding + 1 }, (_, i) => String(i).padStart(40, "0"));
   const forged = withBranch(audit, active.name, {
     classification: "SUPERSEDED",
     recommendation: "safe_to_delete_after_578",
     open_pr: null,
     preserve: [],
-    superseding: { pr: 610, sha: "2e2e0afb0effbe2d88a1eee0ddbbcb9300c70a49", note: "reimplemented on latest dev and merged there under PR #610", supersedes_commits: ["0".repeat(40)] }
+    superseding: { pr: 610, sha: "2e2e0afb0effbe2d88a1eee0ddbbcb9300c70a49", note: "reimplemented on latest dev and merged there under PR #610", supersedes_commits: wrongLengthIds }
   });
   const findings = classificationFindings(forged);
-  assert.ok(findings.some((f) => f.includes("accounted for by the replacement")), `an under-accounted SUPERSEDED branch passed: ${findings.join(" | ")}`);
+  assert.ok(findings.some((f) => f.includes("accounted for by the replacement")), `a SUPERSEDED branch whose replacement names the wrong number of commits passed: ${findings.join(" | ")}`);
+});
+
+test("SUPERSEDED is refused when the superseding record names the right number of commits but the wrong ones", () => {
+  const audit = loadAudit();
+  const active = audit.branches.find((entry) => entry.open_pr);
+  const outstanding = active.unique_commits_vs_dev_and_main;
+  // Right length, wrong ids -- the shape classificationFindings' count check cannot see, and the
+  // shape derivationFindings exists for: "the contract was satisfied by any list of 40-hex strings
+  // of the right length -- eighteen zero-padded strings accounted for eighteen real commits."
+  const wrongIds = Array.from({ length: outstanding }, (_, i) => String(i).padStart(40, "0"));
+  const forged = withBranch(audit, active.name, {
+    classification: "SUPERSEDED",
+    recommendation: "safe_to_delete_after_578",
+    open_pr: null,
+    preserve: [],
+    superseding: { pr: 610, sha: "2e2e0afb0effbe2d88a1eee0ddbbcb9300c70a49", note: "reimplemented on latest dev and merged there under PR #610", supersedes_commits: wrongIds }
+  });
+  const findings = derivationFindings(forged, audit.live_observation);
+  assert.ok(findings.some((f) => f.includes("commit ids the collector did not derive")), `a SUPERSEDED branch whose replacement names fabricated commit ids passed: ${findings.join(" | ")}`);
 });
 
 test("UNKNOWN_HOLD must name what blocks the decision", () => {
