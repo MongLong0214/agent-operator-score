@@ -8,9 +8,9 @@
 > report ordinary progress as damage. Seven heads have turned over across the versions of this
 > document, one of them while a snapshot was being taken.
 
-- **Generated:** 2026-09-19T09:54:05Z
+- **Generated:** 2026-09-19T10:31:44Z
 - **Repository:** `MongLong0214/agent-operator-score`
-- **Observation digest:** `sha256:5c05f7ad63ba5e09fd47ee5bd3729b42fe4150063e14755294788f7c550bad8a` (recursive over the whole record)
+- **Observation digest:** `sha256:de02b0cecd6a3d3ba189253fc2394f14a9c8c0695c429cd7bb117f620e4bf5c1` (recursive over the whole record)
 - **`dev` at snapshot:** `73a30ec4e8a410408ac2f8c253d435f9e93674ce`
 - **`main` at snapshot:** `d2c68036ebf9f9fd7287258fd3cec252133ef846`
 - **Machine-readable source of truth:** [`fixtures/stale-branches/audit.json`](../fixtures/stale-branches/audit.json)
@@ -23,8 +23,8 @@ not hold exactly one row per audited branch, at the recorded SHA.
 ## Where these facts came from
 
 Every external fact was collected by `scripts/collect-branch-state.mjs`, which records the command
-line, exit code, byte count and a SHA-256 of the raw stdout beside each answer. **164 receipts** in
-total: 9 repository-wide, listed below, and 155 per-branch derivations.
+line, exit code, byte count and a SHA-256 of the raw stdout beside each answer. **195 receipts** in
+total: 9 repository-wide, listed below, and 186 per-branch derivations.
 
 That includes the graph facts, not only the queries around them. When a branch record below says it
 is contained in `dev`, the `git merge-base --is-ancestor` that decides it is a receipt; so are the
@@ -47,15 +47,15 @@ prove nothing.
 
 | command | exit | bytes | digest |
 |---|---|---|---|
-| `git ls-remote --heads origin` | 0 | 520 | `sha256:619b3c9f70a77daf669971e49413edc1d32c0753db36428f0ffa757a0846191f` |
-| `gh api --paginate --slurp repos/MongLong0214/agent-operator-score/branches?per_page=100` | 0 | 4875 | `sha256:2f10999ab845c0e05cba149f9fd01fc05585172a7da8244497586c1fb911d206` |
-| `gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=open&per_page=100` | 0 | 37567 | `sha256:e810339b254cf140b541788fe087dfa54e89184c43289244449fd64378a82769` |
+| `git ls-remote --heads origin` | 0 | 587 | `sha256:d59160c4c2f4f714b983114b1f8840036cfd0c31f69e74246d679fe18826b39d` |
+| `gh api --paginate --slurp repos/MongLong0214/agent-operator-score/branches?per_page=100` | 0 | 5326 | `sha256:d70d00ffd3179ecb2736d6c685a3052f9ed794c3ed65c8ef40aca649fc1bb4f2` |
+| `gh api --paginate --slurp repos/MongLong0214/agent-operator-score/pulls?state=open&per_page=100` | 0 | 58081 | `sha256:180f73cf0ba98ffb459a615d66a520838ceffa4d895fda378acf6aff6f3113e4` |
 | `git ls-remote --tags origin` | 0 | 2323 | `sha256:e4110333eb2096c906041412784a350fe30b478de0af6caf9f24d61a5b2012db` |
 | `gh api repos/MongLong0214/agent-operator-score/branches/main/protection` | 0 | 1845 | `sha256:a61f822cb0c04a82978c62885dcf4f79608597db586540bd95de31ed00573aba` |
 | `gh api repos/MongLong0214/agent-operator-score/branches/dev/protection` | 0 | 2344 | `sha256:8004eb2fa626151263058188301efd870300edfe06c0164f09448c85d58ee69c` |
 | `gh api --paginate --slurp repos/MongLong0214/agent-operator-score/rulesets?per_page=100` | 0 | 4 | `sha256:cf1cbb66a638b4860a516671fb74850e6ccf787fe6c4c8d29e9c04efe880bd05` |
-| `gh api repos/MongLong0214/agent-operator-score` | 0 | 6762 | `sha256:3751f7342c67c97d84e01b45825877994bb1a91f3185c145dcdac3b48d320ec2` |
-| `git fetch -q origin 73a30ec4e8a410408ac2f8c253d435f9e93674ce e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 ebafe26421f29fd9e81604a897c0f3a61739a1fb d2c68036ebf9f9fd7287258fd3cec252133ef846 530335c80dcef292fb29cb23dff8ef1bb95188e4 55b908cc8962ce75db98aa14a6dc0059d45c612a 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 36b823f22217e9d8be011318e295231c62a3f813 fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3 efe351c991797a8cde88c23b8e8933d9a90db11d 98353d24fdd6b932c717bd8b9a0971c22986f7b7 4566b33143155b91981d07308bd113ad8fad9b35 c371ac93d49a592925b24de5013bc9b3b303dd7d 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea d89a4b22a0e8de14fff316edcae18c3e6caadf9a 426c23d0f62fa2666135f978db0f5802ace7c8cc 120ce7c96feb961ee7c4599c2946f059b8d9b7c6 43bae4bf460939a743c837b8e0a05d8f9e044026 dc7f6563ec0d6e951fe984fa026eea8c5efc3aed ae648b7dca5574c6af938dc44b6802f1bf732929 bbfae658e87ac2de7c6326739704a877fb118301 aebcbd8b7105da88ae71d0e5a80be59b99e8cc53 8e84fbcb42f79d86263aab42a1291ecf09ddba7f 30d30485f4ade54238cba5aa1a8bc85452df7d39 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0` | 0 | 0 | `sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+| `gh api repos/MongLong0214/agent-operator-score` | 0 | 6762 | `sha256:8d2f140ef51da0d782a9ac141817a977f8902da57eff1698ef20ace3959234bd` |
+| `git fetch -q origin 73a30ec4e8a410408ac2f8c253d435f9e93674ce e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1 dd46b88d7a9d06cc41776b8a8b51db25506060a7 d2c68036ebf9f9fd7287258fd3cec252133ef846 530335c80dcef292fb29cb23dff8ef1bb95188e4 01268d39a317e18d542a4319bc729da073353518 55b908cc8962ce75db98aa14a6dc0059d45c612a 2d6392f578dd2667d5f1f6ba5073a2c4311430eb 36b823f22217e9d8be011318e295231c62a3f813 fd972ad7c1ddc8b8e2546a78303ce2c3c7fe9aa3 efe351c991797a8cde88c23b8e8933d9a90db11d 98353d24fdd6b932c717bd8b9a0971c22986f7b7 4566b33143155b91981d07308bd113ad8fad9b35 c371ac93d49a592925b24de5013bc9b3b303dd7d 1d2ba6ba821dddd2eb7c567df1e9e3b5138ed5ea d89a4b22a0e8de14fff316edcae18c3e6caadf9a 426c23d0f62fa2666135f978db0f5802ace7c8cc 120ce7c96feb961ee7c4599c2946f059b8d9b7c6 43bae4bf460939a743c837b8e0a05d8f9e044026 dc7f6563ec0d6e951fe984fa026eea8c5efc3aed ae648b7dca5574c6af938dc44b6802f1bf732929 bbfae658e87ac2de7c6326739704a877fb118301 aebcbd8b7105da88ae71d0e5a80be59b99e8cc53 8e84fbcb42f79d86263aab42a1291ecf09ddba7f 30d30485f4ade54238cba5aa1a8bc85452df7d39 3493dfb9c5ee79d8a3201f8bcec2c697aa5e7ca0` | 0 | 0 | `sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
 
 What the receipts cannot do is prove the observation came from GitHub rather than a text editor: an
 offline checker has no way to authenticate a transcript. Two things narrow that. The digest is
@@ -87,7 +87,7 @@ itself.
 | branch | head SHA | classification | in dev / main | commits reaching neither | release tags | open PR | recommendation |
 |---|---|---|---|---|---|---|---|
 | `fix/a-fixture-backed-agent-is-not-a-runtime` | `e75d23258fb904c12cc6b8373a2ecd7d9d2b90e1` | MERGED | yes / yes | 0 | v0.1.11, v0.1.12, v0.1.13, v0.1.14, v0.1.15, v0.1.16, v0.1.17 | none | **safe_to_delete_after_578** |
-| `fix/collector-symlink-entrypoint` | `ebafe26421f29fd9e81604a897c0f3a61739a1fb` | ACTIVE | no / no | 2 | none | [#666](https://github.com/MongLong0214/agent-operator-score/pull/666) | **must_be_preserved** |
+| `fix/collector-symlink-entrypoint` | `dd46b88d7a9d06cc41776b8a8b51db25506060a7` | ACTIVE | no / no | 4 | none | [#666](https://github.com/MongLong0214/agent-operator-score/pull/666) | **must_be_preserved** |
 | `task/issue-557-actual-effects` | `530335c80dcef292fb29cb23dff8ef1bb95188e4` | SUPERSEDED | no / no | 1 | none | none | **needs_decision** |
 | `task/issue-660` | `55b908cc8962ce75db98aa14a6dc0059d45c612a` | ACTIVE | no / no | 1 | none | [#667](https://github.com/MongLong0214/agent-operator-score/pull/667) | **must_be_preserved** |
 | `tmp/read-claude-artifact` | `2d6392f578dd2667d5f1f6ba5073a2c4311430eb` | MERGED | yes / yes | 0 | v0.1.16, v0.1.17 | none | **safe_to_delete_after_578** |
@@ -134,8 +134,8 @@ None was deleted by this audit; each was merged and removed by `delete_branch_on
 | reference scan | result |
 |---|---|
 | GitHub-wide issues (`repo:MongLong0214/agent-operator-score "fix/a-fixture-backed-agent-is-not-a-runtime"`) | [#572](https://github.com/MongLong0214/agent-operator-score/issues/572) (open) |
-| GitHub-wide pull requests | [#592](https://github.com/MongLong0214/agent-operator-score/issues/592) (closed) |
-| sweep completeness | complete -- all 2 result(s) the API reported were retrieved |
+| GitHub-wide pull requests | [#669](https://github.com/MongLong0214/agent-operator-score/issues/669) (open), [#592](https://github.com/MongLong0214/agent-operator-score/issues/592) (closed) |
+| sweep completeness | complete -- all 3 result(s) the API reported were retrieved |
 | repository tree (`git-grep-fix/a-fixture-backed-agent-is-not-a-runtime`) | none found |
 
 Receipted derivations: `git merge-base --is-ancestor` places the tip on both dev and main, `git rev-list --count` returns 0 commits reaching neither line, one `git merge-base --is-ancestor` per tag places it in seven release tags, and the all-state PR history is empty -- no pull request ever used it as a head. The branch never carried a commit of its own: it points at the merge commit of PR #511 and never advanced. The complete GitHub-wide sweep and the tree scan find no reference outside this audit, issue #572's candidate list and the previous audit's PR. Deleting it, once #578 and #588 have cleared and a fresh observation still shows it at this commit with no PR open, removes a name and no content.
@@ -150,28 +150,28 @@ Receipted derivations: `git merge-base --is-ancestor` places the tip on both dev
 
 | field | value | derived by |
 |---|---|---|
-| current SHA | `ebafe26421f29fd9e81604a897c0f3a61739a1fb` | `git ls-remote --heads origin`, cross-checked against the REST branch list |
-| last update | 2026-09-17T14:34:17+09:00 (2 days before this snapshot) | `git-log-fix/collector-symlink-entrypoint` |
+| current SHA | `dd46b88d7a9d06cc41776b8a8b51db25506060a7` | `git ls-remote --heads origin`, cross-checked against the REST branch list |
+| last update | 2026-09-19T19:02:26+09:00 (0 days before this snapshot) | `git-log-fix/collector-symlink-entrypoint` |
 | owner (last committer) | MongLong0214 <weplay0628@gmail.com> | `git-log-fix/collector-symlink-entrypoint` |
 | classification | **ACTIVE** | — |
 | PR history (all states) | #666 (OPEN) | `pr-history-fix/collector-symlink-entrypoint` |
 | contained in `dev` / `main` | no / no | `is-ancestor-dev-fix/collector-symlink-entrypoint`, `is-ancestor-main-fix/collector-symlink-entrypoint` |
-| unique commits vs `dev` / `main` | 2 / 690 | `rev-list-dev-fix/collector-symlink-entrypoint`, `rev-list-main-fix/collector-symlink-entrypoint` |
-| **commits reaching neither line** | **2** | `rev-list-neither-fix/collector-symlink-entrypoint` for the count, `rev-list-ids-neither-fix/collector-symlink-entrypoint` for the ids |
+| unique commits vs `dev` / `main` | 4 / 700 | `rev-list-dev-fix/collector-symlink-entrypoint`, `rev-list-main-fix/collector-symlink-entrypoint` |
+| **commits reaching neither line** | **4** | `rev-list-neither-fix/collector-symlink-entrypoint` for the count, `rev-list-ids-neither-fix/collector-symlink-entrypoint` for the ids |
 | release-tag containment | none | one `git merge-base --is-ancestor` per tag: `tag-contains-<tag>-fix/collector-symlink-entrypoint`, 19 of them |
 | superseding PR/issue/SHA | none recorded | — |
-| to preserve | 2 commits fixing the collector's symlinked-invocation regression, reachable from no other ref; the regression test isolating a symlinked invocation from live GitHub, reachable from no other ref | — |
+| to preserve | the collector-symlink-regression fix and its isolating test, reachable from no other ref; any commits made since, reachable from no other ref while this PR is open | — |
 | protection / ruleset | no branch protection, and the repository has no rulesets configured | `rest-branches` |
 | **recommendation** | **must_be_preserved** | — |
 
 | reference scan | result |
 |---|---|
 | GitHub-wide issues (`repo:MongLong0214/agent-operator-score "fix/collector-symlink-entrypoint"`) | none found |
-| GitHub-wide pull requests | none found |
-| sweep completeness | complete -- all 0 result(s) the API reported were retrieved |
+| GitHub-wide pull requests | [#669](https://github.com/MongLong0214/agent-operator-score/issues/669) (open) |
+| sweep completeness | complete -- all 1 result(s) the API reported were retrieved |
 | repository tree (`git-grep-fix/collector-symlink-entrypoint`) | none found |
 
-Head of open PR #666 ("fix(collector): a symlinked invocation collected nothing and exited 0") targeting dev, under review. Receipted derivations show 2 commits reaching neither dev nor main -- collected as ids, not only as a count -- and no release tag containing it; that work exists on no other ref. Deleting the head branch of an open pull request is on this issue's own prohibited-actions list, and the deletion gate re-checks the live pull request state against a freshly collected observation rather than trusting this record.
+Head of open PR #666 ("fix(collector): a symlinked invocation collected nothing and exited 0") targeting dev, under review. Receipted derivations show 4 commit(s) reaching neither dev nor main -- collected as ids, not only as a count -- and no release tag containing it; that work exists on no other ref. Deleting the head branch of an open pull request is on this issue's own prohibited-actions list, and the deletion gate re-checks the live pull request state against a freshly collected observation rather than trusting this record.
 
 Nothing about this branch was left unestablished: containment, PR history, tag membership, protection and references were each derived by a receipted command.
 
@@ -196,8 +196,8 @@ Nothing about this branch was left unestablished: containment, PR history, tag m
 | reference scan | result |
 |---|---|
 | GitHub-wide issues (`repo:MongLong0214/agent-operator-score "task/issue-557-actual-effects"`) | none found |
-| GitHub-wide pull requests | none found |
-| sweep completeness | complete -- all 0 result(s) the API reported were retrieved |
+| GitHub-wide pull requests | [#669](https://github.com/MongLong0214/agent-operator-score/issues/669) (open) |
+| sweep completeness | complete -- all 1 result(s) the API reported were retrieved |
 | repository tree (`git-grep-task/issue-557-actual-effects`) | none found |
 
 PR #618 merged this branch's #557 implementation into dev at a163bff128e8f631a427a8a9fb935c13d83d80f7. The branch's only remaining commit, 530335c80d ("test(mutation): the ledger after 715/715 unqualified on darwin (#557)"), is a post-merge mutation-ledger update that rewrote tests/mutation/measured.json to record measurements for 716 guards. Re-derived directly rather than inherited from any earlier claim: every one of those 716 guard names is also a key in dev's tests/mutation/measured.json at this snapshot (which now covers 1068 guards), so the update adds no guard coverage dev does not already have -- only different fingerprint/platform metadata for guards dev already tracks. Receipted derivations confirm exactly 1 commit reaches neither dev nor main (rev-list-ids-neither-task/issue-557-actual-effects: 530335c80dcef292fb29cb23dff8ef1bb95188e4), and no release tag contains the tip. Classified SUPERSEDED rather than MERGED because the commit itself was never merged verbatim, with the replacement and every outstanding commit id accounted for above. Recommended needs_decision rather than safe_to_delete_after_578: this audit's own rule is that a branch still carrying any commit reaching neither dev nor main is never recommended for deletion, whatever its classification, so a human confirms before this one specific measurement snapshot -- content that is redundant by guard name but not byte-identical to anything on dev -- is let go.
@@ -218,18 +218,18 @@ Nothing about this branch was left unestablished: containment, PR history, tag m
 | **commits reaching neither line** | **1** | `rev-list-neither-task/issue-660` for the count, `rev-list-ids-neither-task/issue-660` for the ids |
 | release-tag containment | none | one `git merge-base --is-ancestor` per tag: `tag-contains-<tag>-task/issue-660`, 19 of them |
 | superseding PR/issue/SHA | none recorded | — |
-| to preserve | 1 commit implementing #660's idempotent secret-placeholder redaction, reachable from no other ref | — |
+| to preserve | commit(s) implementing #660's idempotent secret-placeholder redaction, reachable from no other ref | — |
 | protection / ruleset | no branch protection, and the repository has no rulesets configured | `rest-branches` |
 | **recommendation** | **must_be_preserved** | — |
 
 | reference scan | result |
 |---|---|
 | GitHub-wide issues (`repo:MongLong0214/agent-operator-score "task/issue-660"`) | none found |
-| GitHub-wide pull requests | none found |
-| sweep completeness | complete -- all 0 result(s) the API reported were retrieved |
+| GitHub-wide pull requests | [#669](https://github.com/MongLong0214/agent-operator-score/issues/669) (open) |
+| sweep completeness | complete -- all 1 result(s) the API reported were retrieved |
 | repository tree (`git-grep-task/issue-660`) | none found |
 
-Head of open PR #667 ("fix(redaction): make secret placeholders idempotent (#660)") targeting dev, under review. Receipted derivations show 1 commit reaching neither dev nor main -- collected as ids, not only as a count -- and no release tag containing it; that work exists on no other ref. Deleting the head branch of an open pull request is on this issue's own prohibited-actions list, and the deletion gate re-checks the live pull request state against a freshly collected observation rather than trusting this record.
+Head of open PR #667 ("fix(redaction): make secret placeholders idempotent (#660)") targeting dev, under review. Receipted derivations show 1 commit(s) reaching neither dev nor main -- collected as ids, not only as a count -- and no release tag containing it; that work exists on no other ref. Deleting the head branch of an open pull request is on this issue's own prohibited-actions list, and the deletion gate re-checks the live pull request state against a freshly collected observation rather than trusting this record.
 
 Nothing about this branch was left unestablished: containment, PR history, tag membership, protection and references were each derived by a receipted command.
 
@@ -254,8 +254,8 @@ Nothing about this branch was left unestablished: containment, PR history, tag m
 | reference scan | result |
 |---|---|
 | GitHub-wide issues (`repo:MongLong0214/agent-operator-score "tmp/read-claude-artifact"`) | [#572](https://github.com/MongLong0214/agent-operator-score/issues/572) (open) |
-| GitHub-wide pull requests | [#592](https://github.com/MongLong0214/agent-operator-score/issues/592) (closed) |
-| sweep completeness | complete -- all 2 result(s) the API reported were retrieved |
+| GitHub-wide pull requests | [#669](https://github.com/MongLong0214/agent-operator-score/issues/669) (open), [#592](https://github.com/MongLong0214/agent-operator-score/issues/592) (closed) |
+| sweep completeness | complete -- all 3 result(s) the API reported were retrieved |
 | repository tree (`git-grep-tmp/read-claude-artifact`) | 73a30ec4e8a410408ac2f8c253d435f9e93674ce:tests/mutation/manifest.mjs; 73a30ec4e8a410408ac2f8c253d435f9e93674ce:tests/mutation/manifest.mjs; 73a30ec4e8a410408ac2f8c253d435f9e93674ce:tests/product/branch-cleanup-invariants.test.mjs |
 
 Receipted derivations place the tip on both dev and main with 0 commits reaching neither line, and in release tags v0.1.16, v0.1.17. It is the merge commit of PR #538 and the branch never advanced past it (it is now 729 commits behind dev and 33 behind main). It is a tmp/* branch, which repository policy caps at seven days or task end; it is well past that. The all-state PR history is empty. The complete GitHub-wide reference sweep finds nothing outside this audit's own issue thread and the earlier audit PRs; the tree scan now finds three hits, each a literal mention of this branch's name inside mutation-test fixtures added by unrelated later work (#568), not a dependency on its content.
@@ -365,8 +365,9 @@ commit, and nothing would notice.
 
 | PR | head branch | head SHA | base |
 |---|---|---|---|
-| [#666](https://github.com/MongLong0214/agent-operator-score/pull/666) | `fix/collector-symlink-entrypoint` | `ebafe26421f29fd9e81604a897c0f3a61739a1fb` | dev |
+| [#666](https://github.com/MongLong0214/agent-operator-score/pull/666) | `fix/collector-symlink-entrypoint` | `dd46b88d7a9d06cc41776b8a8b51db25506060a7` | dev |
 | [#667](https://github.com/MongLong0214/agent-operator-score/pull/667) | `task/issue-660` | `55b908cc8962ce75db98aa14a6dc0059d45c612a` | dev |
+| [#669](https://github.com/MongLong0214/agent-operator-score/pull/669) | `task/issue-572` | `01268d39a317e18d542a4319bc729da073353518` | dev |
 
 ## Repository branch policy
 
