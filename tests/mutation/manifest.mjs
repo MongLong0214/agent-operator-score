@@ -8972,6 +8972,24 @@ export const GUARDS = [
     name: 'a legacy cycle aggregate names the stored scorer that produced its runs, not the current build'
   },
   {
+    guard: 'the legacy card resolves its stored band through the shared band key',
+    reason: 'the scorer stored "HIGH RELIABILITY" with a space while every palette and name table keys HIGH_RELIABILITY; a lookup that bypasses the normalizer renders an earned verdict with the withheld palette, and the unknown-band palette is the only state the issue allows instead',
+    file: 'lib/report-card.mjs',
+    from: 'const band = issued ? bandKey(score.band) : "WITHHELD";',
+    to: 'const band = issued ? score.band : "WITHHELD";',
+    test: 'tests/product/legacy-band-provenance.test.mjs',
+    name: 'every stored band value is looked up through the shared band key, and every renderer resolves it'
+  },
+  {
+    guard: 'the html headline resolves its stored band through the shared band key',
+    reason: 'the html headline draws both the band line and the band class from the shared key; bypassing the normalizer draws the stored spaced string into a class that matches no palette and a name lookup that misses, exactly the raw rendering the unknown-band state exists to replace',
+    file: 'lib/report.mjs',
+    from: 'const band = bandKey(result.score?.band);',
+    to: 'const band = result.score?.band ?? "";',
+    test: 'tests/product/legacy-band-provenance.test.mjs',
+    name: 'every stored band value is looked up through the shared band key, and every renderer resolves it'
+  },
+  {
     guard: 'a cycle with no recorded result schema is withheld, not asserted legacy',
     reason: '#568 round 2 BLOCKER. assertUniformResultSchema returns null when no run in the cycle recorded a result schema at all -- an absence, not a value -- and folding that null case back into the legacy branch let the dashboard print "a legacy scorer aggregate, rendered as stored" over a cycle nothing ever observed to be legacy',
     file: 'lib/dashboard.mjs',
@@ -10916,6 +10934,7 @@ export const ACCOUNTED_GUARDS = [
   "the fresh observation's derivations are the ones checked",
   "the group sweep is recorded from the group",
   "the headline oracle names the ceiling every surface must carry",
+  "the html headline resolves its stored band through the shared band key",
   "the identity aggregation is recomputed from its agents",
   "the identity record is published field by field",
   "the identity record names the agents that ran",
@@ -10925,6 +10944,7 @@ export const ACCOUNTED_GUARDS = [
   "the ledger's owner replaces the declaration",
   "the legacy caption names a scorer only when the counted runs agree",
   "the legacy caption tests agreement among counted runs, not among readable ones",
+  "the legacy card resolves its stored band through the shared band key",
   "the legacy scorer caption prefers a run the median counted",
   "the manifest projects every contract axis with its disposition",
   "the matrix decides the process axis with the run's own helper",
