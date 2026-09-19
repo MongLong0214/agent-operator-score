@@ -16,6 +16,16 @@
 
 export const GUARDS = [
   {
+    reachable_from: ["scripts/collect-branch-state.mjs"],
+    guard: "a collector invoked through a symlink still collects",
+    reason: "#572. `import.meta.url` is already a realpath and `process.argv[1]` is whatever was typed, so on macOS -- where /tmp is a symlink to /private/tmp -- a string comparison made this script skip its entire body and exit 0. A collector that silently collects nothing is worse than one that crashes, because the audit downstream reads its absence as an answer.",
+    file: "scripts/collect-branch-state.mjs",
+    from: "    return realpathSync(fileURLToPath(import.meta.url)) === realpathSync(argv);",
+    to: "    return fileURLToPath(import.meta.url) === argv;",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "the collector runs when invoked through a symlinked path, and does not exit 0 having collected nothing"
+  },
+  {
     reachable_from: ["scripts/verify-release-channel.mjs"],
     guard: "near-green is not a promotion condition",
     reason: "#569. Every gate but one, a plausible story about why that one does not count, and a stable channel now points at work nobody finished. The conjunction is the whole rule; either half alone lets a release through on the other's evidence.",
@@ -10128,6 +10138,7 @@ export const ACCOUNTED_GUARDS = [
   "a ceiling's reach is re-derived, never read off the artifact",
   "a citation is checked against the answer the cited command gave",
   "a cleanup failure is published by class and digest",
+  "a collector invoked through a symlink still collects",
   "a collector read error names a relative path",
   "a command that returned nothing is not an empty list",
   "a committed observation carries no transcript",
