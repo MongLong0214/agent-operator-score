@@ -64,9 +64,31 @@ test("the build script produces a tarball, an install manifest and a provenance 
     assert.ok(existsSync(parsed.out.tarball), "the tarball was not written");
     assert.ok(existsSync(parsed.out.installManifest), "the install manifest was not written");
     assert.ok(existsSync(parsed.out.provenance), "the provenance record was not written");
+    assert.ok(existsSync(parsed.out.sbom), "the SBOM was not written");
+    assert.ok(existsSync(parsed.out.checksums), "SHA256SUMS was not written");
     assert.equal(fileByteDigest(parsed.out.tarball), parsed.provenance.package_sha256);
     assert.deepEqual(JSON.parse(readFileSync(parsed.out.installManifest, "utf8")), parsed.installManifest);
     assert.deepEqual(JSON.parse(readFileSync(parsed.out.provenance, "utf8")), parsed.provenance);
+
+    // SHA256SUMS has to be checkable the ordinary way, with `shasum -c`, and it has to describe the
+    // files that were actually produced -- a checksums file whose lines nobody verifies is the same
+    // kind of claim as the URL the install manifest used to point at before anything wrote this.
+    const checksums = readFileSync(parsed.out.checksums, "utf8").trimEnd().split("\n");
+    assert.equal(checksums.length, 4, `SHA256SUMS should cover four artifacts: ${checksums.join(" | ")}`);
+    for (const line of checksums) {
+      const [digest, name] = line.split(/\s+/u);
+      assert.match(digest, /^[0-9a-f]{64}$/u, `not a bare sha256: ${line}`);
+      assert.equal(fileByteDigest(join(parsed.out.dir, name)), `sha256:${digest}`, `${name} does not hash to what SHA256SUMS says`);
+    }
+
+    // The SBOM describes the tarball, so its own component hash is the tarball's bytes, bare rather
+    // than `sha256:`-prefixed -- CycloneDX types that field as the digest itself. And a devDependency
+    // is not in the tarball, so it is not in the components list; this package ships none at all.
+    const sbom = JSON.parse(readFileSync(parsed.out.sbom, "utf8"));
+    assert.equal(sbom.bomFormat, "CycloneDX");
+    assert.equal(sbom.metadata.component.hashes[0].content, parsed.provenance.package_sha256.replace(/^sha256:/u, ""));
+    assert.equal(sbom.components.some((one) => one.name === "acorn"), false, "a devDependency reached an SBOM that describes the shipped tarball");
+    assert.equal(fileByteDigest(parsed.out.sbom), parsed.provenance.sbom_digest);
 
     // The core digest is the reproducible half of the provenance record; it must not have folded
     // in `built_at`, which release-artifacts.test.mjs already proves for the library function and
