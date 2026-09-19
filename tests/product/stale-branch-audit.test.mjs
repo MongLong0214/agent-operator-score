@@ -14,6 +14,7 @@ import {
   unestablishedFindings
 } from "../../scripts/branch-audit.mjs";
 import { REQUIRED_DERIVATIONS, citedSources, observationDigest, verifyObservation } from "../../scripts/collect-branch-state.mjs";
+import { buildFixtureRepository, withFakeGitHub } from "./branch-state-fixture.mjs";
 
 // #572 phase one is a read-only audit: no branch may be deleted, renamed or force-pushed until #578
 // and #588 have preserved the evidence. An audit is only worth having if it is checkable rather than
@@ -671,18 +672,47 @@ test("SUPERSEDED without a complete superseding record is refused, component by 
   }
 });
 
-test("SUPERSEDED must account for every commit that reaches neither dev nor main", () => {
+// Split from one test into two. The original forged a single fixed-length id ("0".repeat(40)) onto
+// whichever branch `.find()` happened to return, so it only caught an under-accounting when that
+// branch's real outstanding count was not 1 -- an arithmetic coincidence of the fixture, not
+// coverage of the rule. Deriving the forged length from the branch's own count makes each assertion
+// true at any fixture value, including 1, and neither can pass or fail because some other branch
+// merged.
+test("SUPERSEDED is refused when the superseding record's commit count does not match the outstanding count", () => {
   const audit = loadAudit();
   const active = audit.branches.find((entry) => entry.open_pr);
+  const outstanding = active.unique_commits_vs_dev_and_main;
+  // Deliberately one too many, whatever `outstanding` is -- a length mismatch in either direction is
+  // the defect classificationFindings' count check exists to catch.
+  const wrongLengthIds = Array.from({ length: outstanding + 1 }, (_, i) => String(i).padStart(40, "0"));
   const forged = withBranch(audit, active.name, {
     classification: "SUPERSEDED",
     recommendation: "safe_to_delete_after_578",
     open_pr: null,
     preserve: [],
-    superseding: { pr: 610, sha: "2e2e0afb0effbe2d88a1eee0ddbbcb9300c70a49", note: "reimplemented on latest dev and merged there under PR #610", supersedes_commits: ["0".repeat(40)] }
+    superseding: { pr: 610, sha: "2e2e0afb0effbe2d88a1eee0ddbbcb9300c70a49", note: "reimplemented on latest dev and merged there under PR #610", supersedes_commits: wrongLengthIds }
   });
   const findings = classificationFindings(forged);
-  assert.ok(findings.some((f) => f.includes("accounted for by the replacement")), `an under-accounted SUPERSEDED branch passed: ${findings.join(" | ")}`);
+  assert.ok(findings.some((f) => f.includes("accounted for by the replacement")), `a SUPERSEDED branch whose replacement names the wrong number of commits passed: ${findings.join(" | ")}`);
+});
+
+test("SUPERSEDED is refused when the superseding record names the right number of commits but the wrong ones", () => {
+  const audit = loadAudit();
+  const active = audit.branches.find((entry) => entry.open_pr);
+  const outstanding = active.unique_commits_vs_dev_and_main;
+  // Right length, wrong ids -- the shape classificationFindings' count check cannot see, and the
+  // shape derivationFindings exists for: "the contract was satisfied by any list of 40-hex strings
+  // of the right length -- eighteen zero-padded strings accounted for eighteen real commits."
+  const wrongIds = Array.from({ length: outstanding }, (_, i) => String(i).padStart(40, "0"));
+  const forged = withBranch(audit, active.name, {
+    classification: "SUPERSEDED",
+    recommendation: "safe_to_delete_after_578",
+    open_pr: null,
+    preserve: [],
+    superseding: { pr: 610, sha: "2e2e0afb0effbe2d88a1eee0ddbbcb9300c70a49", note: "reimplemented on latest dev and merged there under PR #610", supersedes_commits: wrongIds }
+  });
+  const findings = derivationFindings(forged, audit.live_observation);
+  assert.ok(findings.some((f) => f.includes("commit ids the collector did not derive")), `a SUPERSEDED branch whose replacement names fabricated commit ids passed: ${findings.join(" | ")}`);
 });
 
 test("UNKNOWN_HOLD must name what blocks the decision", () => {
@@ -979,5 +1009,39 @@ test("a record that under-reports the references the sweep returned is refused",
   ]) {
     const forged = withBranch(audit, withHits.name, { references: { ...withHits.references, github_search: { ...withHits.references.github_search, ...patch } } });
     assert.notDeepEqual(derivationFindings(forged), [], `a record dropping ${JSON.stringify(patch)} from its reference scan passed`);
+  }
+});
+
+test("the collector runs when invoked through a symlinked path, and does not exit 0 having collected nothing", async () => {
+  // `import.meta.url` is already a realpath and `process.argv[1]` is whatever was typed. On macOS
+  // `/tmp` is a symlink to `/private/tmp`, so a string comparison between the two made this script
+  // skip its whole body and exit 0 -- which reads to every caller exactly like a successful
+  // collection. Measured before the fix: the same command through a `/tmp` symlink exited 0 and
+  // wrote no file.
+  //
+  // A collector that silently collects nothing is worse than one that crashes, because the audit
+  // downstream reads its absence as an answer. The witness is the symlinked invocation; the direct
+  // one passes either way and would have proved nothing.
+  const { symlinkSync } = await import("node:fs");
+  const { spawnSync } = await import("node:child_process");
+
+  const script = fileURLToPath(new URL("../../scripts/collect-branch-state.mjs", import.meta.url));
+  const fixture = buildFixtureRepository();
+  try {
+    const link = join(fixture.root, "collect-via-link.mjs");
+    symlinkSync(script, link);
+    const out = join(fixture.root, "observation.json");
+    const result = withFakeGitHub(fixture, () => spawnSync(process.execPath, [link, fixture.repository, out], {
+      cwd: fixture.work, encoding: "utf8", timeout: 300000
+    }));
+    assert.equal(result.status, 0, result.stderr?.slice(0, 600));
+    assert.ok(existsSync(out),
+      "the collector exited 0 through a symlinked path without writing an observation, which is indistinguishable from a successful collection");
+    const observation = JSON.parse(readFileSync(out, "utf8"));
+    assert.equal(observation.repository, fixture.repository);
+    assert.deepEqual(verifyObservation(observation), []);
+    assert.equal(observation.digest, observationDigest(observation));
+  } finally {
+    fixture.cleanup();
   }
 });

@@ -35,7 +35,8 @@
 // Read-only by construction. Every command below reads; none creates, deletes or updates a ref.
 
 import { spawnSync } from "node:child_process";
-import { writeFileSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { writeFileSync, readFileSync, realpathSync } from "node:fs";
 
 import { sha256Bytes } from "../lib/digest.mjs";
 
@@ -458,7 +459,30 @@ export const verifyObservation = (observation) => {
   return findings;
 };
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Direct execution, compared through `realpathSync` on both sides.
+//
+// `import.meta.url` is already a realpath; `process.argv[1]` is whatever was typed. On macOS
+// `/tmp` is a symlink to `/private/tmp`, so invoking this through a symlinked path made the two
+// strings differ, the body never ran, and the process **exited 0 having collected nothing** --
+// which reads to every caller exactly like a successful collection. Measured on this repository:
+// the same command via a `/tmp` symlink exits 0 and writes no file.
+//
+// A collector that silently collects nothing is worse than one that crashes, because the audit
+// downstream reads its absence as an answer. This is not a defect a caller can be warned about:
+// the wrong invocation looks identical to the right one.
+const invokedDirectly = () => {
+  const argv = process.argv[1];
+  if (typeof argv !== "string" || argv.length === 0) return false;
+  try {
+    return realpathSync(fileURLToPath(import.meta.url)) === realpathSync(argv);
+  } catch {
+    // An argv[1] that cannot be resolved is not this file. Refusing here rather than falling back
+    // to a string compare keeps the answer measurable instead of accidentally true.
+    return false;
+  }
+};
+
+if (invokedDirectly()) {
   const repository = process.argv[2] ?? "MongLong0214/agent-operator-score";
   const out = process.argv[3];
   const observation = collect({ repository });

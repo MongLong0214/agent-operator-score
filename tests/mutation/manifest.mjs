@@ -16,6 +16,16 @@
 
 export const GUARDS = [
   {
+    reachable_from: ["scripts/collect-branch-state.mjs"],
+    guard: "a collector invoked through a symlink still collects",
+    reason: "#572. `import.meta.url` is already a realpath and `process.argv[1]` is whatever was typed, so on macOS -- where /tmp is a symlink to /private/tmp -- a string comparison made this script skip its entire body and exit 0. A collector that silently collects nothing is worse than one that crashes, because the audit downstream reads its absence as an answer.",
+    file: "scripts/collect-branch-state.mjs",
+    from: "    return realpathSync(fileURLToPath(import.meta.url)) === realpathSync(argv);",
+    to: "    return fileURLToPath(import.meta.url) === argv;",
+    test: "tests/product/stale-branch-audit.test.mjs",
+    name: "the collector runs when invoked through a symlinked path, and does not exit 0 having collected nothing"
+  },
+  {
     reachable_from: ["scripts/verify-release-channel.mjs"],
     guard: "near-green is not a promotion condition",
     reason: "#569. Every gate but one, a plausible story about why that one does not count, and a stable channel now points at work nobody finished. The conjunction is the whole rule; either half alone lets a release through on the other's evidence.",
@@ -3621,7 +3631,7 @@ export const GUARDS = [
     from: "      if (outstanding > 0 && (record.supersedes_commits ?? []).length !== outstanding) {",
     to: "      if (false && outstanding > 0 && (record.supersedes_commits ?? []).length !== outstanding) {",
     test: "tests/product/stale-branch-audit.test.mjs",
-    name: "SUPERSEDED must account for every commit that reaches neither dev nor main"
+    name: "SUPERSEDED is refused when the superseding record's commit count does not match the outstanding count"
   },
   {
     guard: "UNIQUE_WORK carries the plan that gets the work off the branch",
@@ -4504,10 +4514,10 @@ export const GUARDS = [
   {
     guard: "stale-branch audit preserves orphaned unmerged work",
     reason:
-      "a branch whose only copy of real work sits nowhere else must never read as safe to delete: that is the loss #578's evidence-preservation gate exists to prevent",
+      "a branch whose only copy of real work sits nowhere else must never read as safe to delete: that is the loss #578's evidence-preservation gate exists to prevent. The anchor below is bound to the committed snapshot, not to the code: it names whichever branch the fixture currently records as ACTIVE, and it must be re-pointed at a still-open, still-must_be_preserved branch every time the audit is refreshed, the way it was re-pointed off task/issue-557-actual-effects (\"Head of open PR #618\") once that branch's PR merged and its recommendation changed. It still breaks the same way, on the same schedule: `\"recommendation\": \"must_be_preserved\",` must occur exactly once, so it goes to zero occurrences the moment the branch it now names (task/issue-660, PR #667) merges and no other branch is ACTIVE, and to two or more the moment a future refresh has more than one ACTIVE branch at once.",
     file: "fixtures/stale-branches/audit.json",
-    from: "\"recommendation\": \"must_be_preserved\",\n      \"reason\": \"Head of open PR #618",
-    to: "\"recommendation\": \"safe_to_delete_after_578\",\n      \"reason\": \"Head of open PR #618",
+    from: "\"recommendation\": \"must_be_preserved\",",
+    to: "\"recommendation\": \"safe_to_delete_after_578\",",
     test: "tests/product/no-open-pr-head-deletion.test.mjs",
     name: "every branch with an open PR is classified ACTIVE and recommended for preservation"
   },
@@ -8962,6 +8972,24 @@ export const GUARDS = [
     name: 'a legacy cycle aggregate names the stored scorer that produced its runs, not the current build'
   },
   {
+    guard: 'the legacy card resolves its stored band through the shared band key',
+    reason: 'the scorer stored "HIGH RELIABILITY" with a space while every palette and name table keys HIGH_RELIABILITY; a lookup that bypasses the normalizer renders an earned verdict with the withheld palette, and the unknown-band palette is the only state the issue allows instead',
+    file: 'lib/report-card.mjs',
+    from: 'const band = issued ? bandKey(score.band) : "WITHHELD";',
+    to: 'const band = issued ? score.band : "WITHHELD";',
+    test: 'tests/product/legacy-band-provenance.test.mjs',
+    name: 'every stored band value is looked up through the shared band key, and every renderer resolves it'
+  },
+  {
+    guard: 'the html headline resolves its stored band through the shared band key',
+    reason: 'the html headline draws both the band line and the band class from the shared key; bypassing the normalizer draws the stored spaced string into a class that matches no palette and a name lookup that misses, exactly the raw rendering the unknown-band state exists to replace',
+    file: 'lib/report.mjs',
+    from: 'const band = bandKey(result.score?.band);',
+    to: 'const band = result.score?.band ?? "";',
+    test: 'tests/product/legacy-band-provenance.test.mjs',
+    name: 'every stored band value is looked up through the shared band key, and every renderer resolves it'
+  },
+  {
     guard: 'a cycle with no recorded result schema is withheld, not asserted legacy',
     reason: '#568 round 2 BLOCKER. assertUniformResultSchema returns null when no run in the cycle recorded a result schema at all -- an absence, not a value -- and folding that null case back into the legacy branch let the dashboard print "a legacy scorer aggregate, rendered as stored" over a cycle nothing ever observed to be legacy',
     file: 'lib/dashboard.mjs',
@@ -9962,6 +9990,43 @@ export const GUARDS = [
     to: "  const relianceAdministration = false ? null : createRelianceAdministration({",
     test: "tests/product/relay-chat-smoke.test.mjs",
     name: "without --relay the shipped binary asks nothing and says the journal is empty rather than measured"
+  },
+  // #571: `scripts/build-release.mjs`, the producer that runs `npm pack` and hands the result to
+  // `lib/release-artifacts.mjs`. That library's own verdicts (`packageBoundary`, `versionConsistency`,
+  // `sourceAuthority`) are already unit-tested; what only this script can get wrong is losing one of
+  // those three verdicts on the way to an exit code. Each array below is independently load-bearing --
+  // dropping any one back to `[]` lets a release with that specific defect through silently while the
+  // script still refuses on the other two, which is why each has its own guard rather than one guard
+  // on the shared `problems.length > 0` gate they all feed.
+  {
+    reachable_from: ["scripts/build-release.mjs"],
+    guard: "the release build script surfaces every package boundary finding, not just whether one exists",
+    reason: "#571. A forbidden or unexpected file in the real `npm pack` output must reach the exit code, or a release could ship exactly the credential and workspace material `packageBoundary` exists to catch.",
+    file: "scripts/build-release.mjs",
+    from: "const boundaryProblems = [...boundary.unsafe, ...boundary.forbidden, ...boundary.unexpected].map((one) => `package boundary: ${one}`);",
+    to: "const boundaryProblems = [];",
+    test: "tests/product/build-release.test.mjs",
+    name: "the build script refuses when the package boundary finds a forbidden or unexpected file"
+  },
+  {
+    reachable_from: ["scripts/build-release.mjs"],
+    guard: "the release build script surfaces every version-surface mismatch",
+    reason: "#571. `versionConsistency` finds the drift; if this script stopped reading its verdict, a plugin manifest or marketplace listing lagging the release version would ship without a warning, which is the exact `near-green` failure `docs/RELEASE.md` names.",
+    file: "scripts/build-release.mjs",
+    from: "const versionProblems = versionCheck.mismatched.map((one) => `version: ${one}`);",
+    to: "const versionProblems = [];",
+    test: "tests/product/build-release.test.mjs",
+    name: "the build script refuses when a version surface disagrees with the release version"
+  },
+  {
+    reachable_from: ["scripts/build-release.mjs"],
+    guard: "the release build script surfaces every source-authority problem",
+    reason: "#571. `sourceAuthority` is the check named for exactly this: a release cut from `dev` that names `main` in one field and `dev` in another. Dropping this array lets the two silently disagree.",
+    file: "scripts/build-release.mjs",
+    from: "const authorityProblems = authority.problems.map((one) => `source authority: ${one}`);",
+    to: "const authorityProblems = [];",
+    test: "tests/product/build-release.test.mjs",
+    name: "the build script refuses when main and the built commit are not the same source"
   }
 ];
 
@@ -10110,6 +10175,7 @@ export const ACCOUNTED_GUARDS = [
   "a ceiling's reach is re-derived, never read off the artifact",
   "a citation is checked against the answer the cited command gave",
   "a cleanup failure is published by class and digest",
+  "a collector invoked through a symlink still collects",
   "a collector read error names a relative path",
   "a command that returned nothing is not an empty list",
   "a committed observation carries no transcript",
@@ -10905,6 +10971,7 @@ export const ACCOUNTED_GUARDS = [
   "the fresh observation's derivations are the ones checked",
   "the group sweep is recorded from the group",
   "the headline oracle names the ceiling every surface must carry",
+  "the html headline resolves its stored band through the shared band key",
   "the identity aggregation is recomputed from its agents",
   "the identity record is published field by field",
   "the identity record names the agents that ran",
@@ -10914,6 +10981,7 @@ export const ACCOUNTED_GUARDS = [
   "the ledger's owner replaces the declaration",
   "the legacy caption names a scorer only when the counted runs agree",
   "the legacy caption tests agreement among counted runs, not among readable ones",
+  "the legacy card resolves its stored band through the shared band key",
   "the legacy scorer caption prefers a run the median counted",
   "the manifest projects every contract axis with its disposition",
   "the matrix decides the process axis with the run's own helper",
@@ -10970,6 +11038,9 @@ export const ACCOUNTED_GUARDS = [
   "the record cites the pre-deletion observation it was checked against",
   "the references a record reports are the ones the sweep returned",
   "the relay administration runs only when the operator asked to be asked",
+  "the release build script surfaces every package boundary finding, not just whether one exists",
+  "the release build script surfaces every source-authority problem",
+  "the release build script surfaces every version-surface mismatch",
   "the release-canary script exits non-zero when the gate does not accept the record",
   "the release-canary script fails closed with no evidence file",
   "the reliance evidence survives its trace",
