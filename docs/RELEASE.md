@@ -79,6 +79,27 @@ Each of these is a check, not a convention:
 - a dev-only marker present in the stable tree
 - `dev` not containing `main` after the back-merge
 
+## What the verifier cannot see
+
+Step 6's ordering is enforced by this document, not by `verify:release-channel`. The check asks
+whether the default branch is `main`; it does not ask whether `main` yet carries the release. On
+2026-09-19 the default branch was changed to `main` while `main` was still at `v0.1.17` and 717
+commits behind `dev`, and the verifier reported `promote: true` with an empty reason list. Nothing
+was wrong with the check — every condition it names held — but the promotion was wrong, and the
+change was reverted and redone in order.
+
+Two gaps combine to allow it, and both are worth knowing before trusting a green verdict here:
+
+- `channelState` checks the back-merge direction (`dev` contains `main`) and not the release
+  direction. `main` being far behind `dev` is the normal state of a stable channel, so it cannot be
+  refused on its own — which is exactly why the ordering lives in the procedure.
+- Every tag condition sits behind `if (tag !== null)`. Before a release is tagged, tag reachability,
+  the release target, the tree comparison and the version-surface comparison are all skipped, so the
+  strongest half of the check is absent precisely when a premature promotion is possible.
+
+A green `promote` means the conditions the verifier names are satisfied. It does not mean the
+procedure was followed, and step 6 is the step where that difference is expensive.
+
 ## Rollback
 
 A promotion that has to be undone is undone by releasing again from a corrected `main`, never by
