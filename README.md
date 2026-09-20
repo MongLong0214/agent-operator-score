@@ -61,9 +61,10 @@ model, so it uses no model quota. `/aos-assess` runs agents again and therefore 
 The plugin removes repository cloning, manual agent registration, and hand-written plan setup.
 It still requires Node `>=22.18 <25`, plus an installed and signed-in Claude Code or Codex CLI.
 
-`/aos-assess` cannot make checkpoint decisions for you. To obtain an official score, follow its
-instructions and answer the checkpoint questions in your own terminal. An agent answering on your
-behalf would measure that agent's policy, not yours.
+`/aos-assess` cannot make checkpoint decisions for you. The operator-process profile is issued
+from checkpoint turns and is withheld without them, so to have your own operation measured at all,
+follow its instructions and answer the checkpoint questions in your own terminal. An agent
+answering on your behalf would measure that agent's policy, not yours.
 
 To run directly from the repository:
 
@@ -100,7 +101,7 @@ unsafe action, and verified the arrival.
 | What it does | Finds potentially risky patterns in real sessions and presents them for human review | Runs six controlled tasks and summarizes the observed operation and outcome as a conditional score |
 | Input | Local Codex, Claude Code, and Grok CLI transcripts | Registered agent CLIs such as Codex and Claude Code |
 | Model quota | None; it only reads existing records | Yes; it runs the registered agents |
-| Output | The suspicious step and supporting evidence | A score out of 100, or the exact reason no score was issued |
+| Output | The suspicious step and supporting evidence | Three profiles — how the operator ran the work, how the system turned out, how reliance was calibrated — each issued or withheld with its reason |
 
 Start with `review`. It lets you inspect how AOS reasons about work you actually did, without
 spending model quota.
@@ -151,7 +152,7 @@ the operator does at a blocker.
 node bin/aos.mjs init                   # find Claude Code and Codex on PATH
 node bin/aos.mjs doctor                 # check commands and known credential paths
 
-node bin/aos.mjs assess                 # unattended diagnostic: no official score
+node bin/aos.mjs assess                 # unattended diagnostic: the process profile is withheld
 node bin/aos.mjs assess --checkpoints   # attended run that can issue a score
 ```
 
@@ -163,7 +164,30 @@ is not a scoring input.
 never starts, or different task families fail in the same pre-task way, AOS stops instead of turning
 a broken setup into a low operator score.
 
-## The six things on the scorecard
+For an advanced/manual investigation, `assess --probe-capabilities` gives each registered agent a bounded, seeded workspace and reads back
+what it actually did, instead of assuming every agent registered under a known adapter can do
+everything that adapter ships with. This is what lets `capability-matches-task` fail: a run that
+finds an agent narrower than its adapter's default records the shortfall and names it. `aos agent
+probe <id>` runs the same check on one agent by itself, outside a scored run:
+
+The advanced/manual CLI form is `aos assess --probe-capabilities`:
+
+```bash
+node bin/aos.mjs agent probe alpha           # what alpha was actually observed to do
+node bin/aos.mjs assess --probe-capabilities # score this run from what was observed, not the adapter table
+```
+
+Off by default, because probing spends one real provider invocation per registered agent. Without
+the flag, AOS still records a known adapter's table as `aos-known`, but that source cannot answer a
+runtime-capability question. `capability-matches-task` and `simplest-adequate-route` therefore
+withhold; C2.RF.01 cannot reach its three required opportunities, so O4, the outcome index, and the
+composite withhold too. The runtime's capabilities were not observed; the routing outcome and
+composite are withheld, and capability observation is what would answer them. Today, the
+advanced/manual `aos assess --probe-capabilities` invocation runs that observation and consumes one
+real provider invocation per registered agent. Making a coding agent or quickstart run it
+automatically is #575. The CLI observes the runtime and produces `detected` evidence.
+
+## The six things measured
 
 AOS asks six practical questions.
 
@@ -232,6 +256,13 @@ silence do not earn credit. **Silence is not a pass.**
 
 `provisional_raw` is debugging arithmetic for fixing the run. It is not an official score.
 
+That gate, the ceilings and bands below, and `provisional_raw` all belong to the legacy scorer:
+they decide whether one number may be issued. The instrument `aos assess` runs now issues no such
+number. Each construct and each outcome domain is issued or withheld on its own with its reason
+beside it, reliance is a separate profile that is never weighted into either, and the composite is
+a descriptive secondary index that is withheld whenever either half is. Which one you are reading
+is on the result itself: `aos-result.v2` carries the profiles, `aos-mvp-result.v1` the score.
+
 ## Two 83s are not automatically comparable
 
 An 83 earned with a different car, course, and weather is a different test. AOS scores work the same
@@ -273,23 +304,28 @@ three runs made under the same profile into one cycle.
 ```bash
 node bin/aos.mjs cycle start                                  # lock three seeds
 node bin/aos.mjs cycle run --checkpoints                      # run them in order
-node bin/aos.mjs cycle                                        # median of valid runs
+node bin/aos.mjs cycle                                        # what the cycle holds
 node bin/aos.mjs dashboard                                    # local read-only dashboard
 ```
 
 Only three of the six task families currently vary with the seed. Three local repetitions therefore
 do not establish population-level confidence or general ability.
 
-A run counts only when it uses the locked seed, unchanged profile, suite major, and scorer major,
-and has both a committed terminal record and an issued score. Invalid runs are listed with their
-reason. A valid low score cannot be discarded or rerun on the same seed.
+Counting is the legacy cycle's rule, and it still governs those. A run counts only when it uses
+the locked seed, unchanged profile, suite major, and scorer major, and has both a committed
+terminal record and an issued score. Invalid runs are listed with their reason. A valid low score
+cannot be discarded or rerun on the same seed.
 
 If the cycle was configured incorrectly, `--force --reason "<why>"` abandons it and starts another.
 The old cycle, seeds, runs, and scores remain recorded.
 
-The Operator Score is the median of all valid runs. Spread, median absolute deviation, and
-**local repeat evidence** describe repetition on this one machine; AOS does not call that
-statistical confidence.
+A cycle of profile runs has no single number, and `cycle` says so instead of producing one. The
+median is the legacy scorer's aggregation of the legacy scorer's numbers; a profile result carries
+none, and what a cycle of profiles means is a question the cycle owner (#563) has yet to answer. So
+the command lists the runs, withholds the aggregate, and names whose question it is. Each run's
+profiles are in its own report. Cycles of legacy results still report the median of all valid runs,
+where spread, median absolute deviation, and **local repeat evidence** describe repetition on this
+one machine; AOS does not call that statistical confidence.
 
 ## When there is no score — and when a ceiling applies
 
@@ -308,8 +344,11 @@ For example, a run that exposed a secret cannot score above 39, no matter how we
 elsewhere. The violation cannot be averaged away.
 
 A ceiling applies only when the violation was observed. Missing evidence is `INCOMPLETE`, not
-`UNSAFE`. Bands — `HIGH RELIABILITY`, `ADVANCED`, `OPERATIONAL`, `DEVELOPING`, and `FRAGILE` —
-summarize that run only; they are not a ranking of the person.
+`UNSAFE`. On a profile result a ceiling lowers the system-outcome index and the composite, never
+the operator-process index, and the uncapped value is kept beside the capped one. Bands —
+`HIGH RELIABILITY`, `ADVANCED`, `OPERATIONAL`, `DEVELOPING`, and `FRAGILE` — are the legacy
+scorer's summary of a legacy run; they summarize that run only and are not a ranking of the
+person, and a profile result carries none: its schema forbids a band, a percentile and a rank.
 
 ## What has actually been measured
 
@@ -338,25 +377,84 @@ measurement.
 node bin/aos.mjs holdout --session <path> --use holdout
 node bin/aos.mjs holdout --session <path> --finding <id> --verdict false-positive --reason "..."
 node bin/aos.mjs holdout
+node bin/aos.mjs holdout --lanes
 ```
+
+`aos holdout --lanes` reports both lanes: the local holdout precision, and a known-incident
+fixture precision and recall over `fixtures/known-incidents/`. Below the floor — fifty held-back
+sessions, twenty decided high-severity findings, decisions reaching ten different sessions, and no
+more abstentions than decisions — a rate is withheld rather than printed, and `aos review` stays
+EXPERIMENTAL. Withheld means absent, not zero: every report the command prints is generated from
+the floored result. The floors are declared acceptance thresholds, not statistical ones, and the
+corpus is a set of reconstructions written by the author of the rules — see
+[`docs/LIMITATIONS.md`](docs/LIMITATIONS.md). The JSON shape this command prints is named and
+versioned in [`docs/HOLDOUT_OUTPUT.md`](docs/HOLDOUT_OUTPUT.md), which records what replaced the
+unversioned shape it used to print.
 
 Until new, unused sessions are measured, the current reviewer's accuracy is not established. The
 holdout ledger stores session digests, finding IDs, judgments, and reasons — never transcripts.
 See [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md).
 
+## What the number may be used for
+
+A green test suite is not validity evidence. `tests pass` is a fact about a program; what a reader
+may conclude about a person from a number is a different question, and AOS answers it from a
+versioned registry rather than from delivery.
+
+Every result carries an `aos-validity-evidence.v1` record. It holds seven evidence categories --
+`content`, `response_process`, `internal_structure`, `relations_to_other_variables`,
+`generalizability`, `fairness_invariance`, `consequences` -- each `PASS`, `FAIL` or `UNESTABLISHED`,
+and a claim stage derived from them: `EXPERIMENTAL`, `INSTRUMENT_READY`, `PROFILE_BOUND` or
+`GENERALIZABILITY_SUPPORTED`. Missing evidence is `UNESTABLISHED`, which is not a weak `PASS`: with
+an empty registry `PROFILE_BOUND` is unreachable however green the suite is and however many locked
+forms a run completed.
+
+The stage is computed in one place, `lib/claim-governance.mjs`, from the sealed contract and the
+run's own evaluation. No renderer recomputes it and no caller can supply one. Every surface -- the
+result JSON, the markdown report, the HTML page, the card, the dashboard and this page -- shows the
+same nine fields: claim stage, the operator-claim decision, the permitted uses, forbidden uses, the
+seven evidence category statuses, generalizability status, uncertainty status, the
+validation-evidence digest, and the standard-setting status. The interpretation sentence those
+fields stand for -- what the stage entitles a reader to conclude, in words -- is printed by the
+markdown report, the HTML page, the card, the dashboard and the terminal: every surface that renders
+the record, the card included. The card's band wraps it rather than clipping, because the longest of
+the four sentences is ten characters past the band's width and clipping it removes the restriction
+at its end, leaving a licence that reads wider than the evidence supports. Each surface is held to
+exactly that list in `tests/product/claim-governance.test.mjs`.
+
+Today all seven categories are `UNESTABLISHED`, so the shipped instrument is `INSTRUMENT_READY` and
+the operator claim is `WITHHOLD`.
+
+Hiring, promotion, certification and population ranking are refused by the product, not only
+discouraged by this page: such a use request returns `AOS_USE_FORBIDDEN` at every claim stage. A
+comparison across profiles returns `AOS_USE_INVARIANCE_UNESTABLISHED` until fairness/invariance
+evidence passes; a category, percentile or rank returns `AOS_USE_STANDARD_SETTING_REQUIRED` until an
+`aos-standard-setting.v1` study is registered; and a request that declares no use at all returns
+`AOS_USE_UNDECLARED` rather than being permitted by omission. Ask the product directly:
+`node bin/aos.mjs use --run <id> --for hiring` prints the refusal and exits non-zero.
+
+`aos use` is a policy check on the stored record, not a verification of it. It does not rebuild the
+record from the run's evidence -- `aos verify --run` is the command that does, and it is the one
+that can contradict a record's claim stage. So the answers `aos use` gives never rest on what the
+stored record says about its own evidence: a registered standard-setting study and passing
+fairness/invariance evidence are facts about a registry and a study, and the list of uses a stage
+permits is a constant in `lib/claim-governance.mjs`. A record edited to claim any of the three, with
+its digest recomputed to match, is refused exactly as an honest one would be.
+
 ## Outputs, security, and privacy
 
 An assessment produces:
 
-- **`card.svg`** — one image with the score, six dimensions, conditions, and the first thing to fix
+- **`card.svg`** — one image with the three profiles, what each rests on, the conditions, and the first thing to fix
 - **Markdown and HTML reports** — metric-level evidence, failures, unobserved items, blockers, and ceilings
 - **JSON** — the machine-readable result
 
-A card for a run without an issued score says **NO SCORE** and gives the reason. It never presents
-`provisional_raw` as a shareable score.
+A card shows a withheld profile as withheld, with its reason. A legacy run without an issued
+score says **NO SCORE** and gives the reason; it never presents `provisional_raw` as a shareable
+score.
 
 The report can be regenerated with
-`node bin/aos.mjs report --run <id> --format markdown|html|json`. The HTML report and scorecard
+`node bin/aos.mjs report --run <id> --format markdown|html|json`. The HTML report and the card
 currently render in Korean for a Korean locale and in English for every other locale. Japanese and
 Chinese report UI are not yet localized.
 
@@ -365,8 +463,8 @@ Chinese report UI are not yet localized.
 | AOS networking | The dashboard binds to `127.0.0.1`, requires a token, and is read-only and GET-only. No route returns a transcript, and AOS has no external collection client |
 | Agent networking | Codex and Claude Code may contact their model providers during `assess`; this is not an offline run |
 | Dependencies | There are no runtime package dependencies, but a supported Node runtime is required |
-| Agent environment | AOS replaces `HOME`. In the default `BEST_EFFORT_CLI` mode it carries ordinary non-sensitive variables, removes sensitive-looking variables and the operator's existing `AOS_*` values including `AOS_HOME`, then adds four run-context variables |
-| Run context and credentials | The four new AOS variables are `AOS_SESSION_ID`, `AOS_FAMILY`, `AOS_WORKSPACE`, and `AOS_TASK_FILE`. Explicitly allowed variables and supported runtime credentials may also be carried. Names and sources may be recorded; credential values are not |
+| Agent environment | AOS replaces `HOME` and builds the child environment from an allowlist instead of inheriting the operator's. At both scoring levels, including `BEST_EFFORT_CLI`, a variable travels only if the policy names it: a structural name such as `PATH` or `LANG`, the adapter's own config directory, a verified runtime credential, or a separately approved proxy or certificate name. Everything else is absent, including `AOS_*` and `AOS_HOME`. Four run-context variables are then added |
+| Run context and credentials | The four new AOS variables are `AOS_SESSION_ID`, `AOS_FAMILY`, `AOS_WORKSPACE`, and `AOS_TASK_FILE`. Explicitly allowed variables may also be carried, but a credential-shaped name cannot be one of them: a runtime's own credential travels only through the separate runtime-auth declaration, and only to the adapter that reads it. Names and sources may be recorded; credential values are not |
 | Secrets and local storage | Secret values are redacted where output is read. `~/.aos` is mode `0700`; files inside are mode `0600` |
 
 Automatic credential discovery can be disabled with `--no-auto-auth`. Report security issues
@@ -387,6 +485,19 @@ npm run smoke:package    # pack and exercise the user flow elsewhere
 
 CI runs the test suite on Ubuntu with Node 22 and 24 and on macOS with Node 24, plus separate
 `verify:mvp`, mutation, and package-smoke jobs for Ubuntu and macOS.
+
+### `verify --run` exit codes
+
+`aos verify --run <id>` reports one machine-readable verification state:
+
+| Code | State | Meaning |
+|---:|---|---|
+| 0 | `verified` | Every required claim was established. |
+| 4 | `unresolved` | Nothing was refuted, and at least one required claim could not be checked. |
+| 5 | `contradicted` | At least one required claim was refuted by recomputation. |
+
+Exit code 4 is new and covers a state that previously exited 0. Consumers testing `!== 0` are
+unaffected; consumers testing `=== 5` must also handle the unresolved state.
 
 | Document | Purpose |
 |---|---|

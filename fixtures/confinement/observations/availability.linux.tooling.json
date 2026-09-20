@@ -1,0 +1,11 @@
+{
+  "backend_run": "availability.linux.tooling",
+  "command": "docker run --rm --platform linux/arm64 node:22-bookworm sh -c \"for c in bwrap unshare nsenter setpriv firejail; do printf '%s: ' \\\"\\$c\\\"; command -v \\$c || echo MISSING; done; echo 'kernel: '\\$(uname -r); echo 'ns: '\\$(ls /proc/self/ns | tr '\\n' ' '); echo 'lsm: '\\$(cat /sys/kernel/security/lsm 2>/dev/null || echo '<unreadable>'); grep -i seccomp /proc/self/status | tr '\\n' ' '; echo\" 2>&1 | grep -v WARNING",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "bwrap: MISSING\nunshare: /usr/bin/unshare\nnsenter: /usr/bin/nsenter\nsetpriv: /usr/bin/setpriv\nfirejail: MISSING\nkernel: 7.0.11-orbstack-00360-gc9bc4d96ac70\nns: cgroup ipc mnt net pid pid_for_children time time_for_children user uts\nlsm: <unreadable>\nSeccomp:\t2 Seccomp_filters:\t1 \n",
+  "stderr_excerpt": "",
+  "parse_error": null,
+  "captured": null
+}

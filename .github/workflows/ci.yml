@@ -5,15 +5,39 @@ on:
     branches: [dev, main]
   pull_request:
     branches: [dev, main]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  # First, and everything else waits for it. A check that runs beside the jobs it is checking has
+  # already let them run: a pull request adding `uses: attacker/thing@main` to the test job would
+  # execute that action while this job was still going red. Ordering does not make the check an
+  # execution-prevention control -- anyone who can push a branch can edit this file too, `always()`
+  # on a job would override the wait, and a separate workflow cannot depend on this one at all --
+  # but it does mean an unpinned reference in any *other* job here never runs. A test asserts that
+  # every job waits and that none of them opts out of waiting.
+  action-pins:
+    name: action-pins
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Not `npm run`: a repository-level `.npmrc` saying `script-shell=/usr/bin/true` makes every
+      # npm script exit zero without executing anything, and this is the one job whose exit status
+      # is the whole point. Node is invoked directly so there is no shell in between.
+      - run: node scripts/verify-action-pins.mjs
+
   # The runtimes this product says it supports, on the platforms it says it supports. macOS is a
   # lane of its own rather than an afterthought: the isolation layer replaces HOME, walks the
   # filesystem with lstat and kills process groups, and those are the parts that differ.
   test:
+    needs: action-pins
     name: test (${{ matrix.os }}, node ${{ matrix.node }})
     strategy:
       fail-fast: false
@@ -27,8 +51,8 @@ jobs:
             node: 24
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ matrix.node }}
           cache: npm
@@ -39,11 +63,12 @@ jobs:
   # still mean what they say, and it has to be readable as its own answer rather than as one of
   # three hundred assertions.
   verify-mvp:
+    needs: action-pins
     name: verify-mvp
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: npm
@@ -54,6 +79,7 @@ jobs:
   # the boundary: a file the manifest forgot to ship, and an entry point that works imported but
   # not installed. Both platforms, because a packaging mistake is rarely wrong on only one.
   package-smoke:
+    needs: action-pins
     name: package-smoke (${{ matrix.os }})
     strategy:
       fail-fast: false
@@ -61,8 +87,8 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: npm
@@ -73,15 +99,259 @@ jobs:
   # the suite because it builds a worktree per guard; here because a guard that quietly stopped
   # being load-bearing is exactly the thing nobody would go looking for.
   mutation:
+    needs: action-pins
     name: mutation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: npm
       - run: npm ci
       - run: npm run test:mutation
+
+  # The execution plan against its schema, against itself, and against the committed snapshot of
+  # the issues. Required, and offline: a plan that has drifted from the issues it describes sends
+  # the next agent to work on something it is not allowed to start yet, and that is not the kind of
+  # mistake that shows up in a test of the product.
+  execution-plan:
+    needs: action-pins
+    name: execution-plan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run verify:execution-plan
+
+  # The half the offline check cannot do. A committed snapshot is edited in the same pull request as
+  # the plan, by whoever wrote the change, so the static run reports close evidence as unestablished
+  # rather than passing it. This is where it gets established: against GitHub, with the repository
+  # asked whether each record's commit, pull request, workflow runs, changed files and artifact
+  # digests are the same piece of work.
+  #
+  # Not on pull requests -- a fork's token cannot read what this needs, and a required check that is
+  # skipped for forks is worse than one that runs where it can. On `main` and on demand.
+  execution-plan-live:
+    needs: action-pins
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    name: execution-plan-live
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      actions: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run verify:execution-plan:live
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  # #569's promotion gate. Offline and advisory-until-green: the gate matrix is computed from the
+  # execution plan, so a pull request that marks an issue done without the evidence to back it moves
+  # this check, and a release cut from a plan that has drifted is what the whole separation of
+  # `main` from `dev` exists to prevent.
+  #
+  # The fixture mode runs here. It exercises the same decision the live mode makes, on a committed
+  # channel description, so the refusal logic is checked on every run including where there is no
+  # token -- a verifier that only works live is one CI cannot run, and one that only works on a
+  # fixture has never seen the repository it gates. The live half is the job below.
+  #
+  # `continue-on-error` deliberately: this check FAILS while any gate issue is open, which is the
+  # correct state today and will be until the last one closes. It reports rather than blocks so the
+  # signal is visible on every run; making it required is the last step of the promotion, not the
+  # first, and doing it early would only teach everyone to ignore a permanently red check.
+  release-channel:
+    needs: action-pins
+    name: release-channel
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run verify:release-channel
+
+  # The half the fixture cannot do: what the repository actually enforces right now. Asks the API
+  # what protection is in force rather than whether a named feature is switched on, because classic
+  # protection and a ruleset answer the same three questions differently.
+  #
+  # Not on pull requests, for the same reason as `execution-plan-live`: a fork's token cannot read
+  # what this needs. On demand, which is what a release runs.
+  release-channel-live:
+    needs: action-pins
+    if: github.event_name == 'workflow_dispatch'
+    name: release-channel-live
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      actions: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run verify:release-channel:live
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  # #639's release gate, given the invocation site it shipped without. `scripts/verify-release-canary.mjs`
+  # reads the committed `aos-strict-canary.v1` record and decides whether this head may cite it as
+  # proof the STRICT lane ran, authenticated, on a real runtime -- and a gate nothing calls withholds
+  # nothing. It is a check of the committed file, not a re-observation: it needs no Seatbelt and no
+  # authenticated Codex to run, unlike `verify:real-runtime-strict`, which is what actually produces
+  # an OBSERVED record and can only do that on a darwin host with both.
+  #
+  # Not a required PR check, for the same reason `execution-plan-live` is not one, stated in this
+  # script's own header comment: an ordinary PR does not update the canary, so requiring this on
+  # every PR would either rubber-stamp whatever is already committed or -- if it tried to
+  # re-observe -- see nothing but `NOT_OBSERVED` on a CI runner, which is indistinguishable from a
+  # check that was never wired up. This is the deliberate, separate step: on `main` and on demand,
+  # exactly like `execution-plan-live`, so a release cut from `main` has a visible answer to "is the
+  # committed canary still accepted" rather than no answer at all.
+  release-canary:
+    needs: action-pins
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    name: release-canary
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run verify:release-canary
+
+  # The review rounds, kept. Ten pull requests went through an adversarial gate and the blocking
+  # findings clustered into input and idiom classes -- a digest over decoded text, a plain-object
+  # map fed an attacker-chosen key, a regex without unicode mode, Date.parse as a validator, an
+  # unbounded schema array. Each class cost a full review round the first time a human thought of
+  # it; this job is those rounds run in seconds, so the review that follows has only design left
+  # to argue about.
+  defect-classes:
+    needs: action-pins
+    name: defect-classes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: node scripts/check-defect-classes.mjs
+  # Named gates for the security and measurement properties this release is built on. They already
+  # ran inside `npm test`, which means no required check could say *which* property held -- a green
+  # `test` job proved only that nothing in it failed. These name them, so branch protection can
+  # require the property rather than the suite.
+  #
+  # Each script here is hermetic: no Seatbelt, no authenticated runtime, no network. That is the
+  # selection rule, not an accident. `verify:official-issuance-gate` is deliberately NOT used as-is,
+  # because it includes confinement-real-lane.test.mjs, whose STRICT tests skip on Linux (no
+  # Seatbelt) and whose codex half skips on macOS runners (no authenticated Codex) -- as a required
+  # check it would go green on skips, which is the exact defect this release wrote tests against.
+  # The real lane stays with the host that can actually run it.
+  security-gates:
+    needs: action-pins
+    name: security-gates (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both, and not for redundancy. `confinement.test.mjs` carries one test --
+        # `a staged credential printed by the agent is scrubbed from the public result` -- that
+        # needs a STRICT backend and reports NOT_OBSERVED on Linux for want of Seatbelt. Measured
+        # on darwin the file has zero skips; measured on the ubuntu runner it has one, and the one
+        # is a secret-scrubbing property. Naming this job on Linux alone would have required a
+        # check that never verifies it, which is the defect the job exists to prevent.
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: operator-event authority
+        run: npm run verify:operator-event-authority
+      - name: no agent artifact earns process credit
+        run: npm run verify:no-agent-artifact-process-credit
+      - name: isolation boundary
+        run: npm run verify:isolation-boundary
+      - name: official issuance gate (hermetic half)
+        run: node --test tests/product/confinement.test.mjs tests/product/official-issuance.test.mjs
+
+  measurement-gates:
+    needs: action-pins
+    name: measurement-gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: profile aggregation
+        run: npm run verify:profile-aggregation
+      - name: projection consistency
+        run: npm run verify:projection-consistency
+      - name: no operator score hero
+        run: npm run verify:no-operator-score-hero
+      - name: model identity
+        run: npm run verify:model-identity
+      # VERIFIER_ACCEPTANCE A7/R10: exact contract-bound facet evidence reaches issued rows.
+      - name: facet records
+        run: npm run verify:facet-records
+      # VERIFIER_ACCEPTANCE A8/R13: no prerequisites means INSUFFICIENT_DATA and a null interval.
+      - name: uncertainty contract
+        run: npm run verify:uncertainty-contract
+      # VERIFIER_ACCEPTANCE A7/R12: empirical calibration is required for the elevated claim.
+      - name: generalizability withholding
+        run: npm run verify:generalizability-withholding
+      # VERIFIER_ACCEPTANCE A9/R17: interfaces exist without calling an operational default psychometric.
+      - name: calibration scaffold
+        run: npm run verify:calibration-scaffold
+      # VERIFIER_ACCEPTANCE A8/R14: population statistics are null until evidence exists.
+      - name: no fake population statistics
+        run: npm run verify:no-fake-population-statistics
+
+  operational-form-gates:
+    needs: action-pins
+    name: operational-form-gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: all-family form variation
+        run: npm run verify:all-family-form-variation
+      - name: form determinism
+        run: npm run verify:form-determinism
+      - name: task-oracle binding
+        run: npm run verify:task-oracle-binding
+      - name: reliance opportunity distribution
+        run: npm run verify:reliance-opportunity-distribution

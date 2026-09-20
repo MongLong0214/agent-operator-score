@@ -50,12 +50,13 @@ git flow, and the two long-lived branches mean what the model says they mean.
 | branch | holds | receives from | protected |
 |---|---|---|---|
 | `main` | released versions, tagged | `release/*`, `hotfix/*` | yes |
-| `dev` | the integration line, and the default branch | `feature/*`, and a back-merge from `main` | yes |
+| `dev` | the integration line, and the default branch | `feature/*`, `task/*`, `docs/*`, and a back-merge from `main` | yes |
 
 Short-lived branches are named for what they are, and there is only one change on each:
 
 ```text
 feature/<what-it-does>     off dev  -> dev
+task/issue-<number>       off dev  -> dev
 release/<version>          off dev  -> main and dev, tagged on main
 hotfix/<what-it-fixes>     off main -> main and dev, tagged on main
 docs/<what-it-documents>   off dev  -> dev
@@ -85,11 +86,6 @@ Inbound contributions are accepted under the
 [Developer Certificate of Origin 1.1](https://developercertificate.org/), on the same MIT terms.
 There is no contributor license agreement, no copyright assignment, and no separate paperwork.
 
-Certify each commit with a sign-off line naming you:
-
-```
-Signed-off-by: Your Name <you@example.com>
-```
-
-`git commit -s` adds it. It means you wrote the contribution or otherwise have the right to submit
-it under MIT, and that the contribution and the sign-off are public and permanent.
+Commit trailers are optional; the project does not require a `Signed-off-by` line.
+Contributors remain responsible for having the right to submit their work under the terms above.
+Automation may record its session with `X-Claude-Session`; commits without trailers are accepted.

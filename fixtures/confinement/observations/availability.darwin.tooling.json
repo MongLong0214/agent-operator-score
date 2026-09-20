@@ -1,0 +1,11 @@
+{
+  "backend_run": "availability.darwin.tooling",
+  "command": "for c in sandbox-exec bwrap bubblewrap unshare nsenter setpriv firejail podman docker; do printf '%s: ' \"$c\"; command -v $c || echo MISSING; done; echo 'ns: '$(ls /proc/self/ns 2>/dev/null || echo '<no /proc/self/ns>'); echo 'lsm: '$(cat /sys/kernel/security/lsm 2>/dev/null || echo '<unreadable>')",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "sandbox-exec: /usr/bin/sandbox-exec\nbwrap: MISSING\nbubblewrap: MISSING\nunshare: MISSING\nnsenter: MISSING\nsetpriv: MISSING\nfirejail: MISSING\npodman: MISSING\ndocker: /usr/local/bin/docker\nns: <no /proc/self/ns>\nlsm: <unreadable>\n",
+  "stderr_excerpt": "",
+  "parse_error": null,
+  "captured": null
+}

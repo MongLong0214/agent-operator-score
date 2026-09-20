@@ -1,0 +1,30 @@
+{
+  "backend_run": "best-effort-cli.leak-observed",
+  "command": "cd @WORKSPACE@ && <env from buildAgentEnv(\"BEST_EFFORT_CLI\", process.env, { home: <temp> })> node fixtures/confinement/probes/leak-probe.mjs   # then, from the unconfined parent: ps -o pid=,pgid=,ppid= -p <descendant>; kill -KILL -<agent pgid>; ps -o pid= -p <descendant>",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "36809 36809     1",
+  "stderr_excerpt": "",
+  "parse_error": null,
+  "captured": {
+    "descendant_leads_own_process_group": true,
+    "descendant_ps_line": "36809 36809     1",
+    "descendant_reparented_to_init": true,
+    "group_kill": "error:ESRCH",
+    "survive_cleanup_as_detached_descendant": {
+      "outcome": "allowed",
+      "errno": null,
+      "detail": {
+        "still_alive": true
+      }
+    },
+    "act_outside_boundary_after_orphaning": {
+      "outcome": "allowed",
+      "errno": null,
+      "detail": {
+        "verdict": "ORPHAN_READ_OK"
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "backend_run": "availability.darwin.host",
+  "command": "uname -a; sw_vers; node -v; docker version --format '{{.Server.Os}}/{{.Server.Arch}} {{.Server.Version}}'",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "Darwin @HOSTNAME@ 25.3.0 Darwin Kernel Version 25.3.0: Wed Jan 28 20:48:41 PST 2026; root:xnu-12377.81.4~5/RELEASE_ARM64_T6041 arm64\nProductName:\t\tmacOS\nProductVersion:\t\t26.3\nBuildVersion:\t\t25D125\nv22.23.2\nlinux/arm64 29.4.0\n",
+  "stderr_excerpt": "",
+  "parse_error": null,
+  "captured": null
+}

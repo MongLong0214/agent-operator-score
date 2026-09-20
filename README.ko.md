@@ -60,7 +60,8 @@ Claude Code를 사용한다면 저장소를 복제하거나 `npm install`을 실
 사용하므로 Node `>=22.18 <25`가 필요하고, 사용할 Claude Code 또는 Codex CLI가 설치되고
 로그인돼 있어야 합니다.
 
-`/aos-assess`가 체크포인트의 판단까지 대신해 주지는 않습니다. 공식 점수를 받으려면 안내에 따라
+`/aos-assess`가 체크포인트의 판단까지 대신해 주지는 않습니다. operator process 프로필은
+체크포인트 응답에서 발급되고 응답이 없으면 보류되므로, 본인의 운영을 측정하려면 안내에 따라
 본인 터미널에서 질문에 직접 답해야 합니다. 에이전트가 대신 답하면 사용자가 아니라 그 에이전트의
 정책을 측정하게 됩니다.
 
@@ -99,7 +100,7 @@ AOS의 질문은 다릅니다.
 | 하는 일 | 실제 세션에서 위험할 수 있는 패턴을 찾아 사람이 확인할 후보로 보여 줍니다 | 정해진 여섯 과제를 실행해 운영 과정과 결과를 조건부 점수로 요약합니다 |
 | 대상 | 로컬에 저장된 Codex·Claude Code·Grok CLI 세션 기록 | 등록된 Codex·Claude Code 등 에이전트 CLI |
 | 모델 사용량 | 없습니다. 이미 저장된 기록만 읽습니다 | 있습니다. 에이전트를 실제로 다시 실행합니다 |
-| 결과 | 문제가 의심되는 단계와 근거 | 100점 만점 점수 또는 점수를 내지 않은 정확한 이유 |
+| 결과 | 문제가 의심되는 단계와 근거 | 세 프로필(운영 과정·시스템 결과·reliance)이 각각 발급되거나 이유와 함께 보류됨 |
 
 처음에는 `review`부터 사용하는 편이 좋습니다. 비용 없이 내 실제 작업 기록으로 AOS가 어떤 식으로
 판단하는지 확인한 뒤, 필요할 때 `assess`를 실행하세요.
@@ -150,7 +151,7 @@ node bin/aos.mjs review --json                  # JSON으로 출력
 node bin/aos.mjs init                   # PATH에서 Claude Code·Codex를 찾아 자동 등록
 node bin/aos.mjs doctor                 # 실행 파일과 알려진 인증 경로 점검
 
-node bin/aos.mjs assess                 # 무인 진단: 공식 점수는 나오지 않음
+node bin/aos.mjs assess                 # 무인 진단: operator process 프로필이 보류됨
 node bin/aos.mjs assess --checkpoints   # 운영자가 직접 참여하는 점수 실행
 ```
 
@@ -161,6 +162,29 @@ node bin/aos.mjs assess --checkpoints   # 운영자가 직접 참여하는 점�
 `doctor`는 실행 파일과 알려진 인증 경로를 확인하지만 모델을 실제로 부르지는 않습니다. 에이전트가
 아예 시작되지 않거나 서로 다른 과제가 작업 전에 똑같이 실패하면, AOS는 잘못된 설정을 운영자의
 낮은 점수로 바꾸지 않고 실행을 중단합니다.
+
+고급/수동 조사에서 `assess --probe-capabilities`는 등록된 에이전트마다 AOS가 준비한 격리 작업 공간을 하나씩 내주고
+실제로 무엇을 했는지 읽어옵니다. 알려진 어댑터로 등록된 에이전트라면 그 어댑터가 갖춘 모든
+능력을 갖췄다고 가정하는 대신입니다. `capability-matches-task`가 실패할 수 있게 만드는 것이
+바로 이 관측입니다 — 어댑터 기본값보다 좁은 에이전트를 찾으면 그 부족함을 기록하고 이름을
+붙입니다. `aos agent probe <id>`는 점수를 매기는 실행과 무관하게 에이전트 하나에 같은 확인을
+그 자리에서 실행합니다.
+
+고급/수동 CLI 형식은 `aos assess --probe-capabilities`입니다.
+
+```bash
+node bin/aos.mjs agent probe alpha           # alpha가 실제로 무엇을 했는지 관측
+node bin/aos.mjs assess --probe-capabilities # 어댑터 표가 아니라 관측한 것으로 채점
+```
+
+기본값은 꺼짐입니다. 관측은 등록된 에이전트마다 실제 provider 호출 한 번을 소모하기 때문입니다.
+플래그가 없으면 AOS는 알려진 어댑터 표를 여전히 `aos-known`으로 기록하지만, 이 출처로는 런타임
+능력 질문에 답할 수 없습니다. 그래서 `capability-matches-task`와 `simplest-adequate-route`가
+보류되고 C2.RF.01은 필요한 세 opportunity에 닿지 못해 O4, outcome index, composite도 보류됩니다.
+런타임 capability가 관측되지 않았으므로 routing outcome과 composite은 보류되며, 이 답을 줄 수 있는
+것은 capability 관측입니다. 지금은 고급/수동 `aos assess --probe-capabilities`가 그 관측을 실행하고
+등록된 에이전트마다 실제 provider 호출 하나를 소모합니다. 코딩 에이전트나 quickstart가 이를 자동으로
+실행하게 만드는 일은 #575의 소유입니다. 이 CLI는 런타임을 관측해 `detected` 증거를 만듭니다.
 
 ## 채점표에 적히는 여섯 가지
 
@@ -233,6 +257,13 @@ AOS는 세 상태를 구분합니다.
 
 `provisional_raw`는 실행 문제를 고칠 때 참고하는 계산값일 뿐 공식 점수가 아닙니다.
 
+이 발급 기준과 아래의 상한·등급, 그리고 `provisional_raw`는 모두 레거시 스코어러의 것입니다.
+하나의 숫자를 낼 수 있는지 정하는 규칙이기 때문입니다. 지금 `aos assess`가 돌리는 계측기는
+그런 숫자를 내지 않습니다. 구성개념과 결과 영역은 각각 따로 발급되거나 이유와 함께 보류되고,
+reliance는 어느 지수에도 가중되지 않는 별도 프로필이며, 컴포지트는 두 지수 중 하나라도 보류되면
+함께 보류되는 부차적 기술 지표입니다. 무엇을 읽고 있는지는 결과 자체에 적혀 있습니다 —
+프로필은 `aos-result.v2`, 점수는 `aos-mvp-result.v1`입니다.
+
 ## 같은 83점도 바로 비교할 수 없습니다
 
 다른 차, 다른 코스, 다른 날씨에서 받은 두 개의 83점은 같은 시험 결과가 아닙니다.
@@ -274,22 +305,28 @@ AOS는 이 조건을 결과와 함께 기록합니다. 이를 `PROFILE-BOUND`라
 ```bash
 node bin/aos.mjs cycle start                                  # 시드 3개 고정
 node bin/aos.mjs cycle run --checkpoints                      # 고정한 시드로 차례대로 실행
-node bin/aos.mjs cycle                                        # 유효한 실행의 중앙값
+node bin/aos.mjs cycle                                        # 사이클에 무엇이 담겼는지
 node bin/aos.mjs dashboard                                    # 로컬 읽기 전용 대시보드
 ```
 
 현재 여섯 과제 중 세 과제만 시드에 따라 세부 조건이 달라집니다. 따라서 세 번의 반복을 전체
 모집단에 대한 통계적 신뢰도나 보편적인 실력 증명으로 확대하면 안 됩니다.
 
-고정된 시드, 동일한 프로필, 같은 suite major와 scorer major를 사용하고, 종료 기록과 공식 점수가
+집계 규칙은 레거시 사이클의 것이고, 레거시 사이클에는 그대로 적용됩니다. 고정된 시드,
+동일한 프로필, 같은 suite major와 scorer major를 사용하고, 종료 기록과 공식 점수가
 있는 실행만 집계됩니다. 제외된 실행은 이유와 함께 표시됩니다. 유효한 낮은 점수는 버릴 수도,
 같은 시드로 다시 돌릴 수도 없습니다.
 
 사이클을 잘못 시작했다면 `--force --reason "<이유>"`로 중단하고 새로 시작할 수 있습니다.
 이전 사이클, 시드, 실행, 점수는 삭제되지 않고 기록에 남습니다.
 
-최종 Operator Score는 모든 유효한 실행의 **중앙값**입니다. 범위, 중앙절대편차(MAD),
-**local repeat evidence**는 이 한 컴퓨터에서 반복했을 때의 흔들림을 보여 줄 뿐, 통계적
+프로파일 실행으로 이루어진 사이클에는 하나의 숫자가 없고, `cycle`은 억지로 만들어 내는
+대신 그렇다고 말합니다. 중앙값은 레거시 스코어러가 레거시 스코어러의 숫자를 모으는 방식인데
+프로파일 결과에는 그 숫자가 없고, 프로파일들의 사이클이 무엇을 뜻하는지는 사이클 담당(#563)이
+아직 정하지 않았습니다. 그래서 명령은 실행 목록을 보여 주고, 집계는 보류하며, 그 질문이 누구
+것인지 밝힙니다. 각 실행의 프로파일은 그 실행의 리포트에 있습니다. 레거시 결과로 이루어진
+사이클은 여전히 모든 유효한 실행의 **중앙값**을 보고하며, 범위·중앙절대편차(MAD)·
+**local repeat evidence**는 이 한 컴퓨터에서 반복했을 때의 흔들림을 보여 줄 뿐 통계적
 `confidence`를 뜻하지 않습니다.
 
 ## 점수가 없거나 상한이 걸리는 경우
@@ -308,8 +345,11 @@ AOS는 계산이 가능하다는 이유만으로 공식 점수를 주지 않습�
 평균 속에 묻어 버리지 않기 위해서입니다.
 
 상한은 위반을 실제로 확인했을 때만 적용합니다. 근거가 부족한 실행은 `UNSAFE`가 아니라
-`INCOMPLETE`입니다. 등급인 `HIGH RELIABILITY`, `ADVANCED`, `OPERATIONAL`, `DEVELOPING`,
-`FRAGILE`은 해당 실행을 요약할 뿐, 사람 전체의 능력이나 업계 순위를 뜻하지 않습니다.
+`INCOMPLETE`입니다. 프로필 결과에서 상한은 system outcome 지수와 컴포지트만 낮추고 operator
+process 지수는 건드리지 않으며, 상한 적용 전 값도 함께 남습니다. 등급인 `HIGH RELIABILITY`,
+`ADVANCED`, `OPERATIONAL`, `DEVELOPING`, `FRAGILE`은 레거시 스코어러가 레거시 실행을 요약하는
+방식이라 해당 실행만 요약할 뿐 사람 전체의 능력이나 업계 순위를 뜻하지 않으며, 프로필 결과는
+등급을 갖지 않습니다 — 스키마가 등급·백분위·순위를 아예 금지합니다.
 
 ## 실제로 측정한 결과와 현재 한계
 
@@ -337,22 +377,78 @@ AOS는 계산이 가능하다는 이유만으로 공식 점수를 주지 않습�
 node bin/aos.mjs holdout --session <path> --use holdout
 node bin/aos.mjs holdout --session <path> --finding <id> --verdict false-positive --reason "..."
 node bin/aos.mjs holdout
+node bin/aos.mjs holdout --lanes
 ```
+
+`aos holdout --lanes`는 두 레인을 함께 보고합니다. 로컬 홀드아웃 정밀도와,
+`fixtures/known-incidents/`에 기록된 알려진 사고 픽스처의 정밀도·재현율입니다. 하한선(보류한
+세션 50개, 판정된 고위험 지적 20건, 그 판정이 서로 다른 세션 10개 이상에 걸칠 것, 보류 판정이
+결정 판정보다 많지 않을 것)에 미치지 못하면 비율은 출력하지 않고 보류하며, `aos review`는
+EXPERIMENTAL로 남습니다. 보류는 0이 아니라 값 없음이며, 이 명령이 출력하는 모든 보고서는
+하한선을 적용한 결과에서 생성됩니다. 이 하한선들은 통계적으로 유도한 값이 아니라 선언된 제품
+수용 기준이고, 픽스처 코퍼스는 규칙을 쓴 사람이 직접 재구성한 것입니다 —
+[`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) 참고. 이 명령이 출력하는 JSON 형태는
+[`docs/HOLDOUT_OUTPUT.md`](docs/HOLDOUT_OUTPUT.md)에 이름과 버전이 붙어 있고, 이전의 버전 없는
+형태를 무엇으로 대체했는지도 거기에 적혀 있습니다.
 
 새로운 미사용 세션으로 다시 측정하기 전까지 현재 `review`의 정확도가 확립됐다고 주장할 수
 없습니다. holdout 기록에는 세션 원문이 아니라 세션 해시, 지적 ID, 판정과 이유만 저장됩니다.
 자세한 내용은 [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md)에 있습니다.
 
+## 이 숫자를 어디에 쓸 수 있는가
+
+테스트가 전부 통과한 것은 타당도 근거가 아닙니다. `tests pass`는 프로그램에 대한 사실이고, 그 숫자로
+사람에 대해 무엇을 말할 수 있는지는 다른 질문입니다. AOS는 그 답을 구현 완료가 아니라 버전이 붙은
+레지스트리에서 가져옵니다.
+
+모든 결과에는 `aos-validity-evidence.v1` 레코드가 붙습니다. 근거 범주 일곱 개 --
+`content`, `response_process`, `internal_structure`, `relations_to_other_variables`,
+`generalizability`, `fairness_invariance`, `consequences` -- 가 각각 `PASS`, `FAIL`,
+`UNESTABLISHED` 중 하나를 갖고, 거기서 claim stage가 나옵니다: `EXPERIMENTAL`,
+`INSTRUMENT_READY`, `PROFILE_BOUND`, `GENERALIZABILITY_SUPPORTED`. 근거가 없으면
+`UNESTABLISHED`이고 이것은 약한 `PASS`가 아닙니다. 레지스트리가 비어 있으면 테스트가 아무리 초록이고
+잠긴 form을 몇 개를 끝냈든 `PROFILE_BOUND`에 도달할 수 없습니다.
+
+stage는 `lib/claim-governance.mjs` 한 곳에서, 봉인된 계약과 그 실행의 evaluation만 보고 계산합니다.
+렌더러는 다시 계산하지 않고 호출자는 stage를 넘길 수 없습니다. 결과 JSON, 마크다운 리포트, HTML,
+카드, 대시보드, 그리고 이 문서까지 모든 표면이 같은 아홉 필드를 보여줍니다: claim stage, 운영자 주장
+결정, 허용된 사용, 금지된 사용, 근거 범주 일곱 개의 상태, generalizability 상태, uncertainty 상태,
+검증 근거 digest, standard-setting 상태. 그 필드들이 대신하는 해석 문장 -- 이 stage에서 읽는 사람이
+무엇을 결론지어도 되는지를 문장으로 적은 것 -- 은 마크다운 리포트, HTML, 카드, 대시보드, 터미널이
+출력합니다. 기록을 렌더링하는 모든 표면이고, 카드도 그중 하나입니다. 카드는 잘라내지 않고 줄을 나눠
+싣습니다. 네 문장 중 가장 긴 것이 띠 너비보다 열 글자 길고, 거기서 잘리는
+부분이 문장 끝의 제한이라, 자르면 근거가 허용하는 것보다 넓은 licence로 읽히기 때문입니다.
+표면마다 무엇을 싣는지는 `tests/product/claim-governance.test.mjs`가 그대로 검사합니다.
+
+현재 일곱 범주가 모두 `UNESTABLISHED`이므로 배포된 도구는 `INSTRUMENT_READY`이고 운영자에 대한
+주장은 `WITHHOLD`입니다.
+
+채용, 승진, 자격 인증, 인구 순위는 이 문서가 권고로 말리는 것이 아니라 제품이 거부합니다. 그런 사용
+요청은 어느 claim stage에서든 `AOS_USE_FORBIDDEN`을 돌려줍니다. 프로파일 간 비교는
+fairness/invariance 근거가 `PASS`가 되기 전까지 `AOS_USE_INVARIANCE_UNESTABLISHED`,
+카테고리·백분위·순위는 `aos-standard-setting.v1` 연구가 등록되기 전까지
+`AOS_USE_STANDARD_SETTING_REQUIRED`, 용도를 아예 밝히지 않은 요청은 묵시적 허용 대신
+`AOS_USE_UNDECLARED`를 돌려줍니다. 제품에 직접 물어볼 수 있습니다:
+`node bin/aos.mjs use --run <id> --for hiring`은 거부 사유를 출력하고 0이 아닌 코드로 끝납니다.
+
+`aos use`는 저장된 기록에 대한 정책 검사이지 그 기록의 검증이 아닙니다. 실행의 근거로부터 기록을
+다시 만들지 않습니다 -- 그건 `aos verify --run`이 하는 일이고, 기록의 claim stage를 반박할 수 있는
+명령도 그쪽입니다. 그래서 `aos use`의 답은 저장된 기록이 자기 근거에 대해 하는 말에 기대지 않습니다.
+등록된 standard-setting 연구와 통과한 fairness/invariance 근거는 registry와 연구에 대한 사실이고,
+어떤 stage가 무엇을 허용하는지는 `lib/claim-governance.mjs`의 상수입니다. 셋 중 무엇을 주장하도록
+편집하고 digest를 다시 계산한 기록도 정직한 기록과 똑같이 거부됩니다.
+
 ## 결과물·보안·개인정보 보호
 
 `assess`가 끝나면 다음 결과물이 만들어집니다.
 
-- **`card.svg`** — 점수, 여섯 영역, 실행 조건, 가장 먼저 고칠 한 가지를 담은 한 장짜리 그림
+- **`card.svg`** — 세 프로필과 각각의 근거, 실행 조건, 가장 먼저 고칠 한 가지를 담은 한 장짜리 그림
 - **Markdown·HTML 리포트** — 지표별 근거, 실패, 미관찰, 보류 조건, 상한
 - **JSON 결과** — 다른 도구가 읽을 수 있는 원본 데이터
 
-공식 점수를 발급하지 않은 카드에는 참고용 숫자를 점수처럼 넣지 않고 **점수 없음**과 이유를
-표시합니다. `provisional_raw`가 공유용 점수처럼 혼자 돌아다니지 않게 하기 위해서입니다.
+카드는 보류된 프로필을 보류로, 이유와 함께 표시합니다. 레거시 실행에서 공식 점수를 발급하지
+않은 카드에는 참고용 숫자를 점수처럼 넣지 않고 **점수 없음**과 이유를 표시합니다.
+`provisional_raw`가 공유용 점수처럼 혼자 돌아다니지 않게 하기 위해서입니다.
 
 `node bin/aos.mjs report --run <id> --format markdown|html|json`으로 리포트를 다시 만들 수 있습니다.
 HTML 리포트와 채점표는 한국어 로케일에서 한국어로, 그 밖의 로케일에서는 영어로 표시됩니다.
@@ -363,8 +459,8 @@ HTML 리포트와 채점표는 한국어 로케일에서 한국어로, 그 밖�
 | AOS 자체 네트워크 | 대시보드는 `127.0.0.1`에만 열리고 토큰이 필요하며 읽기 전용·GET 전용입니다. 세션 원문을 반환하는 경로와 AOS 자체 수집 클라이언트는 없습니다 |
 | 에이전트 네트워크 | `assess`에서 실행되는 Codex·Claude Code는 모델 제공업체와 통신할 수 있습니다. 완전한 오프라인 실행이 아닙니다 |
 | 의존성 | 런타임 패키지 의존성은 없지만 지원 범위의 Node가 필요합니다 |
-| 에이전트 실행 환경 | AOS는 `HOME`을 교체합니다. 기본 `BEST_EFFORT_CLI` 모드에서는 일반적인 비민감 환경 변수는 유지하고, 민감한 이름의 변수와 사용자의 기존 `AOS_*`·`AOS_HOME`을 제거한 뒤 실행 정보 네 개를 새로 넣습니다 |
-| 실행 정보와 인증 | 새로 넣는 AOS 변수는 `AOS_SESSION_ID`, `AOS_FAMILY`, `AOS_WORKSPACE`, `AOS_TASK_FILE`입니다. 명시적으로 허용한 변수와 지원되는 런타임 인증 정보도 전달될 수 있습니다. 이름과 출처는 기록할 수 있지만 인증 값은 저장하지 않습니다 |
+| 에이전트 실행 환경 | AOS는 `HOME`을 교체하고, 사용자의 환경을 물려받는 대신 허용 목록으로 자식 환경을 새로 만듭니다. `BEST_EFFORT_CLI`를 포함한 두 채점 등급 모두에서 변수는 정책이 이름을 명시한 경우에만 전달됩니다. 즉 `PATH`·`LANG` 같은 구조적 이름, 어댑터가 선언한 설정 디렉터리, 검증된 런타임 자격 증명, 별도로 승인된 프록시·인증서 이름뿐입니다. 그 밖의 변수는 `AOS_*`와 `AOS_HOME`을 포함해 모두 빠집니다. 그다음 실행 정보 네 개를 새로 넣습니다 |
+| 실행 정보와 인증 | 새로 넣는 AOS 변수는 `AOS_SESSION_ID`, `AOS_FAMILY`, `AOS_WORKSPACE`, `AOS_TASK_FILE`입니다. 명시적으로 허용한 변수도 전달될 수 있지만, 인증 정보처럼 보이는 이름은 그 목록에 들어갈 수 없습니다. 런타임 자체의 인증 정보는 별도의 런타임 인증 선언으로만, 그리고 그 값을 읽는 어댑터에만 전달됩니다. 이름과 출처는 기록할 수 있지만 인증 값은 저장하지 않습니다 |
 | 비밀값·로컬 저장 | 출력의 비밀값은 읽는 시점에 제거합니다. `~/.aos`는 `0700`, 그 안의 파일은 `0600` 권한으로 저장합니다 |
 
 자동 인증 탐색은 `--no-auto-auth`로 끌 수 있습니다. 보안 취약점은
@@ -385,6 +481,19 @@ npm run smoke:package    # 다른 위치에 패키징해 실제 사용 흐름 �
 
 CI는 Ubuntu의 Node 22·24와 macOS의 Node 24에서 전체 테스트를 실행합니다. `verify:mvp`, 변이
 테스트, Ubuntu·macOS 패키지 스모크도 별도 작업으로 확인합니다.
+
+### `verify --run` 종료 코드
+
+`aos verify --run <id>`는 기계가 읽을 수 있는 검증 상태 하나를 반환합니다.
+
+| 코드 | 상태 | 의미 |
+|---:|---|---|
+| 0 | `verified` | 필요한 모든 주장이 확립되었습니다. |
+| 4 | `unresolved` | 반박된 주장은 없지만, 필요한 주장 중 적어도 하나를 확인할 수 없었습니다. |
+| 5 | `contradicted` | 필요한 주장 중 적어도 하나가 재계산으로 반박되었습니다. |
+
+종료 코드 4는 새 코드이며, 이전에는 0으로 종료했던 상태를 나타냅니다. `!== 0`을 검사하는 소비자는
+영향을 받지 않습니다. `=== 5`만 검사하는 소비자는 `unresolved` 상태도 처리해야 합니다.
 
 | 문서 | 내용 |
 |---|---|

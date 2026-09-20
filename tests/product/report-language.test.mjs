@@ -5,6 +5,7 @@ import { renderHtml } from "../../lib/report.mjs";
 import { DIMENSION_TITLES, METRIC_TITLES, T, languageOf, localeFromEnvironment } from "../../lib/report-i18n.mjs";
 
 const result = {
+  schema_id: "aos-mvp-result.v1",
   run_id: "run-1", status: "SCORED", seed: "seed-1",
   score: { final: 69, raw: 83, band: "OPERATIONAL" },
   coverage: { observed: 19, total: 20 },

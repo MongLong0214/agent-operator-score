@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "aos-reliance-event.v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "opportunity_id",
+    "construct_cell_id",
+    "task_form_id",
+    "initial_operator_event_id",
+    "forcing",
+    "initial",
+    "delegation",
+    "advice",
+    "inspection",
+    "final",
+    "verified_outcome_evidence_ids",
+    "trace_event_ids"
+  ],
+  "properties": {
+    "schema_id": { "const": "aos-reliance-event.v2" },
+    "opportunity_id": { "type": "string", "pattern": "^rel-[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" },
+    "construct_cell_id": { "type": "string", "pattern": "^C3\\.[A-Z]{2}\\.[0-9]{2}$" },
+    "task_form_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "initial_operator_event_id": { "type": "string", "pattern": "^operator-[A-Za-z0-9._-]+$" },
+    "forcing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["forcing_protocol_id", "burden_interaction_count", "skip_or_refusal", "timeout", "interface"],
+      "properties": {
+        "forcing_protocol_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "burden_interaction_count": { "type": "integer", "minimum": 0 },
+        "skip_or_refusal": { "enum": ["NONE", "SKIP", "REFUSAL"] },
+        "timeout": { "type": "boolean" },
+        "interface": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "initial": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["correct", "confidence", "evidence_ids"],
+      "properties": {
+        "correct": { "type": "boolean" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "evidence_ids": { "$ref": "#/$defs/evidenceIds" }
+      }
+    },
+    "delegation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["chosen", "oracle_expected_value", "route_oracle_digest"],
+      "properties": {
+        "chosen": { "type": "boolean" },
+        "oracle_expected_value": { "enum": ["BENEFICIAL", "HARMFUL", "NEUTRAL", "UNCERTAIN"] },
+        "route_oracle_digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "advice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["correct", "error_type", "domain", "evidence_digest"],
+      "properties": {
+        "correct": { "type": "boolean" },
+        "error_type": { "enum": ["none", "systematic", "rare-large", "continuous-small", "omission"] },
+        "domain": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "evidence_digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "inspection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observed", "evidence_ids"],
+      "properties": {
+        "observed": { "const": true },
+        "evidence_ids": { "$ref": "#/$defs/evidenceIds" }
+      }
+    },
+    "final": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "correct", "confidence", "evidence_ids"],
+      "properties": {
+        "action": { "enum": ["adopt", "reject", "modify"] },
+        "correct": { "type": "boolean" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "evidence_ids": { "$ref": "#/$defs/evidenceIds" }
+      }
+    },
+    "verified_outcome_evidence_ids": { "$ref": "#/$defs/evidenceIds" },
+    "choice_independence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pair_id", "current_evidence_digest", "unrelated_prior_ai_error"],
+      "properties": {
+        "pair_id": { "type": "string", "pattern": "^pair-[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" },
+        "current_evidence_digest": { "$ref": "#/$defs/digest" },
+        "unrelated_prior_ai_error": { "type": "boolean" }
+      }
+    },
+    "trace_event_ids": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["initial", "advice_reveal", "oracle", "inspection", "final", "outcome"],
+      "properties": {
+        "initial": { "$ref": "#/$defs/traceId" },
+        "advice_reveal": { "$ref": "#/$defs/traceId" },
+        "oracle": { "$ref": "#/$defs/traceId" },
+        "inspection": { "$ref": "#/$defs/traceId" },
+        "final": { "$ref": "#/$defs/traceId" },
+        "outcome": { "$ref": "#/$defs/traceId" }
+      }
+    }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "traceId": { "type": "string", "pattern": "^reliance-[A-Za-z0-9._-]+$" },
+    "evidenceIds": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" },
+      "uniqueItems": true
+    }
+  }
+}

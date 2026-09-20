@@ -45,16 +45,19 @@ test("a harness that fails every family the same way is not scored, checkpoints 
   }
 });
 
-test("an agent that does the work is still scored when the operator changes nothing", () => {
+test("an agent that does the work still produces a result when the operator changes nothing", () => {
   // The guard must not have been bought at the price of the ordinary case: press Enter through the
-  // questions against a working agent and a number still comes out.
+  // questions against a working agent and the profiles still come out, each issued or withheld with
+  // its reason. There is no single number to look for any more, which is the point of #559.
   const home = temporary("aos-live-home-");
   const cwd = temporary("aos-live-cwd-");
   try {
     aos(cwd, home, ["agent", "add", "solo", "--command", process.execPath, "--arg", fixture]);
     const run = aos(cwd, home, ["assess", "--checkpoints"], "\n".repeat(300));
     assert.doesNotMatch(run.stderr + run.stdout, /AOS_AGENT_FAILS_IDENTICALLY/);
-    assert.match(run.stdout, /Score: \d+ \/ 100/);
+    assert.match(run.stdout, /System outcome: (?:\d+\.\d|withheld)/);
+    assert.match(run.stdout, /claim stage (?:RUN_DIAGNOSTIC|PROFILE_BOUND)/);
+    assert.equal(/Operator Score/.test(run.stdout), false);
   } finally {
     for (const dir of [home, cwd]) rmSync(dir, { recursive: true, force: true });
   }
@@ -62,12 +65,19 @@ test("an agent that does the work is still scored when the operator changes noth
 
 // A ledger that has judged nothing printed `FAIL high-severity precision`, which reads as the
 // reviewer falling short of its target. Nothing had been measured at all.
+//
+// The word this asserts changed from "undecided" to "withheld" when the report stopped being
+// generated from the unfloored acceptance object: there is no longer a gate line with a value in
+// it, so there is no longer a place for a value to be missing from. What is asserted is the same
+// property and one more of it -- the state is named, it is not named as a failure, and there is no
+// rate anywhere on the page.
 test("a gate with nothing to measure is not reported as a failure", () => {
   const home = temporary("aos-undecided-");
   try {
     const shown = aos(home, home, ["holdout"]);
-    assert.match(shown.stdout, /high-severity precision — undecided/);
+    assert.match(shown.stdout, /high-severity precision: withheld/);
     assert.doesNotMatch(shown.stdout, /FAIL {2}high-severity precision/);
+    assert.doesNotMatch(shown.stdout, /\b\d\.\d{3}\b/);
     // Undecided is still not accepted: the word changed, the bar did not.
     assert.notEqual(shown.status, 0);
     assert.match(shown.stdout, /not accepted/);

@@ -1,0 +1,20 @@
+{
+  "backend_run": "none.descendant",
+  "command": "cd @WORKSPACE@ && PROBE_OPERATOR_HOME=@OPERATOR_HOME@ PROBE_RUNTIME=@RUNTIME_FILES@ node fixtures/confinement/probes/descendant-probe.mjs",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "{\n  \"act_outside_boundary_from_descendant\": {\n    \"outcome\": \"allowed\",\n    \"errno\": null,\n    \"detail\": {\n      \"entries_visible\": true\n    }\n  },\n  \"child_exit_status\": 0\n}",
+  "stderr_excerpt": "",
+  "parse_error": null,
+  "captured": {
+    "act_outside_boundary_from_descendant": {
+      "outcome": "allowed",
+      "errno": null,
+      "detail": {
+        "entries_visible": true
+      }
+    },
+    "child_exit_status": 0
+  }
+}

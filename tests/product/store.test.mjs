@@ -6,15 +6,38 @@ import test from "node:test";
 import { canonicalJson, sha256Value } from "../../lib/core.mjs";
 import { appendEvent, commitTerminal, createRun, initHome, listRuns, readEvents, recoverRun, runPaths, writeResult } from "../../lib/store.mjs";
 import { METRICS, METRIC_IDS, observationOf } from "../../lib/metrics.mjs";
-import { scoreRun } from "../../lib/scorer-v1.mjs";
+import { scoreRun as scoreRunUnbounded } from "../../lib/scorer-v1.mjs";
+
+// #556: `scoreRun` and `issuanceCheck` withhold issuance unless the confinement gate says the run
+// was official, and absent evidence withholds like a negative verdict. These tests are about the
+// arithmetic and the metric gates, so the boundary is stated once here rather than at every call:
+// what they assert is what the scorer does with observations, not what this machine's isolation
+// backend can do.
+const UNDER_AN_OFFICIAL_BOUNDARY = { isolationLevel: "STRICT", officialIssuance: { official: true, reasons: [] } };
+const scoreRun = (observations, context = {}) => scoreRunUnbounded(observations, { ...UNDER_AN_OFFICIAL_BOUNDARY, ...context });
+
 
 const temporary = (name) => mkdtempSync(join(tmpdir(), name));
 
-test("event projection drops secret-looking values", () => {
+test("event projection drops secret-looking values, and says which ones", () => {
   const cwd = temporary("aos-projection-");
   try {
     const { runId } = createRun(cwd, { mode: "CONTROLLED" });
     const event = appendEvent(cwd, runId, "agent", { event_type: "completion.claimed", payload: { claim: "API_KEY=secret" } });
+    assert.equal(event.payload.claim, undefined, "a secret-shaped value was published");
+    // #557. The drop used to be silent, and a reader of the stored event could not tell a filter
+    // that removed a field from a producer that never sent one. It cost the safety observation its
+    // whole axis-coverage ledger on every run: one of the five axes is called `secret`, and
+    // `secret=` is the start of a secret to this filter.
+    assert.deepEqual(event.payload.redacted_keys, ["claim"]);
+  } finally { rmSync(cwd, { recursive: true, force: true }); }
+});
+
+test("a payload the producer never sent is not reported as one the filter removed", () => {
+  const cwd = temporary("aos-projection-absent-");
+  try {
+    const { runId } = createRun(cwd, { mode: "CONTROLLED" });
+    const event = appendEvent(cwd, runId, "agent", { event_type: "completion.claimed", payload: {} });
     assert.equal(event.payload, null);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });

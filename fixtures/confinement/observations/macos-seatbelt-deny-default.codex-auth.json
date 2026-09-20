@@ -1,0 +1,11 @@
+{
+  "backend_run": "macos-seatbelt-deny-default.codex-auth",
+  "command": "cd @WORKSPACE@ && sandbox-exec -f deny-default.sb codex login status",
+  "exit_status": 71,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "",
+  "stderr_excerpt": "sandbox-exec: execvp() of '@RUNTIME_CLI_TREE@/bin/codex' failed: Operation not permitted\n",
+  "parse_error": null,
+  "captured": null
+}

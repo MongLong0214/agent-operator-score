@@ -59,8 +59,9 @@
 插件省去了克隆仓库、手动注册 Agent 和手写计划文件。不过仍然需要 Node `>=22.18 <25`，
 以及已经安装并登录的 Claude Code 或 Codex CLI。
 
-`/aos-assess` 不能替你回答检查点问题。要获得正式分数，请按提示在自己的终端里作答。
-如果由 Agent 代答，测到的将是 Agent 的策略，而不是你的判断。
+`/aos-assess` 不能替你回答检查点问题。operator process profile 由检查点上的作答签发，
+没有作答就会被保留；要测到你自己的操作，请按提示在自己的终端里作答。如果由 Agent 代答，
+测到的将是 Agent 的策略，而不是你的判断。
 
 从仓库直接运行：
 
@@ -96,7 +97,7 @@ AOS 问的是另一件事：
 | 做什么 | 从真实会话中找出可能有风险的模式，作为人工复核候选 | 运行六个受控任务，用受条件约束的分数概括操作过程与结果 |
 | 对象 | 本地保存的 Codex、Claude Code、Grok CLI 会话记录 | 已注册的 Codex、Claude Code 等 Agent CLI |
 | 模型额度 | 不消耗，只读取已有记录 | 会消耗，因为会实际运行 Agent |
-| 结果 | 可疑步骤与支持证据 | 百分制分数，或未签发分数的准确原因 |
+| 结果 | 可疑步骤与支持证据 | 三份 profile（操作过程 · 系统结果 · reliance），各自签发或带理由保留 |
 
 建议先使用 `review`。它不会消耗模型额度，可以先用自己的真实工作记录理解 AOS 的判断方式，
 再决定是否运行 `assess`。
@@ -144,7 +145,7 @@ node bin/aos.mjs review --json                  # 输出 JSON
 node bin/aos.mjs init                   # 从 PATH 自动注册 Claude Code 和 Codex
 node bin/aos.mjs doctor                 # 检查命令与已知凭据路径
 
-node bin/aos.mjs assess                 # 无人诊断：不会签发正式分数
+node bin/aos.mjs assess                 # 无人诊断：operator process profile 被保留
 node bin/aos.mjs assess --checkpoints   # 操作者亲自参与、可签发分数的运行
 ```
 
@@ -153,6 +154,26 @@ node bin/aos.mjs assess --checkpoints   # 操作者亲自参与、可签发分�
 
 `doctor` 会检查可执行文件和已知凭据路径，但不会调用模型。如果 Agent 根本没有启动，或者不同
 任务在工作开始前以完全相同的方式失败，AOS 会停止，而不会把错误配置算成操作者低分。
+
+在高级/手动调查中，`assess --probe-capabilities` 会给每个已注册的 Agent 一个 AOS 准备好的隔离工作区，并读回它
+实际做了什么，而不是假定用已知适配器注册的 Agent 就具备该适配器自带的全部能力。正是这个观测
+让 `capability-matches-task` 有可能失败：一旦发现某个 Agent 比适配器默认值更窄，就会记录并
+指明这个缺口。`aos agent probe <id>` 可以脱离打分流程，单独对一个 Agent 做同样的检查：
+
+高级/手动 CLI 的形式是 `aos assess --probe-capabilities`：
+
+```bash
+node bin/aos.mjs agent probe alpha           # 观测 alpha 实际做了什么
+node bin/aos.mjs assess --probe-capabilities # 用观测结果而非适配器表打分
+```
+
+默认关闭，因为每探测一个已注册的 Agent 都会消耗一次真实的 provider 调用。不加这个参数时，
+AOS 仍将已知适配器表记录为 `aos-known`，但这个来源不能回答运行时能力问题。因此
+`capability-matches-task` 和 `simplest-adequate-route` 会被保留；C2.RF.01 无法达到所需的三个
+opportunity，于是 O4、outcome index 和 composite 也会被保留。运行时 capability 尚未观测到，因此
+routing outcome 和 composite 会被保留；能回答它的是 capability 观测。目前高级/手动的
+`aos assess --probe-capabilities` 会运行该观测，并为每个已注册的 Agent 消耗一次真实的 provider 调用。
+让编码 Agent 或 quickstart 自动运行它是 #575 的工作。该 CLI 会观测运行时并生成 `detected` 证据。
 
 ## 评分卡上的六个问题
 
@@ -220,6 +241,12 @@ AOS 会区分：
 
 `provisional_raw` 只是排查运行问题时参考的临时计算值，不是正式分数。
 
+这条签发门槛、下面的上限与等级，以及 `provisional_raw`，都属于旧计分器：它们决定能否给出一个
+数字。现在 `aos assess` 运行的量具不给这样的数字。每个构念、每个结果域各自签发，或者带着理由
+被保留；reliance 是一份不会被加权进任何指数的独立 profile；composite 是描述性的次级指标，只要
+其中一半被保留，它也一并保留。你读到的是哪一种，结果自身写着 —— profile 是 `aos-result.v2`，
+分数是 `aos-mvp-result.v1`。
+
 ## 两个 83 分不能直接比较
 
 不同车辆、路线和天气下得到的两个 83 分，不是同一场考试。AOS 分数也是如此。
@@ -259,22 +286,25 @@ AOS 会把这些条件与结果一起记录。这就是 `PROFILE-BOUND`：不同
 ```bash
 node bin/aos.mjs cycle start                                  # 锁定三个种子
 node bin/aos.mjs cycle run --checkpoints                      # 按顺序运行
-node bin/aos.mjs cycle                                        # 有效运行的中位数
+node bin/aos.mjs cycle                                        # 这个周期里有什么
 node bin/aos.mjs dashboard                                    # 本机只读面板
 ```
 
 目前六个任务中只有三个会随种子改变细节。因此，三次本地重复不能被扩大解释为总体层面的统计
 置信度，也不能证明通用能力。
 
-只有使用锁定种子、相同 Profile、相同 suite major 和 scorer major，并且具备终止记录与正式
-分数的运行才会进入汇总。被排除的运行会显示原因。有效低分不能被丢弃，也不能用同一种子重跑。
+汇总规则属于旧周期，对旧周期仍然适用。只有使用锁定种子、相同 Profile、相同 suite major 和
+scorer major，并且具备终止记录与正式分数的运行才会进入汇总。被排除的运行会显示原因。有效低分不能被丢弃，也不能用同一种子重跑。
 
 如果周期配置错误，可以用 `--force --reason "<原因>"` 终止并重新开始。旧周期、种子、运行和
 分数不会删除。
 
-Operator Score 是所有有效运行的**中位数**。极差、中位绝对偏差（MAD）和
-**local repeat evidence** 只描述这台机器上的重复波动；AOS 不把它称为统计
-`confidence`。
+由 profile 运行组成的周期没有单一数值，`cycle` 会直接说明这一点，而不是硬凑一个。中位数是
+旧计分器汇总旧计分器数字的方式，而 profile 结果并不带这些数字；一个 profile 周期意味着什么，
+仍是周期负责人（#563）尚未回答的问题。因此该命令列出各次运行、保留聚合，并指明这个问题归谁。
+每次运行的 profile 都在它自己的报告里。由旧结果组成的周期仍然报告所有有效运行的**中位数**，
+其中极差、中位绝对偏差（MAD）和 **local repeat evidence** 只描述这台机器上的重复波动；
+AOS 不把它称为统计 `confidence`。
 
 ## 没有分数与分数上限
 
@@ -289,9 +319,11 @@ AOS 不会因为能做算术就一定签发正式分数。观察不足的运行�
 
 例如，泄露敏感信息的运行无论其他部分多好，都不能超过 39 分。严重问题不能被其他高分平均掉。
 
-只有确实观察到违规时才应用上限。证据不足的运行是 `INCOMPLETE`，不是 `UNSAFE`。
-`HIGH RELIABILITY`、`ADVANCED`、`OPERATIONAL`、`DEVELOPING`、`FRAGILE` 只概括当次运行，
-不代表一个人的整体能力或行业排名。
+只有确实观察到违规时才应用上限。证据不足的运行是 `INCOMPLETE`，不是 `UNSAFE`。在 profile
+结果里，上限只压低 system outcome 指数和 composite，不动 operator process 指数，并保留未压低
+前的值。`HIGH RELIABILITY`、`ADVANCED`、`OPERATIONAL`、`DEVELOPING`、`FRAGILE` 是旧计分器对
+旧运行的概括，只概括当次运行，不代表一个人的整体能力或行业排名；profile 结果没有等级 ——
+schema 直接禁止等级、百分位和排名。
 
 ## 已有实测结果与当前限制
 
@@ -318,21 +350,69 @@ AOS 不会因为能做算术就一定签发正式分数。观察不足的运行�
 node bin/aos.mjs holdout --session <path> --use holdout
 node bin/aos.mjs holdout --session <path> --finding <id> --verdict false-positive --reason "..."
 node bin/aos.mjs holdout
+node bin/aos.mjs holdout --lanes
 ```
+
+`aos holdout --lanes` 会同时报告两条通道：本地留出集的精确率，以及 `fixtures/known-incidents/`
+中已知事件夹具的精确率与召回率。低于下限（留出会话 50 个、已判定的高严重度提示 20 条、这些判定
+跨越至少 10 个不同会话、且存疑判定不多于已定判定）时，比率不会打印而是被扣留，`aos review` 仍为
+EXPERIMENTAL。扣留意味着没有该值，而不是 0；该命令打印的每一份报告都由应用下限后的结果生成。
+这些下限是声明的产品验收阈值，并非统计推导所得，夹具集合也是由编写规则的同一人重建的 —— 详见
+[`docs/LIMITATIONS.md`](docs/LIMITATIONS.md)。该命令输出的 JSON 形状已在
+[`docs/HOLDOUT_OUTPUT.md`](docs/HOLDOUT_OUTPUT.md) 中命名并版本化，其中也记录了它取代的那个
+未版本化形状对应读什么。
 
 在新的、未使用过的会话上重新测量之前，不能声称当前 `review` 的准确率已经确立。holdout 台账
 只保存会话哈希、提示 ID、人工判定与理由，不保存会话正文。详见
 [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md)。
 
+## 这个数字可以用来做什么
+
+测试全部通过不是效度证据。`tests pass` 是关于程序的事实；从这个数字能对一个人得出什么结论是另一个问题，
+AOS 从一个带版本的登记表回答它，而不是从"实现完成"回答。
+
+每个结果都带有一条 `aos-validity-evidence.v1` 记录。它包含七个证据类别 --
+`content`、`response_process`、`internal_structure`、`relations_to_other_variables`、
+`generalizability`、`fairness_invariance`、`consequences` -- 每个取 `PASS`、`FAIL` 或
+`UNESTABLISHED`，并由此推出 claim stage：`EXPERIMENTAL`、`INSTRUMENT_READY`、`PROFILE_BOUND`、
+`GENERALIZABILITY_SUPPORTED`。没有证据就是 `UNESTABLISHED`，它不是弱化的 `PASS`：登记表为空时，
+无论测试多绿、完成了多少个锁定 form，都无法到达 `PROFILE_BOUND`。
+
+stage 只在一处计算 -- `lib/claim-governance.mjs` -- 依据封存的契约和该次运行自身的 evaluation。
+渲染器不会重算，调用方也无法传入。结果 JSON、Markdown 报告、HTML 页面、卡片、仪表板，以及本页，
+所有界面都显示同样的九个字段：claim stage、操作者主张的决定、允许的用途、禁止的用途、七个证据类别的
+状态、generalizability 状态、uncertainty 状态、验证证据 digest、standard-setting 状态。这些字段所
+代表的那句解释 -- 用文字写出该 stage 允许读者得出什么结论 -- 由 Markdown 报告、HTML 页面、卡片、
+仪表板和终端打印：凡是渲染该记录的界面都打印，卡片也在其中。卡片不截断，而是折行承载：四句话中最长的一句比色带宽度多十个字符，被截掉的正是句末的限制，一旦截断就会
+读成比证据所支持的更宽的 licence。每个界面各自承担什么，
+由 `tests/product/claim-governance.test.mjs` 逐一检查。
+
+目前七个类别全部是 `UNESTABLISHED`，因此已发布的工具处于 `INSTRUMENT_READY`，对操作者的主张是
+`WITHHOLD`。
+
+招聘、晋升、资格认证、人群排名不是本页劝阻，而是产品拒绝：这类用途请求在任何 claim stage 都返回
+`AOS_USE_FORBIDDEN`。跨 profile 的比较在 fairness/invariance 证据 `PASS` 之前返回
+`AOS_USE_INVARIANCE_UNESTABLISHED`；类别、百分位、排名在注册 `aos-standard-setting.v1` 研究之前
+返回 `AOS_USE_STANDARD_SETTING_REQUIRED`；完全不声明用途的请求返回 `AOS_USE_UNDECLARED`，
+而不是默认许可。可以直接向产品询问：
+`node bin/aos.mjs use --run <id> --for hiring` 会打印拒绝理由并以非零状态退出。
+
+`aos use` 是对已存记录的策略检查，而不是对该记录的验证。它不会依据运行的证据重建记录 --
+那是 `aos verify --run` 做的事，也只有它能推翻记录声称的 claim stage。因此 `aos use` 给出的答案
+从不依赖已存记录对自身证据的说法：已登记的 standard-setting 研究和通过的 fairness/invariance
+证据都是关于登记表和研究的事实，而某个 stage 允许哪些用途是 `lib/claim-governance.mjs` 里的常量。
+一条被改写成声称这三者、并重新算好 digest 的记录，会和诚实的记录一样被拒绝。
+
 ## 输出、安全与隐私
 
 `assess` 完成后会生成：
 
-- **`card.svg`** — 在一张图中显示分数、六个维度、运行条件和最先应修复的一项
+- **`card.svg`** — 在一张图中显示三份 profile 及各自的依据、运行条件和最先应修复的一项
 - **Markdown 与 HTML 报告** — 指标级证据、失败、未观察项、扣留原因与上限
 - **JSON 结果** — 供其他工具读取的原始数据
 
-未签发正式分数时，卡片会显示 **NO SCORE** 和原因，不会把 `provisional_raw` 当作可分享分数。
+卡片会把被保留的 profile 显示为保留，并附上原因。旧运行未签发正式分数时，卡片会显示
+**NO SCORE** 和原因，不会把 `provisional_raw` 当作可分享分数。
 
 可用 `node bin/aos.mjs report --run <id> --format markdown|html|json` 重新生成报告。HTML 报告与
 评分卡在韩语 Locale 下显示韩语，其他 Locale 下显示英语。目前尚无日语或中文报告界面。
@@ -342,8 +422,8 @@ node bin/aos.mjs holdout
 | AOS 自身网络 | 面板只绑定 `127.0.0.1`，需要令牌，只读且仅接受 GET。没有返回会话正文的路由，AOS 也没有外部收集客户端 |
 | Agent 网络 | `assess` 中的 Codex 和 Claude Code 可能连接各自的模型提供方；这不是完全离线运行 |
 | 依赖 | 没有运行时包依赖，但需要受支持的 Node |
-| Agent 环境 | AOS 会替换 `HOME`。默认的 `BEST_EFFORT_CLI` 模式会保留普通的非敏感环境变量，移除名称看起来敏感的变量以及用户原有的 `AOS_*`、`AOS_HOME`，再加入四个运行上下文变量 |
-| 运行信息与凭据 | 新加入的 AOS 变量是 `AOS_SESSION_ID`、`AOS_FAMILY`、`AOS_WORKSPACE`、`AOS_TASK_FILE`。明确允许的变量和已支持的运行时凭据也可能被传入。可以记录名称与来源，但不会保存凭据值 |
+| Agent 环境 | AOS 会替换 `HOME`，并且不再继承用户的环境，而是按允许列表重新构建子进程环境。在包括 `BEST_EFFORT_CLI` 在内的两个可计分级别下，只有策略明确写出名称的变量才会传入：`PATH`、`LANG` 这样的结构性名称，适配器自己声明的配置目录，已验证的运行时凭据，以及单独批准的代理或证书名称。其余变量一律缺席，包括 `AOS_*` 和 `AOS_HOME`。随后再加入四个运行上下文变量 |
+| 运行信息与凭据 | 新加入的 AOS 变量是 `AOS_SESSION_ID`、`AOS_FAMILY`、`AOS_WORKSPACE`、`AOS_TASK_FILE`。明确允许的变量也可能被传入，但名称看起来像凭据的变量不能进入这份列表：运行时自己的凭据只经由单独的运行时凭据声明传递，且只传给会读取它的适配器。可以记录名称与来源，但不会保存凭据值 |
 | 敏感值与本地存储 | 输出中的敏感值在读取时被移除。`~/.aos` 权限为 `0700`，其中的文件为 `0600` |
 
 可用 `--no-auto-auth` 关闭凭据自动发现。安全问题请按
@@ -364,6 +444,19 @@ npm run smoke:package    # 打包到其他位置，验证真实使用流程
 
 CI 会在 Ubuntu 的 Node 22、24 与 macOS 的 Node 24 上运行全部测试，并单独运行 `verify:mvp`、
 变异测试，以及 Ubuntu、macOS 的包冒烟测试。
+
+### `verify --run` 退出代码
+
+`aos verify --run <id>` 会返回一种机器可读的验证状态：
+
+| 代码 | 状态 | 含义 |
+|---:|---|---|
+| 0 | `verified` | 已确立每一项必需主张。 |
+| 4 | `unresolved` | 没有主张被反驳，但至少一项必需主张无法检查。 |
+| 5 | `contradicted` | 至少一项必需主张被重新计算所反驳。 |
+
+退出代码 4 是新增代码，涵盖以前会以 0 退出的状态。检查 `!== 0` 的消费者不受影响；只检查
+`=== 5` 的消费者还必须处理 `unresolved` 状态。
 
 | 文档 | 内容 |
 |---|---|

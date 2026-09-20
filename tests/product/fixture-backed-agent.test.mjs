@@ -70,7 +70,7 @@ test("the caveat prints where the number is read, not only in the JSON", () => {
       env: { ...process.env, AOS_HOME: home, HOME: home }
     });
     assert.match(run.stdout, /FIXTURE-BACKED: faker ran a test fixture, not a runtime/);
-    assert.match(run.stdout, /This number describes the fixture/);
+    assert.match(run.stdout, /This result describes the fixture/);
   } finally {
     rmSync(home, { recursive: true, force: true });
   }

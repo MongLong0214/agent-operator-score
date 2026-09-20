@@ -1,0 +1,15 @@
+{
+  "backend_run": "macos-seatbelt-provider-lane.leak-launch",
+  "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node fixtures/confinement/probes/leak-probe.mjs",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "{\n  \"parent_pid\": 23727,\n  \"descendant_pid\": 23741,\n  \"marker\": \"@WORKSPACE@/leak-verdict.txt\"\n}",
+  "stderr_excerpt": "",
+  "parse_error": null,
+  "captured": {
+    "parent_pid": 23727,
+    "descendant_pid": 23741,
+    "marker": "@WORKSPACE@/leak-verdict.txt"
+  }
+}

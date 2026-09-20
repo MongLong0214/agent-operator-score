@@ -1,0 +1,15 @@
+{
+  "backend_run": "none.leak-launch",
+  "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ node fixtures/confinement/probes/leak-probe.mjs",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "{\n  \"parent_pid\": 21035,\n  \"descendant_pid\": 21042,\n  \"marker\": \"@WORKSPACE@/leak-verdict.txt\"\n}",
+  "stderr_excerpt": "",
+  "parse_error": null,
+  "captured": {
+    "parent_pid": 21035,
+    "descendant_pid": 21042,
+    "marker": "@WORKSPACE@/leak-verdict.txt"
+  }
+}

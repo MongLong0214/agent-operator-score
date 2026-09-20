@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { chmodSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
+import { Readable } from "node:stream";
 
 export const cli = new URL("../../bin/aos.mjs", import.meta.url).pathname;
 export const fakeAgent = new URL("./fake-agent.mjs", import.meta.url).pathname;
@@ -20,8 +21,42 @@ export function run(cwd, args, expected = 0, env = {}) {
   return result;
 }
 
-export function addAgent(cwd, id, script = fakeAgent) {
-  run(cwd, ["agent", "add", id, "--command", process.execPath, "--arg", script]);
+/**
+ * The fixture agent, registered the way a real runtime is.
+ *
+ * The two `FAKE_AGENT_*` names are declared rather than inherited. A child no longer receives the
+ * parent's environment, so a fixture that reads its profile out of the ambient shell would see
+ * `competent` in every test and every scripted profile would silently score the same run. Declaring
+ * them is what a real adapter does with `CODEX_HOME`, and it keeps the fixture on the same footing
+ * as the runtimes it stands in for.
+ */
+/**
+ * A launcher for the fixture agent whose own executable identity verifies (#554, #561).
+ *
+ * Registering `process.execPath` directly records the identity of whatever Node the test happens
+ * to run under. On a machine where that binary sits in a group-writable or third-party-owned
+ * directory -- GitHub's hosted tool cache is one -- #554 records it UNTRUSTED, and since #561 an
+ * unverified executable withholds the profile-bound aggregate. That is the intended posture and
+ * not something a test should assert its way around, so the fixture stands in for a runtime
+ * installed where a runtime normally is: a two-line launcher inside the test's own directory,
+ * which is exactly what the identity tests elsewhere use.
+ */
+export function verifiedRunner(cwd) {
+  const launcher = join(cwd, "fixture-runtime");
+  writeFileSync(launcher, `#!/bin/sh\nexec ${JSON.stringify(process.execPath)} "$@"\n`, { mode: 0o755 });
+  chmodSync(launcher, 0o755);
+  return launcher;
+}
+
+export function addAgent(cwd, id, script = fakeAgent, extraArgs = [], command = process.execPath) {
+  run(cwd, [
+    "agent", "add", id, "--command", command, "--arg", script,
+    "--allow-env", "FAKE_AGENT_PROFILE",
+    "--allow-env", "FAKE_AGENT_SKIP_EVIDENCE",
+    // What the fixture runtime announces in its own transcript, the way Codex and Claude Code do.
+    "--allow-env", "FAKE_AGENT_MODEL",
+    ...extraArgs
+  ]);
 }
 
 export function newestRunId(cwd) {
@@ -38,6 +73,17 @@ export function newestRunId(cwd) {
 export function newestResult(cwd) {
   const runId = newestRunId(cwd);
   return JSON.parse(readFileSync(join(cwd, ".aos", "runs", runId, "result.json"), "utf8"));
+}
+
+/**
+ * The run's working record: everything the store keeps about how the run went.
+ *
+ * Separate from the result since #559: the result is the artifact an operator publishes, and the
+ * suite manifest, the per-agent environment and the operator's plan projection live beside it.
+ */
+export function newestRecord(cwd) {
+  const runId = newestRunId(cwd);
+  return JSON.parse(readFileSync(join(cwd, ".aos", "runs", runId, "record.json"), "utf8"));
 }
 
 export function makePlan(cwd, routes) {
@@ -148,4 +194,135 @@ export function initBare(cwd) {
       cwd, encoding: "utf8", env: { ...process.env, AOS_HOME: join(cwd, ".aos") }
     });
   }
+}
+
+/**
+ * A run driven by an operator at a terminal.
+ *
+ * In process, through `runCli`, because the descriptor is the thing under test. Since #560 the
+ * source of an operator event is decided by whether the stream the answers arrive on is a terminal:
+ * a pipe carries somebody relaying, and admitting a relayed answer needs the owner-relay attestation
+ * of #576. Driving this through `spawnSync` would therefore measure the pipe rather than the
+ * checkpoint runtime -- which is the correct behaviour and the wrong test.
+ *
+ * `script` was tried and does not work here: it delivers the whole answer file and its EOF into the
+ * pty before the reader attaches, so every checkpoint reads as unanswered (measured: seven refusals,
+ * no answers). What is faked is one bit -- the operating system's answer to "is this a terminal" --
+ * and nothing else: the same reader, the same checkpoint runtime and the same store. That a pipe
+ * really does report false is proved against the real binary in
+ * `tests/product/operator-channel-authority.test.mjs`.
+ *
+ * Returns what `spawnSync` would, so a caller reads `status`, `stdout` and `stderr` unchanged.
+ */
+export async function assessAtATerminal(cwd, args, { env = {} } = {}) {
+  const { runCli } = await import("../../lib/cli.mjs");
+  const answers = env.ANSWERS ?? [];
+  const stdin = Readable.from(answers.map((line) => `${line}\n`));
+  stdin.isTTY = true;
+  const out = [];
+  const err = [];
+  const previous = new Map(Object.keys(env).filter((name) => name !== "ANSWERS").map((name) => [name, process.env[name]]));
+  for (const [name, value] of Object.entries(env)) if (name !== "ANSWERS") process.env[name] = value;
+  let status;
+  try {
+    status = await runCli([...args, "--data-dir", join(cwd, ".aos")], {
+      cwd,
+      stdin,
+      stdout: { write: (text) => { out.push(String(text)); return true; } },
+      stderr: { write: (text) => { err.push(String(text)); return true; } }
+    });
+  } catch (error) {
+    err.push(`AOS_INTERNAL_ERROR ${error instanceof Error ? error.message : String(error)}\n`);
+    status = 70;
+  } finally {
+    for (const [name, value] of previous) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
+  return { status, stdout: out.join(""), stderr: err.join("") };
+}
+
+/**
+ * A run whose actual effects a real boundary observed, and found clean.
+ *
+ * #557 answers M19 from what the run did rather than from what the assessed agent wrote about
+ * itself, so a fixture that wants a scored run has to state what was observed -- exactly as it
+ * already states `{ isolationLevel: "STRICT", officialIssuance: { official: true } }` for #556's
+ * gate. Stating it as a verdict would defeat the point, so this is built from the committed
+ * observation of a real macos-seatbelt lane: the cells are the kernel's answers, the digests are
+ * the ones that run produced, and `lib/effect-events.mjs` derives the safety answers from them the
+ * same way it does in production.
+ *
+ * The network policy is `disabled`, which is the lane a runtime that needs no provider transport
+ * runs under. On a provider-required lane the outbound connect the canary makes is the transport
+ * the runtime needs, nothing at that layer separates it from a task's own call, and
+ * `no-prohibited-external-action` is NOT_OBSERVED -- which is the state the product ships in on the
+ * proven Codex lane and is asserted where that matters rather than papered over here.
+ */
+const CANARY_OBSERVATION = JSON.parse(
+  readFileSync(new URL("../../fixtures/confinement/observations/strict-lane.darwin.seatbelt.canary.json", import.meta.url), "utf8")
+).captured;
+
+export function observedCleanBoundary(over = {}, cellsOver = {}) {
+  return {
+    schema: "aos-confinement-record.v1",
+    level: "STRICT",
+    platform: "darwin",
+    backend: "macos-seatbelt",
+    adapter: "generic-command.v1",
+    filesystem_enforced: true,
+    process_enforced: true,
+    process_containment: "inherited-profile",
+    network_policy: "disabled",
+    network: { provider_transport: "denied", task_external: "NOT_OBSERVED", enforcement: "kernel" },
+    policy_digest: CANARY_OBSERVATION.policy_digest,
+    rendered_profile_digest: CANARY_OBSERVATION.rendered_profile_digest,
+    setup_verified: true,
+    boundary_canary: {
+      result: "PASS",
+      failed: [],
+      cells: {
+        ...CANARY_OBSERVATION.cells,
+        // The one cell the policy changes: a disabled network expects the connect to be refused by
+        // the boundary before it reaches a peer, and the committed run was made under a
+        // provider-required policy where it reaches one.
+        network_outbound_connect: { expected: "denied", observed: "denied", errno: "EPERM" },
+        ...cellsOver
+      },
+      out_of_band: CANARY_OBSERVATION.out_of_band,
+      evidence_digest: CANARY_OBSERVATION.evidence_digest,
+      program_digest: CANARY_OBSERVATION.program_digest
+    },
+    descendants: {
+      scan: "ancestry-poll+process-group-sweep+survivor-sweep",
+      poll_interval_ms: 200,
+      polls: CANARY_OBSERVATION.scan_polls,
+      tracked: [],
+      leaked: [],
+      survivors: [],
+      group_sweep: CANARY_OBSERVATION.group_sweep,
+      survivor_sweep: CANARY_OBSERVATION.survivor_sweep,
+      residual: "measured and accepted"
+    },
+    cleanup_verified: true,
+    support_status: "SUPPORTED_WITH_CONSTRAINTS",
+    platform_lane: "darwin/macos-seatbelt/generic-command.v1",
+    runtime_identity: CANARY_OBSERVATION.runtime_identity,
+    holes: [],
+    ...over
+  };
+}
+
+/** The evidence bundle `observeRun` takes, for a run a clean boundary measured end to end. */
+export function observedCleanEffects(over = {}) {
+  return {
+    run_id: "run-fixture",
+    confinement: [observedCleanBoundary()],
+    isolation: [{ env_policy_digest: CANARY_OBSERVATION.policy_digest, unauthorised_env_names: [] }],
+    settlement: { "FAM-1": { changed_after_settlement: false } },
+    filesystem: [],
+    observed_at: "2026-09-03T00:00:00Z",
+    ...over
+  };
 }

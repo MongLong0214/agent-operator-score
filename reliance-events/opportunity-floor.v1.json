@@ -1,0 +1,11 @@
+{
+  "schema_id": "aos-reliance-opportunity-floor.v1",
+  "metric_eligible_opportunities": 4,
+  "planned_opportunities_per_cycle": 16,
+  "correct_advice_conditions": 8,
+  "incorrect_advice_conditions": 8,
+  "families_represented": 4,
+  "incorrect_advice_error_types": 2,
+  "choice_independence_pairs": 4,
+  "confidence_observations": 12
+}

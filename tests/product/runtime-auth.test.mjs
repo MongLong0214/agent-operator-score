@@ -107,6 +107,9 @@ test("a declared runtime credential reaches the agent; an undeclared one still d
     AWS_SECRET_ACCESS_KEY: "aws-undeclared"
   };
   const built = buildAgentEnv("BEST_EFFORT_CLI", source, {
+    // Named with the adapter that declares it: a credential travels only to the runtime that owns
+    // it, and the policy refuses the pair otherwise.
+    adapter: ADAPTERS["claude-code.v1"],
     runtimeAuth: ["CLAUDE_CODE_OAUTH_TOKEN"],
     home: "/tmp/fake-home"
   });
@@ -132,6 +135,9 @@ test("a name declared but absent from the environment is not reported as carried
   // Otherwise the result claims the agent was handed a credential it never received, and the next
   // reader takes a failed run for an authenticated one.
   const built = buildAgentEnv("BEST_EFFORT_CLI", { PATH: "/usr/bin" }, {
+    // Named with the adapter that declares it: a credential travels only to the runtime that owns
+    // it, and the policy refuses the pair otherwise.
+    adapter: ADAPTERS["claude-code.v1"],
     runtimeAuth: ["CLAUDE_CODE_OAUTH_TOKEN"],
     home: "/tmp/fake-home"
   });
@@ -243,6 +249,9 @@ test("nothing is resolved off the platform it was declared for", () => {
 
 test("a resolved credential reaches the agent and is recorded by name only", () => {
   const built = buildAgentEnv("BEST_EFFORT_CLI", { PATH: "/usr/bin" }, {
+    // Named with the adapter that declares it: a credential travels only to the runtime that owns
+    // it, and the policy refuses the pair otherwise.
+    adapter: ADAPTERS["claude-code.v1"],
     runtimeAuth: ["CLAUDE_CODE_OAUTH_TOKEN"],
     inject: { CLAUDE_CODE_OAUTH_TOKEN: "sk-ant-oat-resolved" },
     home: "/tmp/fake-home"
@@ -263,6 +272,9 @@ test("a resolved credential reaches the agent and is recorded by name only", () 
 
 test("an empty injected value is not carried as though it were a credential", () => {
   const built = buildAgentEnv("BEST_EFFORT_CLI", { PATH: "/usr/bin" }, {
+    // Named with the adapter that declares it: a credential travels only to the runtime that owns
+    // it, and the policy refuses the pair otherwise.
+    adapter: ADAPTERS["claude-code.v1"],
     runtimeAuth: ["CLAUDE_CODE_OAUTH_TOKEN"],
     inject: { CLAUDE_CODE_OAUTH_TOKEN: "" },
     home: "/tmp/fake-home"

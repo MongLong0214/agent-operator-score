@@ -1,0 +1,11 @@
+{
+  "backend_run": "strict-lane.darwin.host",
+  "command": "uname -a; sw_vers; node -v; codex --version; ls -l /usr/bin/sandbox-exec",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "Darwin @HOSTNAME@ 25.3.0 Darwin Kernel Version 25.3.0: Wed Jan 28 20:48:41 PST 2026; root:xnu-12377.81.4~5/RELEASE_ARM64_T6041 arm64\nProductName:\t\tmacOS\nProductVersion:\t\t26.3\nBuildVersion:\t\t25D125\nv22.23.2\ncodex-cli 0.148.0\n-rwxr-xr-x  1 root  wheel  102560 Feb  5  2026 /usr/bin/sandbox-exec\n",
+  "stderr_excerpt": "",
+  "parse_error": null,
+  "captured": null
+}

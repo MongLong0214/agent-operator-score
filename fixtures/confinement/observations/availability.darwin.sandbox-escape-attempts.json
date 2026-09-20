@@ -1,0 +1,11 @@
+{
+  "backend_run": "availability.darwin.sandbox-escape-attempts",
+  "command": "cd @WORKSPACE@; echo '--- re-enter sandbox-exec with (allow default) ---'; sandbox-exec -f /private/tmp/aos-cp2/run-deny-default.sb /usr/bin/sandbox-exec -p '(version 1)(allow default)' /bin/cat @OPERATOR_HOME@/.ssh/config 2>&1 | head -2; echo '--- read a credential through /bin/sh ---'; sandbox-exec -f /private/tmp/aos-cp2/run-deny-default.sb /bin/sh -c 'cat @OPERATOR_HOME@/.codex/auth.json' 2>&1 | head -2; echo '--- profile operations the compiler rejects ---'; for p in '(version 1)(allow default)(deny process-session)' '(version 1)(allow default)(deny setsid)'; do sandbox-exec -p \"$p\" /bin/echo ok 2>&1 | head -1; done",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "--- re-enter sandbox-exec with (allow default) ---\nsandbox-exec: sandbox_apply: Operation not permitted\n--- read a credential through /bin/sh ---\ncat: @OPERATOR_HOME@/.codex/auth.json: Operation not permitted\n--- profile operations the compiler rejects ---\nsandbox-exec: unbound variable: process-session at <input string>, line 1, column 33\nsandbox-exec: unbound variable: setsid at <input string>, line 1, column 33\n",
+  "stderr_excerpt": "",
+  "parse_error": null,
+  "captured": null
+}

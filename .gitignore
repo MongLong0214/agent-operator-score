@@ -17,3 +17,8 @@ coverage/
 
 # Written by `assess` when no --plan is named. A generated stub, never the repo's.
 aos-plan.json
+
+# Written by `verify:real-runtime-strict` by default (#639): a local, disposable copy of whatever
+# the lane just measured. Never the repo's unless `AOS_STRICT_CANARY_UPDATE_FIXTURE=1` deliberately
+# writes the committed fixture at fixtures/confinement/strict-canary.json instead.
+fixtures/confinement/strict-canary.local.json

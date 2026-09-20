@@ -1,0 +1,91 @@
+{
+  "backend_run": "linux-container-vm.filesystem",
+  "command": "docker run --rm --platform linux/arm64 --network none -v @WORKSPACE@:@WORKSPACE@ -v fixtures/confinement/probes:fixtures/confinement/probes:ro -w @WORKSPACE@ -e PROBE_BASE=@BASE@ -e PROBE_OPERATOR_HOME=@OPERATOR_HOME@ -e PROBE_RUNTIME=fixtures/confinement/probes node:22-bookworm node fixtures/confinement/probes/probe.mjs",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "{\n  \"read_inside_workspace\": {\n    \"outcome\": \"allowed\",\n    \"errno\": null,\n    \"detail\": 6\n  },\n  \"write_inside_workspace\": {\n    \"outcome\": \"allowed\",\n    \"errno\": null,\n    \"detail\": true\n  },\n  \"read_workspace_parent\": {\n    \"outcome\": \"denied\",\n    \"errno\": \"ENOENT\",\n    \"detail\": null\n  },\n  \"write_outside_workspace\": {\n    \"outcome\": \"denied\",\n    \"errno\": \"ENOENT\",\n    \"detail\": null\n  },\n  \"delete_outside_workspace\": {\n    \"outcome\": \"denied\",\n    \"errno\": \"ENOTARGET\",\n    \"detail\": null\n  },\n  \"read_operator_home_absolute\": {\n    \"outcome\": \"denied\",\n    \"errno\": \"ENOENT\",\n    \"detail\": null\n  },\n  \"read_operator_ssh_listing_absolute\": {\n    \"outcome\": \"denied\",\n    \"errno\": \"ENOENT\",\n    \"detail\": null\n  },\n  \"read_operator_ssh_private_key_absolute\": {\n    \"outcome\": \"denied\",\n    \"errno\": \"ENOENT\",\n    \"detail\": null\n  },\n  \"read_operator_agent_config_absolute\": {\n    \"outcome\": \"denied\",\n    \"errno\": \"ENOENT\",\n    \"detail\": null\n  },\n  \"read_aos_home_absolute\": {\n    \"outcome\": \"denied\",\n    \"errno\": \"ENOENT\",\n    \"detail\": null\n  },\n  \"escape_via_symlink\": {\n    \"outcome\": \"denied\",\n    \"errno\": \"ENOENT\",\n    \"detail\": null\n  },\n  \"spawn_child_process\": {\n    \"outcome\": \"allowed\",\n    \"errno\": null,\n    \"detail\": {\n      \"status\": 0\n    }\n  },\n  \"read_special_device\": {\n    \"outcome\": \"allowed\",\n    \"errno\": null,\n    \"detail\": true\n  },\n  \"tilde_relative_home_listing\": {\n    \"outcome\": \"allowed\",\n    \"errno\": null,\n    \"detail\": {\n      \"entries\": 2\n    }\n  },\n  \"open_outbound_network_socket\": {\n    \"outcome\": \"denied\",\n    \"errno\": \"ENETUNREACH\",\n    \"detail\": null\n  }\n}",
+  "stderr_excerpt": "",
+  "parse_error": null,
+  "captured": {
+    "read_inside_workspace": {
+      "outcome": "allowed",
+      "errno": null,
+      "detail": 6
+    },
+    "write_inside_workspace": {
+      "outcome": "allowed",
+      "errno": null,
+      "detail": true
+    },
+    "read_workspace_parent": {
+      "outcome": "denied",
+      "errno": "ENOENT",
+      "detail": null
+    },
+    "write_outside_workspace": {
+      "outcome": "denied",
+      "errno": "ENOENT",
+      "detail": null
+    },
+    "delete_outside_workspace": {
+      "outcome": "denied",
+      "errno": "ENOTARGET",
+      "detail": null
+    },
+    "read_operator_home_absolute": {
+      "outcome": "denied",
+      "errno": "ENOENT",
+      "detail": null
+    },
+    "read_operator_ssh_listing_absolute": {
+      "outcome": "denied",
+      "errno": "ENOENT",
+      "detail": null
+    },
+    "read_operator_ssh_private_key_absolute": {
+      "outcome": "denied",
+      "errno": "ENOENT",
+      "detail": null
+    },
+    "read_operator_agent_config_absolute": {
+      "outcome": "denied",
+      "errno": "ENOENT",
+      "detail": null
+    },
+    "read_aos_home_absolute": {
+      "outcome": "denied",
+      "errno": "ENOENT",
+      "detail": null
+    },
+    "escape_via_symlink": {
+      "outcome": "denied",
+      "errno": "ENOENT",
+      "detail": null
+    },
+    "spawn_child_process": {
+      "outcome": "allowed",
+      "errno": null,
+      "detail": {
+        "status": 0
+      }
+    },
+    "read_special_device": {
+      "outcome": "allowed",
+      "errno": null,
+      "detail": true
+    },
+    "tilde_relative_home_listing": {
+      "outcome": "allowed",
+      "errno": null,
+      "detail": {
+        "entries": 2
+      }
+    },
+    "open_outbound_network_socket": {
+      "outcome": "denied",
+      "errno": "ENETUNREACH",
+      "detail": null
+    }
+  }
+}

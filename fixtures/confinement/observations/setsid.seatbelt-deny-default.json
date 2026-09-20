@@ -1,0 +1,18 @@
+{
+  "backend_run": "setsid.seatbelt-deny-default",
+  "command": "cd @WORKSPACE@ && sandbox-exec -f deny-default.sb node fixtures/confinement/probes/setsid-probe.mjs",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "{\n  \"child_leads_own_process_group\": \"not_answerable\",\n  \"signal_probe_errno\": \"EPERM\",\n  \"ps_in_child_available\": false,\n  \"ps_in_child_raw\": \"/bin/sh: /bin/ps: Operation not permitted\",\n  \"parent_pid\": 62193,\n  \"child_pid\": 62195\n}",
+  "stderr_excerpt": "",
+  "parse_error": null,
+  "captured": {
+    "child_leads_own_process_group": "not_answerable",
+    "signal_probe_errno": "EPERM",
+    "ps_in_child_available": false,
+    "ps_in_child_raw": "/bin/sh: /bin/ps: Operation not permitted",
+    "parent_pid": 62193,
+    "child_pid": 62195
+  }
+}

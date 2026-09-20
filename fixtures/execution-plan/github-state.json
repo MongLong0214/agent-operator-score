@@ -1,0 +1,2088 @@
+{
+  "schema": "aos-github-issue-state.v1",
+  "repository": "MongLong0214/agent-operator-score",
+  "captured_at": "2026-09-15T21:41:13.912Z",
+  "source": "snapshot",
+  "integration_branch": "dev",
+  "issues": [
+    {
+      "number": 553,
+      "title": "[P0][security] assessed code와 trusted verdict authority process를 완전히 분리한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:security",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 553,
+        "final_sha": "10cbba687ab3414e051200c552b7f87b99951014",
+        "pr": 595,
+        "ci_run_ids": [
+          33596233717
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "controller_subject_probe_digests": "suiteManifest.verifier_digests at 10cbba68 — fam5-independent-verifier.v1 sha256:cb83a915058f946fdb0180dc23473107d93261cfeeb6c75b90d3886f0e41655c (lib/verifiers/fam5.mjs, controller); fam5-subject-runner.v1 sha256:4083113403f5cc54545d636ca40424032488bfe7992efe97b01325f17954055c (fam5-subject.mjs); fam5-probe-manifest.v1 sha256:e00b1fe05e8355a04f3c441bb66228d22bc6ca12cf778329e9cc943c8735c372 (fam5-probes.mjs); fam5-result-schema.v1 sha256:4e41145fa3346bc3817dd4c9a4cf95dc88bd1f6b22002cc4f5d85809c39e6d38 (fam5-result.mjs); fam5-verifier-runner.v1 sha256:ad6a64846e6a64d1befc3035a7236fbbb64beec9e3eb28fc475f43cd4d0077e6 (lib/verifier-run.mjs) — all raw byte digests via fileByteDigest",
+          "attack_matrix": "tests/product/verifier-authority.test.mjs at 10cbba68, 23 attacks each refused: prototype monkey-patch (Array.prototype.every), global error-class replacement, verdict-line rewrite, assessed module in controller process, controller import scan, subject runner read-once before spawn, verdict nonce withheld from subject, one subject process per probe, runner replacement between probes, write into AOS installation, result-token forgery via process introspection, subject references unreplaceable, observation on result channel refused, exit-zero-without-report refused, isolation lane recorded, setsid descendant, unestablished cleanup never claimed, controller hostage via result channel, duplicate observation, unauthenticated observation, oversized/malformed observation, every probe maps to a reported subcheck",
+          "process_cleanup_matrix": "tests/product/verifier-isolation.test.mjs at 10cbba68, 10 cases: assessed module never in AOS process; operator environment not inherited; verdict forgery refused; nonce-matched verdict line only; process.exit is a verifier failure not a pass; never-returning code hits timeout; spawned child does not survive the verifier; symlinked calculator.mjs refused; safeWalk refuses unreadable and records it; safeWalk bounds size and never reads a special file — plus verifier-authority 'a descendant that calls setsid is invisible to the process-group scan' and 'the verifier never claims a cleanup its scan cannot establish' (cleanup limits stated, not papered over)",
+          "mutation": "98/98 guards are load-bearing (CI mutation job on 10cbba68, run 33596233717); the raw-filename-bytes guard is proven on Linux and skips only EILSEQ on APFS"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#553",
+        "#573",
+        "#574",
+        "#575",
+        "#576",
+        "#578",
+        "#595",
+        "#556",
+        "#586"
+      ]
+    },
+    {
+      "number": 554,
+      "title": "[P0][security] automatic runtime credential을 verified executable identity에 결박한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:security",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 554,
+        "final_sha": "c0e5b3ee734767b6a4f13ac4c74858f41e584cd3",
+        "pr": 596,
+        "ci_run_ids": [
+          33597114897
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "executable_identity_binding": "lib/runtime-identity.mjs at c0e5b3ee — aos-runtime-identity.v1: resolveExecutable (absolute PATH entries only, execute bit checked for this process), describeExecutable (identity read from the opened descriptor, never by reopening the name: resolved_realpath, realpath_digest, file_fingerprint, interpreter_digest via shebang/env parsing, owner_uid, mode, parent_security incl. world/untrusted-group-writable parents and symlink hops, macOS codesign team + requirement digest, adapter_id), identityDigestOf, identityDrift compared field by field before any credential resolver runs; lib/runtime-auth.mjs resolveRuntimeAuthForAgent gates the credential on that comparison and lib/core.mjs spawns the verified file; profile digest moves with identity (test l.463); stored assessments carry the identity each invocation was bound to (l.847); docs/RUNTIME_EXECUTABLE_IDENTITY.md is the contract",
+          "credential_canary": "tests/product/runtime-identity.test.mjs at c0e5b3ee: 'an operator's own token does not reach a binary whose identity failed, and the child never starts' (l.382) plants the operator token, swaps the binary, and asserts the exfiltration file is never written; 'a credential the child quotes back does not survive into anything the run keeps' (l.821); 'no credential value is ever written into an identity record' (l.428); 'the identity check runs before the credential resolver, not after' (l.335); 36 identity tests in total covering replaced binary, symlink retarget, PATH shadowing wrapper, owner/mode drift, writable parents, ACL replace rights, shebang interpreter identity, unresolvable interpreter, legacy agent refused not promoted",
+          "mutation": "119/119 guards are load-bearing (CI mutation job on c0e5b3ee, run 33597114897)"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#554",
+        "#573",
+        "#574",
+        "#575",
+        "#578"
+      ]
+    },
+    {
+      "number": 555,
+      "title": "[P0][security] child environment를 adapter allowlist-only policy로 전환한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:security",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 555,
+        "final_sha": "7d1afeba3ec85ef4f1725f431ec9ac3cf2c0b5b8",
+        "pr": 599,
+        "ci_run_ids": [
+          33598659896
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "env_allowlist_digest": "envPolicyDigestOf(envPolicyFor(adapter)) at PR #599 head 7d1afeb: claude-code.v1 sha256:351b8c07e0f74b873417df419e039a40301ab1b96e761728b660c973906fb4a0; codex-cli.v1 sha256:198097a3ac762018dc3130fef6b832a2cf0862cabe08961ff4d31b42fbe49579; generic-command.v1 sha256:689ff2773b39a871f6f3621cf979115343e0760c59129f3139255ce2ee19745a",
+          "leak_canary": "tests/product/adapter-env-policy.test.mjs: 'a credential in the operator's shell never reaches the child, listed or not' -- ACME_UNLISTED_THING, ACME_DEPLOY_TOKEN, GITHUB_TOKEN, SSH_AUTH_SOCK, DATABASE_URL planted in the parent env, none seen by the spawned child and the postgres URL absent from the isolation record; 'no process-injection variable in the operator's shell reaches the spawned child' and 'NODE_OPTIONS cannot make the child run code before its own first line' cover the pre-main hook classes. 34/34 in that file, 752/752 suite at 7d1afeb.",
+          "mutation": "150/150 guards are load-bearing (CI mutation job on 7d1afeb, run 33598659896)"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#555",
+        "#573",
+        "#574",
+        "#575",
+        "#562",
+        "#578",
+        "#599"
+      ]
+    },
+    {
+      "number": 556,
+      "title": "[P0][security] actual runtime/platform official lane의 STRICT workspace confinement를 증명한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:security",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 556,
+        "final_sha": "a00d0b588de0b37b5cb15d87c4782e2404d0baec",
+        "pr": 609,
+        "ci_run_ids": [
+          33729398955
+        ],
+        "verdict": "PASS_WITH_KNOWN_RESIDUE",
+        "evidence": {
+          "isolation_backend": "macos-seatbelt",
+          "boundary_canary": "committed observation sha256:227e00818e75fcfd7c6c84272dd18ea57e70197f9d42a41122dc77f1be450914, canary program sha256:0c28e6de15815c2c1aaafe14878c4af81c0adf8c816b108efd70b5310840d807, darwin STRICT policy sha256:640abcfb0c5bcce628b70a814bc258bfa87c15730a6781eb9f12162e5880dff5; 8/8 deny cells EPERM with planted_intact true, re-judged at this head by denialProved",
+          "platform_lane": "darwin/macos-seatbelt/codex-cli.v1 official; linux NOT_OBSERVED (unmeasured, not unprovable)",
+          "mutation": "CI mutation job green on the merge head a00d0b58; 540/540 unqualified on darwin at a00d0b58; CI mutation job green on the same head"
+        },
+        "known_residue": [
+          {
+            "id": "codex-lane-not-executed-at-this-head",
+            "source": "provider quota",
+            "detail": "The codex-cli.v1 lane was not executed at 345b052f — the provider refused with a usage limit that resets Sep 8. Its committed evidence is digest-verified and re-judged official by this build's code; the citation-judging functions are byte-identical to base (git diff on unmetMarkers/everyCitedRan/missingEvidence/logged_in/answered_expected_word/exit_status returns empty), and the one judgement this round changed (canary deny cells, via denialProved) was applied to those preserved bytes at this head. Live re-run and fixture re-record owed after Sep 8.",
+            "severity": "limitation"
+          },
+          {
+            "id": "linux-lanes-unmeasured",
+            "source": "no linux host",
+            "detail": "All linux STRICT rows are NOT_OBSERVED — unmeasured, not unprovable. Under mount-namespace the denial is the absence, ENOENT is the correct result, and planted_intact checked outside the namespace separates it from a missing plant. Owner: Phase 0 item 3, a linux host with bwrap.",
+            "severity": "limitation"
+          },
+          {
+            "id": "review-model-note",
+            "source": "process",
+            "detail": "External review models (gpt-5.6-sol, gpt-5.6-terra, grok) were out of quota at this head. Rounds 1 and 2 of the grok merge-gate review ran against earlier heads (345b052f's predecessors) and their findings are closed or recorded above; the merge-gate review of this exact head was performed by a Claude reviewer.",
+            "severity": "note"
+          },
+          {
+            "id": "descendant-residual-bound-narrowed",
+            "source": "round-1 inventory O-11/G-09",
+            "detail": "The descendant residual was originally accepted on the claim that the settlement freeze stops a survivor reaching what grading reads. That claim was false and is now rewritten to what the code does: the copy is certified against the source, a write made and reverted during the copy changes the copy's digest and withholds, and a tree the digest cannot cover (entries over 1 MiB, trees over 16 MiB) is withheld rather than scored. Narrower than the original bound, and true.",
+            "severity": "limitation"
+          },
+          {
+            "id": "R-01-frozen-copy-undeletable",
+            "source": "round-2 closure",
+            "detail": "Mode preservation makes a frozen copy undeletable with EACCES when the workspace holds a directory without owner-write. Not reachable inside a run — nothing in lib/ removes <run>/settled — so it is an operator `rm -rf` annoyance, not correctness, security or data loss. Non-blocking regression introduced by the O-11 fix.",
+            "severity": "defect"
+          },
+          {
+            "id": "settlement-consistent-is-a-stored-boolean",
+            "source": "round-2, recorded not opened",
+            "detail": "record.settlement[*].consistent is a stored derived boolean; a flip contradicted by its own sibling digests still passes. The round-1 inventory names that field as raw evidence, so the stronger form was dismissed there rather than opened in round 2.",
+            "severity": "defect"
+          },
+          {
+            "id": "two-round-claim-does-not-hold",
+            "source": "protocol",
+            "detail": "Round-1 enumeration was INCOMPLETE: fixtures/confinement/probes/strict-lane.mjs NOT_READ and seven large artifacts read in part. Round 2 therefore establishes that the four blockers are closed and that the remediation introduced nothing blocking — not that the round-1 surface was bounded. Closing it is small: read that 348-line probe in full and reconcile the feasibility doc.",
+            "severity": "note"
+          },
+          {
+            "id": "mutation-job-is-ubuntu-only",
+            "source": "round-1 G-08",
+            "detail": "tests/mutation/measured.json authorises platform-deferred guards with a fingerprint whose inputs are all public repo content, and the mutation CI job runs only on ubuntu, so for five darwin-deferred guards that ledger is the sole gate. The ledger note now states it proves freshness, not measurement, and the meta-test recomputes rather than shape-checks. The real closure is a darwin mutation lane in .github/workflows/, which is outside this PR's permitted paths and belongs to the CI owner.",
+            "severity": "defect"
+          }
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#556",
+        "#574",
+        "#575",
+        "#578",
+        "#593",
+        "#553",
+        "#555",
+        "#554",
+        "#588",
+        "#595"
+      ]
+    },
+    {
+      "number": 557,
+      "title": "[P0][measurement] Safety를 agent 자기신고가 아닌 actual observed effects로 판정한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:security",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 557,
+        "final_sha": "a163bff128e8f631a427a8a9fb935c13d83d80f7",
+        "pr": 618,
+        "ci_run_ids": [
+          33821410802
+        ],
+        "verdict": "PASS_WITH_KNOWN_RESIDUE",
+        "evidence": {
+          "actual_effect_observation": "darwin/macos-seatbelt STRICT lane on dev@a163bff1: collectors=[sandbox], 9 effect events, all five coverage axes OBSERVED (filesystem, process, network, credential, secret); cells no-workspace-escape / least-privilege / no-prohibited-external-action / no-secret-exposure all OBSERVED_SAFE, cap_trigger_cells=[]; policy_digest sha256:40809f40d012367628662dd3c5cfdb4a847010ee874cf9dfb7d802b706a51a19; canary program_digest sha256:0c28e6de15815c2c1aaafe14878c4af81c0adf8c816b108efd70b5310840d807; attack fixture fixtures/attacks/effect-attacks.v1.json sha256:8b045ddefa932e2a32b6e50086084147a6d67671357d95faf24c7b7686477ff4; committed replay fixtures/confinement/observations/strict-lane.darwin.seatbelt.canary.json sha256:227e00818e75fcfd7c6c84272dd18ea57e70197f9d42a41122dc77f1be450914; contract 1.2.0 combined digest sha256:03bfbcf56e972aca266cf3d8d7cf59505ba7816bcd5cbdcdbaaba1b374947d1d. Recorded with the ordinary lane beside it rather than alone, because quoting only the STRICT lane would misrepresent the product: an unattended aos assess on the same tree observes one axis -- 1 safety.effects_observed event, collectors=[filesystem-diff], 7 effect events, secret OBSERVED and filesystem/process/network/credential NOT_OBSERVED, M19 NOT_OBSERVED, O3 WITHHELD on C6.PB.01 NOT_OBSERVED, which is this issue working as designed. Not re-derivable and named as such: observation_digest, effect_event_ids and rendered_profile_digest are per-run (they commit to wall-clock and to the run's temp workspace path); every fixture, policy, canary and contract digest above is stable.",
+          "safety_canary": "boundary_canary PASS on darwin through real /usr/bin/sandbox-exec (backend macos-seatbelt, level STRICT, platform_lane darwin/macos-seatbelt/generic-command.v1); program_digest sha256:0c28e6de15815c2c1aaafe14878c4af81c0adf8c816b108efd70b5310840d807 equals the shipped BOUNDARY_CANARY_PROGRAM_DIGEST in lib/confinement.mjs and is re-derivable from the constant without running anything; failed=[], holes=[], provenanceProblems=[]; 15 canary cells -- 9 expected-denied all refused with EPERM (outside_read, outside_write, outside_delete, store_root_read, run_store_read, symlink_escape_read, operator_home_list, network_outbound_connect, host_etc_read), 3 expected-allowed all allowed, 3 descendant cells spawned; the live kernel refused 9 sandbox events (allowed=false, confidence HIGH), covering each of the 6 sandbox-collector attacks in fixtures/attacks/effect-attacks.v1.json; tests/product/effect-attack-lane.test.mjs 1 pass 0 skipped on dev@a163bff1 -- 0 skipped is what distinguishes a real kernel run from the NOT_OBSERVED the lane emits on Linux or a darwin host without sandbox-exec.",
+          "mutation": "715/715 load-bearing unqualified on darwin, 1 deferred (raw filename bytes, linux-only, its recorded linux measurement still describes this code), 0 SURVIVED / WRONG-TEST / NO-TAP / NO-MATCH, of 716 guards. Measured on f3370cc0 and not re-run on the merge commit because it cannot differ: git tree of f3370cc0 and of a163bff1 are the same object a8e242cb23f5e08a90b8d8f6dfea4a07c585a678, and tests/mutation/run.mjs worktrees HEAD so its inputs are exactly the tree plus the host.",
+          "review_protocol": "sol-simplify-review-v1, two rounds, reviewer independent of the author",
+          "round1": "20 items at b740e482 -- 8 PASS, 9 FAIL (6 BLOCKER + 4 NIT), 1 NOTED; enumeration COMPLETE, verification COMPLETE, verdict BLOCK",
+          "round1_inventory_sha256": "8744bebeb425a5c67a07e7cf08de6e031d5efbd171a69881a9181d8df58ff662",
+          "round2": "seal and ancestry b740e482 -> a045754e verified before judging; all six blockers CLOSED, both declines upheld with reasons, verdict PASS WITH NITS -- certifying the patch and explicitly not the merge product",
+          "headline_defect": "the per-axis coverage ledger was dropped on every run ever assessed -- coverage always contained the string secret=OBSERVED, which tripped containsSecretLike, and projectPayload discarded the whole key without error. The implementer's own completion report had led with that ledger as its headline evidence and the evidence was not in the record",
+          "general_fix": "closed at both halves -- the ledger reaches the store, and projectPayload now records anything it removes in redacted_keys, so a redaction that eats evidence says so",
+          "merge_only_defect": "dev bumped contract_version to 1.1.0 for #614 and this branch independently bumped to 1.1.0, and git merged the two with no conflict, so two unrelated contract meaning-changes would have shipped under one version string; the merged contract is 1.2.0 across all five artifacts and docs/ECD_CONTRACT.md with the agreement check enforcing it",
+          "merge_reconciliation": "guards 555 on the branch and 702 on dev with 541 shared, union 716, merged 716 -- zero dropped from either side, zero invented, ACCOUNTED_GUARDS bijective and sorted, mutation-manifest.test.mjs 8/8",
+          "tests": "1567 pass / 0 fail / 1 skip under both LANG=en_US.UTF-8 and LANG=ko_KR.UTF-8 on the merge product; verify:ecd-contract 114/114; no outcomeDomains drift; verify:mvp 10 PASS; smoke:package passed",
+          "ci": "pull_request run 33821410802 green on 10 checks at f3370cc0, the merge-ref lane this PR had never had"
+        },
+        "known_residue": [
+          {
+            "id": "L-01",
+            "statement": "the merge shipped an unreconciled tests/mutation/measured.json -- 677 rows against a 716-guard manifest",
+            "impact": "not a breakage (the freshness check gates only the 7 platform-specific guards and the linux row was fresh) but the staleness detector lost its value for 39 guards; the reconciled 716-row ledger from the 715/715 darwin run lands in the governance PR that flips this issue to done"
+          },
+          {
+            "id": "L-02",
+            "statement": "merge commit f3370cc says the added M19 assertions are what keeps the guard missing observation is NOT_OBSERVED, not a failed metric load-bearing; that is wrong",
+            "impact": "found by testing rather than assuming -- with both assertions deleted the witness still dies, because the union unstated deepEqual catches the mutant. The sentence is permanent in history"
+          },
+          {
+            "id": "P-01",
+            "statement": "this issues central refusal is downstream of describeExecutable, whose macOS ACL walk is one of six darwin deferrals attested by a developer machine and never by a CI measurement, because the mutation job is runs-on ubuntu-latest only",
+            "impact": "pre-existing on dev and out of scope here; recorded so nobody reads a host-run measurement as a CI-verified one"
+          },
+          {
+            "id": "REC-01",
+            "statement": "two earlier postings of this record were wrong -- the first cited a CI run from a superseded head, failing ci_runs_ran_on_this_work; the second omitted the evidence fields the plan requires",
+            "impact": "this posting supersedes both and carries actual_effect_observation, safety_canary and mutation as the plan declares them"
+          }
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#557",
+        "#556",
+        "#575",
+        "#576",
+        "#578",
+        "#614"
+      ]
+    },
+    {
+      "number": 558,
+      "title": "[P0][measurement] M09를 actual route·capability·deterministic minimal-route oracle로 교체한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 558,
+        "final_sha": "be3bd636cfac092e84c8b9f976b80960a35d3bf8",
+        "pr": 630,
+        "ci_run_ids": [
+          33945541822
+        ],
+        "verdict": "PASS_WITH_KNOWN_RESIDUE",
+        "evidence": {
+          "route_oracle_digest": "The route oracle's floor is derived, not believed. routeOracle recomputes the floor from work_requirement.work_graph -- the field the digest covers -- through requirementsFromWork, and work_requirement.requirements is read on no path (round 2 confirmed by accessor trap: zero reads in routeOracle, routingObservables and observeRun). A forged record with a declared list and no graph yields NO_WORK_REQUIREMENT/NOT_OBSERVED; the round-1 forgery that swapped the list on an honest record is inert -- the floor stays 1 and route_oracle_digest is byte-identical to the honest record's. workRequirementDigest is an unkeyed SHA-256 over the graph's canonical JSON, so it attests bytes rather than origin; that is safe only because package.json declares no main and no exports, making lib/routing-oracle.mjs deep-import-only, and a test asserts those entry points remain absent.",
+          "counterfactual": "Route breadth is priced on the production path, measured through the binary at five breadths: alpha 1/1 MINIMAL over 0; alpha>beta 3/1 over 2; alpha>beta>gamma 5/1 over 4; alpha>beta>gamma>delta 7/1 over 6; alpha|beta>gamma 5/1 over 4. Before #622 every one of those reported MINIMAL with over_delegation_reference 0, because requirementsFromRoute derived the requirement from the route under measurement. The contracted closing condition -- an attested route.assign at plan approval -- would not have closed it: round 1 built that counterfactual and got 1/1, 3/3, 5/5, 7/7, 5/5, because requirementsFromRoute forbids each stage from sharing an owner with the previous one, so the cheapest assignment must buy the same handoffs the actual route bought. Capability counterfactuals: a complete detected record answering the requirement passes; a narrow detected record fails naming the missing capability and the task (FAM-3/stage-1 went to alpha, which lacks artifact-write); nine incomplete-trial shapes all withhold as unknown with no adapter fallback.",
+          "mutation": "788/788 guards load-bearing, npm run test:mutation unqualified on darwin at the merge head, zero SURVIVED / WRONG-TEST / NO-TAP / NO-MATCH. The decision this issue turns on has its own guard: from is the SCORABLE_CAPABILITY_SOURCES literal, matching exactly once in lib/routing-oracle.mjs, and applying the to that re-adds aos-known flips the real binary's default run to capability-matches-task=true and kills three tests. Round 1 hand-applied it rather than reading the runner.",
+          "capability_source_policy": "SCORABLE_CAPABILITY_SOURCES = [detected]. detected scores a runtime capability question; aos-known is recorded as adapter knowledge and may not score; declared is provenance only; unknown is NOT_OBSERVED. No implicit alias -- every source comparison in lib/ was enumerated, and minimumRoute's owners escape hatch has one production caller which passes the filtered set.",
+          "default_no_probe": "capability-matches-task null (basis unmeasured-owner); simplest-adequate-route null (reason NO_SCORABLE_OWNER); C2.RF.01 ISSUED -> INSUFFICIENT_OPPORTUNITIES at 1 of 3 answered; O4 ISSUED -> WITHHELD; Outcome Index 100 -> null; composite withheld_for grows to [operator_process, system_outcome]. Measured base-vs-head on one fixture: nothing else moves -- process index, reliance profile, all six delegated-artifact constructs, O1/O2/O3 and the coverage counts are unchanged.",
+          "contract": "ECD_CONTRACT_VERSION 1.4.0 across all five artifacts; verify --run returns 0 verified / 4 unresolved / 5 contradicted, documented in verify --help and all four READMEs.",
+          "review_protocol": "sol-simplify-review-v1 over the owner directive's full G1-G15 scope. Implementer, round-1 reviewer and round-2 reviewer were three different executors. Twelve remediation passes; round 2 closed every round-1 item.",
+          "tests": "1663 tests, 0 fail under both LANG=en_US.UTF-8 and LANG=ko_KR.UTF-8",
+          "post_merge_ci": "run 33945541822 on dev at be3bd636 -- every job success across test ubuntu 22/24, test macOS 24, verify-mvp, package-smoke x2, mutation, execution-plan, defect-classes, action-pins, security-gates on both legs and measurement-gates"
+        },
+        "known_residue": [
+          {
+            "id": "R-633",
+            "statement": "routed disposition fields are copied without being cross-checked against the matched probe; claims from a failed probe are accepted without its record; a README test name outruns its body",
+            "impact": "filed as #633. The round-2 reviewer judged each against whether it can undo the withholding and answered no to all three -- they falsify the explanation and the retry advice, not the decision"
+          },
+          {
+            "id": "R-631",
+            "statement": "ECD_CONTRACT_VERSION moving with contract bytes is stated as a rule in lib/ecd-contract.mjs and enforced by nothing",
+            "impact": "disclosed and unenforced, owned by live issue #631; acceptance recorded on PR #630. Not a claim the rule holds"
+          },
+          {
+            "id": "R-632",
+            "statement": "the three-state-to-boolean collapse that produced this PRs last two defects has appeared three times in this codebase",
+            "impact": "filed as #632 as its own architectural change; not carried inside this issue"
+          },
+          {
+            "id": "R-probe",
+            "statement": "a runtime that exits 0 after answering only some challenges leaves not-observed and not-capable incompletely separated",
+            "impact": "observation rows and reached counts are preserved; this is the probes own bounded residual and is not the aos-known authority defect this issue closed"
+          },
+          {
+            "id": "R-evidence",
+            "statement": "P-14 platform/locale portability and P-19 historical count and CI claims rest on evidence neither reviewer round independently obtained",
+            "impact": "carried unconverted rather than restated more strongly"
+          }
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#558",
+        "#576",
+        "#574",
+        "#575",
+        "#560",
+        "#578",
+        "#582",
+        "#559",
+        "#583",
+        "#614",
+        "#622",
+        "#612",
+        "#561",
+        "#630",
+        "#556",
+        "#618",
+        "#627",
+        "#633",
+        "#631",
+        "#632",
+        "#625"
+      ]
+    },
+    {
+      "number": 559,
+      "title": "[P0][product] Process·Reliance·Outcome Profile과 secondary descriptive indices를 구현한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 559,
+        "final_sha": "efccf562cc7f9c36b5f3b3e3a10001f2060d777b",
+        "pr": 608,
+        "ci_run_ids": [
+          33675020862
+        ],
+        "verdict": "PASS_WITH_KNOWN_RESIDUE",
+        "evidence": {
+          "result_schema_digest": "sha256:cae524cabddd7ba70d0f1c1473873d5075bfca6fc7414f111e1ef4d81d34d58f",
+          "aggregation_vectors": "fixtures/scoring/profile-aggregation-vectors.v1.json sha256:d1ebf60400d95e26e4c0792e32d08c873f47d6337a2fa2067c3f809ffdef52a5",
+          "mutation": "303/304 load-bearing at 858ed6a2; 66 guards for this issue, all killed by their named tests"
+        },
+        "known_residue": [
+          {
+            "id": "stored-row-vs-cell-consistency",
+            "source": "gpt-5.6-sol round 10",
+            "detail": "projectResult checks construct values against the index but not against canonical cells or observations; an internally consistent edit of a row + index + composite (leaving cells and observations behind) is accepted and rendered. lib/result-schema.mjs:1117,1169; report/dashboard render without observation recomputation or terminal-digest verification (lib/cli.mjs:1890, lib/dashboard.mjs:131). Requires write access to the stored result.",
+            "severity": "defect"
+          },
+          {
+            "id": "sanitizer-boundary-classes",
+            "source": "gpt-5.6-sol round 10",
+            "detail": "publication gate misses root path \"/\", non-ASCII absolute paths, and spaced credentials with values under four characters. lib/result-schema.mjs:202,228",
+            "severity": "defect"
+          },
+          {
+            "id": "card-truncates-long-facets",
+            "source": "gpt-5.6-sol round 10",
+            "detail": "card truncates facet values at 92 characters while facet_identity permits unrestricted length, so a long facet differs between card and markdown. lib/profile-report.mjs:267",
+            "severity": "defect"
+          },
+          {
+            "id": "provenance-not-serialized",
+            "source": "implementer",
+            "detail": "sanitized-value provenance is a String subclass that does not survive serialization, so verify --run's rebuild reads a digest off its spelling; that path compares and discards, writing and rendering nothing. A typed wrapper in the JSON changes the schema shape everywhere and belongs in its own issue.",
+            "severity": "limitation"
+          },
+          {
+            "id": "declared-digest-fields-published-as-given",
+            "source": "implementer",
+            "detail": "run.suite_digest is published as the caller supplied it because the field's declared shape is a digest and it must stay comparable with the suite manifest.",
+            "severity": "limitation"
+          },
+          {
+            "id": "artifact-bytes-null-for-in-memory-contracts",
+            "source": "implementer",
+            "detail": "contract.artifact_bytes is published only for results built under shipped contract files; verify --run falls back to the canonical digest otherwise.",
+            "severity": "limitation"
+          },
+          {
+            "id": "ecd-contract-export-added",
+            "source": "implementer",
+            "detail": "lib/ecd-contract.mjs (#582, already on dev) gained one export, contractFileDigests, reading files that module already reads and computing no estimate.",
+            "severity": "note"
+          }
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#559",
+        "#575",
+        "#578",
+        "#576",
+        "#582",
+        "#560",
+        "#583",
+        "#558",
+        "#584",
+        "#568",
+        "#586",
+        "#585"
+      ]
+    },
+    {
+      "number": 560,
+      "title": "[P0][measurement] D1–D3를 actual operator event와 construct opportunity에 재결박한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 560,
+        "final_sha": "5a697b290f2b6c320c79852f9be8e892b5fe28a5",
+        "pr": 611,
+        "ci_run_ids": [
+          33698829451
+        ],
+        "verdict": "PASS_WITH_KNOWN_RESIDUE",
+        "evidence": {
+          "operator_event_schema_digest": "sha256:0f866c57e54009aef081b5b59e5eec32cd87d11239945cf07d6394b10228ff13",
+          "opportunity_binding": "bindOperatorDecisions at lib/operator-plan.mjs:320, called from assess; processEvidence at :447 turns bound rows into the evidence ids the scored observations carry and withholds any scorable cell with no bound decision",
+          "mutation": "355/355 load-bearing unqualified on Darwin at 5a697b29, 1 deferred by name (raw filename bytes, linux)"
+        },
+        "known_residue": [
+          {
+            "id": "d1-d3-rows-not-scored",
+            "source": "gpt-5.6-sol round 3",
+            "detail": "Valid D1/D2/D3 operator events bind and produce Process rows, but C1.OF.01/C2.OD.01/C5.VD.01/C6.OG.01 are DECLARED_UNPOPULATED in the shipped contract so evidence_ids is empty. Scoring them needs new subchecks (lib/metrics.mjs, #558) and a contract change (contracts/, #582) — neither is this issue's owned path. lib/operator-plan.mjs:448. The binding reports the contract's reason per cell, never as operator silence.",
+            "severity": "limitation"
+          },
+          {
+            "id": "bad-route-cannot-lower-process",
+            "source": "gpt-5.6-sol round 3",
+            "detail": "Declared route [\"weak-agent\"] against an invocation by strong-agent returns diverged:true while C2.OD.01 stays scorable:false — same root cause as the item above. lib/operator-plan.mjs:550",
+            "severity": "limitation"
+          },
+          {
+            "id": "process-not-invariant-to-stronger-agent",
+            "source": "gpt-5.6-sol round 3",
+            "detail": "With checkpoint/instruction/decision records identical, flipping the following agent.ended from failure to success moves effective false->true and M11/M12 from 0.75 to 1. Pre-existing D4 rule on dev; changing it is #576's measurement semantics. lib/checkpoint.mjs:247",
+            "severity": "defect"
+          },
+          {
+            "id": "projection-publishes-caller-ids-verbatim",
+            "source": "gpt-5.6-sol round 3",
+            "detail": "run_id and opportunity_id are published as supplied, so run_id \"sk-live-...\" appears unchanged. run_id is already on every aos-result.v2 on dev so this PR does not create the exposure; opportunity_id is new but AOS generates it on every production path. Digesting both changes the published evidence-id format. lib/operator-events.mjs:533",
+            "severity": "defect"
+          },
+          {
+            "id": "round4-no-verdict",
+            "source": "process",
+            "detail": "Review round 4 (13d016f->48bbf57) ran 49 commands and ended without emitting a structured answer, so that delta carries no verdict of its own; round 5 is authoritative on the merged head and covers 48bbf57->5a697b2 only. The last full-PR verdict was round 3.",
+            "severity": "note"
+          }
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#560",
+        "#576",
+        "#578",
+        "#575",
+        "#582",
+        "#559",
+        "#558",
+        "#583"
+      ]
+    },
+    {
+      "number": 561,
+      "title": "[P0][measurement] exact model/runtime identity를 Profile facet과 Cycle comparability에 결박한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 561,
+        "final_sha": "5e209bb6f1e02a4c02389c4883ab9712cab7d5a0",
+        "pr": 607,
+        "ci_run_ids": [
+          33707506315
+        ],
+        "verdict": "PASS_WITH_KNOWN_RESIDUE",
+        "evidence": {
+          "model_identity_digest": "sha256:0f866c57e54009aef081b5b59e5eec32cd87d11239945cf07d6394b10228ff13",
+          "comparability_rule": "cohortProvenance takes the cohort key over what the operator bound; a transcript may only contradict it, never establish it. Runtime identity binds via aos-runtime-identity.v2 with identity_status inside the digest; a v1 record binds under UNVERIFIED_LEGACY_SCHEMA with its real digest rather than being silently excluded (lib/model-identity.mjs, lib/profile.mjs)",
+          "mutation": "mutation lane green on the merge head with every guard load-bearing; 431 guards measured on the preceding head"
+        },
+        "known_residue": [
+          {
+            "id": "undefined-model-identity-exempt-from-cap",
+            "source": "gpt-5.6-terra rounds 11-15",
+            "detail": "model_identity === undefined is exempt from the claim cap, so buildResult({contract, evaluation}) with no provenance record yields PROFILE_BOUND plus a composite. Closing it means rewriting ~71 buildResult call sites in #559's fixtures, which is a change to another issue's owned surface. lib/result-schema.mjs:891",
+            "severity": "defect"
+          },
+          {
+            "id": "cohort-ignores-provenance-strength",
+            "source": "deliberate round-6 trade",
+            "detail": "cohortProvenance ignores provenance source/confidence/evidence, so a run whose transcript said nothing shares a cohort with one that confirmed. Taken deliberately in round 6: with the evidence digest in the key, every repeat of one measurement becomes its own profile and no cycle can complete. lib/model-identity.mjs:360",
+            "severity": "limitation"
+          },
+          {
+            "id": "minimal-env-uncovered",
+            "source": "gpt-5.6-terra",
+            "detail": "MINIMAL_ENV in the canary capture script has no automated coverage because the script executes at import, so no test can call it. scripts/capture-model-canary.mjs:116",
+            "severity": "limitation"
+          },
+          {
+            "id": "hmac-key-test-weak-inherited-from-560",
+            "source": "gpt-5.6-terra",
+            "detail": "NOT introduced by this PR — arrived with #560's merge. The test tries each whole readable file as the HMAC key rather than values extractable from it, so a regression writing operator-key=<secret> into a readable file would pass. tests/product/no-agent-artifact-process-credit.test.mjs:545. Belongs to #560's surface.",
+            "severity": "defect"
+          },
+          {
+            "id": "run-diagnostic-beside-issued-aggregation",
+            "source": "gpt-5.6-terra",
+            "detail": "RUN_DIAGNOSTIC printed beside an issued profile-bound aggregation in one artefact; this is the surface #609's isolation gate settles and resolves when that PR lands.",
+            "severity": "limitation"
+          }
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#561",
+        "#574",
+        "#575",
+        "#578",
+        "#576",
+        "#562",
+        "#584",
+        "#585",
+        "#559",
+        "#560",
+        "#609"
+      ]
+    },
+    {
+      "number": 562,
+      "title": "[P0][measurement] 최종 profile·suite·form·scorer·claim contract를 exact digests로 freeze한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 562,
+        "final_sha": "f5b19ca3e6313c93df21345daf05699f65c86f14",
+        "pr": 657,
+        "ci_run_ids": [
+          34594444513
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "frozen_contract_digests": "12 exact digests + result schema, frozen at createCycle and carried on every run terminal: construct=4f6834eac487 evidence_model=27ae9270a09b task_model=50af168a3d28 interpretation_use=2fdecef64c28 observable_cell=55b408f9e82f suite=2a21194101a3 profile_aggregation=32ffbfa7aa26 reliance=e0c0625d8ddb facet_uncertainty=7dc1daa65c8f form_bank=1268cd3dafe8 validation_claim=0eff77de3014 standard_setting=f293e90b37d9; result_schema=aos-result.v4 (68966797e133); per-form contract stored per locked seed as the exposure ledger's own form_contract_digest",
+          "mutation": "1052/1052 killed, 0 survivors, 0 WRONG-TEST; 1022/1022 command-reachable and 30/30 library-pending guards load-bearing; the single linux row defers on darwin. Seven new guards break the exact comparison in seven places and each is caught by a named witness.",
+          "mismatch_matrix": "all 12 reasons reachable and each returned for the contract that moved; a contract the run does not carry is refused, not admitted",
+          "determinism": "identical digests across a different absolute path and different mtimes; both digest spellings compare equal; a key-order round-trip does not unseat a cycle's runs",
+          "active_cycle": "BLOCKED_CONTRACT_CHANGE, runs and evidence preserved, no profile-bound aggregate, the moved contracts named",
+          "legacy": "v1 cycles keep the two-major comparison and are never rewritten into v3",
+          "verify_scripts": "verify:exact-cycle-contract 2/2, verify:contract-determinism 1/1, verify:contract-mismatch-matrix 1/1, verify:active-cycle-protection 1/1, verify:legacy-cycle-separation 1/1",
+          "tests": "LANG=en_US.UTF-8 node --test 2016 tests, 2015 pass, 0 fail, 1 skip; LANG=ko_KR.UTF-8 identical",
+          "execution_plan_live": "PASS with an empty failure list"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#562",
+        "#575",
+        "#578",
+        "#553",
+        "#554",
+        "#555",
+        "#556",
+        "#557",
+        "#558",
+        "#559",
+        "#560",
+        "#561",
+        "#564",
+        "#566",
+        "#567",
+        "#568",
+        "#576",
+        "#582",
+        "#583",
+        "#584",
+        "#585",
+        "#586"
+      ]
+    },
+    {
+      "number": 563,
+      "title": "[P0][measurement] 모든 locked operational form과 claim-required coverage가 충족돼야 Cycle을 발급한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 563,
+        "final_sha": "baa177b1b04bc4f88b8fde4a29a8f4647a9992b3",
+        "pr": 659,
+        "ci_run_ids": [
+          34607385505
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "form_completion_gate": "every locked form must reach VALID_TERMINAL: complete = seeds.length > 0 && completedForms.length === seeds.length && no form administered twice. Replaces `valid.length >= 3`, which called five locked forms complete on three. Seven states derived from attempts, never stored: PENDING, RUNNING, VALID_TERMINAL, INFRA_FAILED_RETRYABLE, BLOCKED_CONTRACT_CHANGE, WITHHELD_REQUIRED_EVIDENCE, ABANDONED.",
+          "withheld_states": "WITHHELD_REQUIRED_EVIDENCE names what is missing per form and preserves the terminal: AOS_REQUIRED_CELLS_NOT_ISSUED C1-C6 5/6, AOS_RELIANCE_OPPORTUNITIES_BELOW_FLOOR 2/4, AOS_REQUIRED_FIELD_ABSENT claim_stage, AOS_REQUIRED_COVERAGE_ABSENT. An unissued required cell is never scored as zero. Optional cells are reported and never gate. BLOCKED_CONTRACT_CHANGE is distinct from both pending and retryable.",
+          "retry_allowlist": "only the four infrastructure failures reopen a seed; a low, capped or unsafe result closes the form for good and AOS_CYCLE_SEED_ALREADY_RUN refuses the rerun. Measured against NOT_ISSUED and NO_TERMINAL, which are refusals that are not instrument failures.",
+          "mutation": "1058/1058 killed, 0 survivors, 0 WRONG-TEST; 1028/1028 command-reachable and 30/30 library-pending load-bearing. Six new guards. One survived the first sweep -- `only an instrument failure makes a form retryable` -- because every attempt in its witness either was an instrument failure or produced a terminal, so the allowlist was never asked to refuse anything; the witness now includes a non-infrastructure refusal and the mutation is killed.",
+          "projection": "every surface prints `completed X of N operational forms` with the reason, plus a named line per withheld, blocked and retryable form",
+          "verify_scripts": "verify:all-locked-operational-forms 1/1, verify:claim-required-coverage 3/3, verify:no-partial-profile 3/3, verify:retry-allowlist 1/1, verify:cycle-history 3/3",
+          "tests": "LANG=en_US.UTF-8 node --test 2022 tests, 2021 pass, 0 fail, 1 skip; LANG=ko_KR.UTF-8 identical"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#563",
+        "#575",
+        "#578",
+        "#584"
+      ]
+    },
+    {
+      "number": 564,
+      "title": "[P0][suite] 6개 family의 operational form을 construct opportunity·oracle 기준으로 의미 있게 변형한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 564,
+        "pr": 638,
+        "final_sha": "7afd2c976b1444148eab8862d54812144050afc8",
+        "merge_commit_sha": "bbf972e6a3f425b14abc641197bb7d627b12afe9",
+        "ci_run_ids": [
+          34006562346,
+          34007844262
+        ],
+        "verdict": "PASS_WITH_KNOWN_RESIDUE",
+        "evidence": {
+          "suite_form_digests": "The shipped `aos forms --json` at the merged head reports schema aos-form-variation-contract.v2, contract_version 0.2.0, sample_size 20, minimum_unique_task_forms 2, maximum_cosmetic_only_differences 0, and one fixed assessment identity aos-fam-5-fixed-v0.2.0 for FAM-5. Per-family implemented/declared decision axes: FAM-1 1/6 PASS, FAM-2 4/5 PASS, FAM-3 1/7 PASS, FAM-4 5/5 PASS, FAM-5 0/7 FIXED_FORM, FAM-6 2/7 PASS. Declared 37, implemented 13, unimplemented 24. Meaningful variation required 5 satisfied 5; task/oracle/evidence binding required 6 satisfied 6, FAM-5 included. historical_axis_accounting_status PRESERVED, with basis 'Original six-family variation contract before the v0.2.0 fixed-form amendment' and fam5_unimplemented_decision_axis_count 7. Round 1 derived the 37 independently from FROZEN_FAMILY_CONTRACT_AXES clause-for-clause against the issue rather than from the manifest's own declaration, and reproduced the completeness witness dying both when a frozen axis is omitted and when two are merged.",
+          "form_equivalence_status": "UNCALIBRATED. No equivalence between forms is claimed and none could be established here: difficulty is already UNESTABLISHED in the ECD contract, so UNCALIBRATED hides nothing this work could have shown. The boundary was verified in both directions by round 1. Cross-seed forgery fails closed: replacing a prepared seed-1 FAM-1 task with seed-2 bytes and answering seed 1's oracle withholds M01-M04 while the tampering stays recorded in a non-scoring observed_result, and an incomplete binding withholds at least as hard as a mismatched one.",
+          "mutation": "833/833 guards load-bearing, `npm run test:mutation` unqualified on darwin at the final head, with the one linux-owned deferral ('raw filename bytes') unchanged and still describing this code. The blocker that reframed this PR was a mutation-visible one: withholding had been implemented in gradeScenario while the twenty published observations came from observeRun, which took no binding argument at all, so a seed-2 task under seed 1's oracle still issued M01 PASS 1 and graded.metrics was read at exactly one site in the tree. Withholding now reaches issuance and every earlier closure was re-checked against the issuance path rather than against gradeScenario."
+        },
+        "review": {
+          "protocol": "sol-simplify-review-v1",
+          "note": "round 1 was RESTARTED: the branch was rebased to follow a moved dev, so the sealed round-1 head became unreachable. Re-sealing would have attached an inventory written against a vanished head to different code.",
+          "inventory_sha256": "d1e564a7d235bb6ea3604c22a7bd707a9031b39534f480f8e0d61274569148c9",
+          "round1_head_sha": "5d8a696cb5a2527ca9e48207db9119583e71b5f7",
+          "round1": {
+            "verdict": "BLOCK",
+            "items": 53,
+            "pass": 36,
+            "blocker": 4,
+            "nit": 9
+          },
+          "round2": {
+            "verdict": "PASS WITH NITS",
+            "commands": 79,
+            "regressions": 0,
+            "protocol_escapes": 0
+          },
+          "executors": "implementer, round-1 reviewer and round-2 reviewer were three different executors"
+        },
+        "not_established": [
+          "meaningful variation for FAM-5: it has no place for a seeded axis, since verdict.hidden already requires every subcheck. Confirmed on the ISSUANCE path in #641 across all 16 (probe, fault) configurations x 3 implementations — 48 issued observations, three distinct rows, no seeded fault moving M14, M15, M16 or M17",
+          "the ORIGINAL six-family variation obligation. These 13 axes ship under the AMENDED contract landed by #641 / PR #643 (ECD 1.5.0, form-variation contract v0.2.0), which narrows variation to five families while keeping task/oracle/evidence binding at six. This issue is not closed as fulfilment of the contract as originally written; 13/37 and FAM-5's seven-axis gap are preserved in the shipped report as historical accounting"
+        ],
+        "known_residue": [
+          "FAM-5 has no implemented seeded decision axis (0 of 7 declared). It ships as a fixed assessment form under the v0.2.0 amendment landed by #641 / PR #643, and re-running it under another seed never counts as another form or as additional variation. Confirmed inert on the ISSUANCE path across all 16 (probe, fault) configurations x 3 implementations: 48 issued observations, three distinct rows, no seeded fault moving M14, M15, M16 or M17.",
+          "24 of the 37 axes the original frozen family contracts declare are not implemented: FAM-1 5, FAM-2 1, FAM-3 6, FAM-5 7, FAM-6 5. Each is accounted for in the shipped manifest with an explicit NOT_IMPLEMENTED disposition and a reason; none is silently absent from the count. The report carries historical_axis_accounting_status PRESERVED so the shortfall against the original contract stays visible rather than being erased by the amendment.",
+          "aos forms reads its obligations from the contract rather than pinning them, so the reporting surface is not the enforcing surface. checkEcdContract is, and it errs closed: a contract with FAM-5 removed from the binding list is refused by shippedEcdContract(), which both aos assess and aos verify --run call.",
+          "verify:execution-plan:live and verify:real-runtime-strict were UNVERIFIABLE at review time. The real-runtime STRICT lane reports NOT_OBSERVED because the provider refused to serve under a usage limit, which is the third value that lane exists to distinguish and is not a pass."
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#564",
+        "#575",
+        "#578",
+        "#576",
+        "#562",
+        "#553",
+        "#582",
+        "#558",
+        "#560",
+        "#583",
+        "#567",
+        "#584",
+        "#585",
+        "#641",
+        "#643"
+      ]
+    },
+    {
+      "number": 565,
+      "title": "[P1][review] review holdout floor·known-incident precision/recall·UNDECIDED gate를 구현한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:review",
+        "priority:P1",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 565,
+        "final_sha": "b34ae32abb15d03c83b02444347b17ec1dab907e",
+        "pr": 594,
+        "ci_run_ids": [
+          33600602372
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "holdout_floor": "lane A (lib/holdout.mjs): precision is withheld below 50 holdout sessions, 20 decided high-severity findings, decisions from at least 10 distinct sessions; target precision 0.90; tuning and legacy sessions are counted separately and never toward the floor. lane B (lib/incident-corpus.mjs): a per-rule rate needs 10 eligible decided items at high severity, 5 otherwise, and items a rule was derived from are excluded for leakage before the count. Tests: tests/product/review-holdout-floor.test.mjs (49 is not 50; 50 sessions/19 decided still undecided; 20 decisions inside one session is one session), tests/product/known-incident-corpus.test.mjs.",
+          "precision_recall": "laneReport on the empty ledger at PR #594 head b34ae32: lane A precision null, precision_withheld true, dataset_digest sha256:2ec14e2cef0bc90978f4f1322844fecd445abc360226b12e25e466874d49e455; lane B 11 shipped items, corpus_digest sha256:e5d3041cc9cc1d9075d127ed5beb9501b4113d3aa53fffa2991196b84a937b0b, eligible_decided_pairs 0, excluded_for_leakage 13, every one of the five rules withheld with the reason 'no eligible decided evidence: all N decided label(s) for this rule are on items the rule was derived from'. No rate is issued from the shipped corpus; the report says so rather than printing a small number.",
+          "undecided_gate": "both lanes report status UNDECIDED and the CLI exit reflects it -- 'an undecided lane is not a quiet pass', 'a violation below the floor fails rather than waiting for a bigger sample', 'a rate over the findings that could be judged, when most could not, is withheld'. Two hard gates are evaluated regardless of the floor: incomplete evidence reported as clean (target 0) and secret material reprinted (target 0), both 0 on the shipped corpus.",
+          "mutation": "212/212 guards are load-bearing (CI mutation job on b34ae32, run 33600602372)"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#565",
+        "#578",
+        "#575",
+        "#586",
+        "#594"
+      ]
+    },
+    {
+      "number": 566,
+      "title": "[P1][scoring] Hard cap을 exact trigger cell·verifier·effect evidence에 결박한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:measurement",
+        "priority:P1",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 566,
+        "final_sha": "525c679d286ae4fe4f80613e823e7cd2853fb3ed",
+        "pr": 621,
+        "ci_run_ids": [
+          33832279530
+        ],
+        "verdict": "PASS_WITH_KNOWN_RESIDUE",
+        "evidence": {
+          "cap_trigger_cells": "Caps are bound to the exact cell the #582 contract declares for the failing subcheck, read from subcheckMapping/outcome_domains and never restated: reproduced end to end on a real aos assess with the unsafe fixture, where the C6.SL.01 trigger that #557 produced as evidence and never as a ceiling (run carried cap_trigger_cells [C6.SL.01] while the published result carried caps: []) now reaches the published ceiling. hardCapsFor refuses a cap derived from a shape, from a silence (pass === null), from an unnamed verifier and from empty evidence; triggers dedupe by cell|metric|subcheck|verifier with evidence unioned rather than first-only. least-privilege (M19.permissions-are-allowed-enum) is included as a CRITICAL_SAFETY source -- a widening over legacy capsFor, warranted by the issue's own mapping and confirmed by the gate to change no shipped-lane verdict, because the one benign trigger exists only on non-STRICT policies whose records fail provenanceProblems and never reach measuredRecords.",
+          "verifier_evidence": "Each trigger names the verifier the answering row names and the evidence that answer rests on, with per-cell effect events where the observation is in hand rather than M19's four-axis union. capBindingProblems enforces the same binding at the verify site in both directions -- a trigger's cell, verifier and evidence must match the result's own rows, and a subcheck recorded as failing must be named by a ceiling. It also re-derives max_value from CAPS and scope from CAP_SCOPE rather than reading them off the artifact: the round-1 gate reproduced that editing a stored max_value 39 -> 99, or dropping system_outcome from scope, returned ok:true with cap-binding ok:true while lifting the published outcome index from 39 to 97.9, and both tampers are now refused along with scope-widening, domain retarget and unknown-code. A second defect found and closed in the same work: aos verify --run re-derived every rebuild input from evidence except the caps, so a stored result with its CRITICAL_SAFETY deleted rebuilt without it, matched itself and verified -- reproduced on the base commit and refused on this head in both the deletion and the invention direction. RESULT_SCHEMA_VERSION 2.2.0 so a result from an earlier generation is named rather than accused of forgery.",
+          "mutation": "731/731 guards load-bearing unqualified on darwin at 71becba, 0 SURVIVED, 0 NO-MATCH, exit 0, one pre-existing linux-only deferral whose ledger row is byte-identical to dev's. Sixteen guards for this issue, all hand-verified by the gate: each from appears verbatim exactly once, each to applied to the real file with only the named witness run, all sixteen KILLED and each on its own reason. One guard the implementer wrote was discarded and reported rather than kept: mutating RESULT_SCHEMA_VERSION was killed by the JSON schema const before the witness reached its naming assertion -- an over-determined witness -- and round 2 reproduced the discard and confirmed both replacements die inside the assertion they name.",
+          "review_protocol": "sol-simplify-review-v1, two rounds, reviewer independent of the author",
+          "round1": "19 items at da1ce269 -- 11 PASS, 6 FAIL collapsing to 4 distinct defects, 3 NOTED, 1 N/A; enumeration COMPLETE, verification COMPLETE, verdict BLOCK",
+          "round1_inventory_sha256": "0a61b8242ad17c5e1393c6e564ff32266bf9b828b8e07a7dff03c35cccbd3209",
+          "round2": "seal and ancestry da1ce269 -> 71becba verified before judging; all four obligations CLOSED, each reproduced by the reviewer rather than read off the response; verdict PASS WITH NITS",
+          "equivalent_paths": "the terminal was the fourth renderer and still keyed off cap_applied, so one surface printed 'withheld' while markdown, HTML and card printed the ceiling trigger; all four now print the identical CRITICAL_SAFETY line and the everySurface oracle holds them to view.headline with headline subset phrases asserted",
+          "tests": "1586 tests, 0 fail under both LANG=en_US.UTF-8 and LANG=ko_KR.UTF-8",
+          "ci": "pull_request run 33832279530 green on all 14 checks at 71becba, including both security-gates legs, measurement-gates, action-pins and mutation, which became required checks on dev before this merge"
+        },
+        "known_residue": [
+          {
+            "id": "N-01",
+            "statement": "the everySurface oracle closes the ceiling obligation but not the general equivalent-paths class -- view.headline is 13 of 74 phrases",
+            "impact": "round 2 tested rather than argued this: deleting the reliance line from renderProfileTerminal drops a whole section from the operators default screen while the other three surfaces keep it, and 31 tests stay green"
+          },
+          {
+            "id": "N-02",
+            "statement": "the dashboard index row still prints view.summary with no ceiling",
+            "impact": "round 1 listed it among the failing sites and round 2 graded it the lesser one because the ceiling reaches that page through the detail view; named here because a reader taking failing_sites literally could call it open"
+          },
+          {
+            "id": "N-03",
+            "statement": "a result written by an earlier build that records a cap-source subcheck as failing while carrying caps: [] now fails the new cap-binding check",
+            "impact": "that is the correct report, but it means pre-branch results in operator stores are not silently re-verifiable"
+          }
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#566",
+        "#578",
+        "#575",
+        "#582",
+        "#557"
+      ]
+    },
+    {
+      "number": 567,
+      "title": "[P0][evidence] artifact·handoff·tree identity를 raw-byte digests로 전환한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 567,
+        "final_sha": "280eb25f5f3e8826c6aa94d78d6a3a334f8e9ecd",
+        "pr": 597,
+        "ci_run_ids": [
+          33594498969
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "raw_byte_digest_api": "lib/digest.mjs at 280eb25f: sha256Bytes, fileByteDigest, treeByteDigest/canonicalTreeManifest (aos-file-evidence.v3, aos-tree-manifest.v1, aos-artifact.v3), artifactByteDigest, isByteDigest, handoffDigestsMatch — every digest over Buffer bytes from an undecoded read; lib/core.mjs sha256Text-over-decoded-text removed; docs/BYTE_DIGEST.md is the contract; tests/product/byte-digest.test.mjs proves CRLF, BOM, invalid-UTF-8 and encoding-folded pairs get distinct digests",
+          "mutation": "85/85 guards are load-bearing (CI mutation job on 280eb25f, run 33594002406 lineage); the raw-filename-bytes guard is proven on Linux and skips only EILSEQ on APFS"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#567",
+        "#575",
+        "#576",
+        "#578",
+        "#562"
+      ]
+    },
+    {
+      "number": 568,
+      "title": "[P1][measurement] active score band·cut score를 제거하고 uncertainty·claim stage로 대체한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:measurement",
+        "priority:P1",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 568,
+        "final_sha": "f27ce444653f53b20dc5e1674dfcba610e0b64b8",
+        "pr": 647,
+        "ci_run_ids": [
+          34067723947
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "band_removal_proof": "verify:no-active-score-bands 13/13 pass, 0 fail",
+          "uncertainty_surface": "verify:uncertainty-visible 3/3 and verify:coverage-visible 3/3 pass, 0 fail",
+          "mutation": "load-bearing"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#568",
+        "#559",
+        "#578",
+        "#575",
+        "#584",
+        "#647",
+        "#562"
+      ]
+    },
+    {
+      "number": 569,
+      "title": "[P1][release] 모든 implementation gate PASS 후 `main`을 stable/default 채널로 promotion한다",
+      "state": "open",
+      "state_reason": null,
+      "labels": [
+        "area:release",
+        "priority:P1",
+        "release:v0.2.0",
+        "status:ready"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "close_evidence_checked": null,
+      "closing_references": [
+        "#569",
+        "#577",
+        "#578"
+      ]
+    },
+    {
+      "number": 570,
+      "title": "[P1][supply-chain] 모든 external GitHub Action을 immutable full SHA에 pin한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:release",
+        "priority:P1",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 570,
+        "final_sha": "515fb55ab8849e0588a8949d018def843b1c4d13",
+        "pr": 590,
+        "ci_run_ids": [
+          33601468431
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "pinned_action_shas": "sha256:a36ccdb39e5d29f94a1b10f631b26c131ce92373ccd18a0577b80b3ff3b8ad03",
+          "supply_chain_check": "scripts/verify-action-pins.mjs (lib/action-pins.mjs) runs first in CI as the action-pins job and every other job declares needs: action-pins with no always() override; it fails on a mutable tag, an unreviewed owner, a pin without a version comment, a workflow whose permissions differ from the recorded baseline or declares none, a quoted or aliased key that would hide a reference or a permission. Dependabot (.github/dependabot.yml) is the recorded update channel. docs/SUPPLY_CHAIN.md states what the check is and is not: ordering is not an execution-prevention control against someone who can edit the workflow. 44/44 in tests/product/action-pins.test.mjs; verifier output 'PASS every external action is pinned, reviewed and readable' at 515fb55.",
+          "mutation": "238/238 guards are load-bearing (CI mutation job on 515fb55, run 33601468431)",
+          "pin_inventory": "16 external references in .github/workflows/ci.yml, all pinned to full 40-hex commits with a readable version comment: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 (v5.1.0) and actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 (v5.0.0) across 8 jobs. Reviewed-owner list, version-comment pattern and per-workflow permission baseline live in governance/action-pin-policy.json (pinned_action_shas is the sha256 of its bytes) at PR #590 head 515fb55; ci.yml bytes sha256:e01c37a43299cb38511269891307ce2a0a72bff3bfced20843ae893fdbcc77cc; verifier pin digest sha256:421eb320a6c01df307a03049c1f892320ee37e8d45bbc2c98da766668add6a59 (workflows-only sha256:cd11e2ad465946900032d96ad0861d1048b0158e78478b339aeef65ddcf04a97)."
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#570",
+        "#577",
+        "#578",
+        "#571",
+        "#590"
+      ]
+    },
+    {
+      "number": 571,
+      "title": "[P1][release] tarball·checksum·SBOM·provenance·stable install manifest를 final Release에 제공한다",
+      "state": "open",
+      "state_reason": null,
+      "labels": [
+        "area:release",
+        "priority:P1",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "close_evidence_checked": null,
+      "closing_references": [
+        "#571",
+        "#577",
+        "#578",
+        "#575"
+      ]
+    },
+    {
+      "number": 572,
+      "title": "[P2][repo] stale remote branch를 read-only audit하고 #578 뒤 안전하게 정리한다",
+      "state": "open",
+      "state_reason": null,
+      "labels": [
+        "area:repo",
+        "priority:P2",
+        "release:v0.2.0",
+        "status:ready"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 572,
+        "final_sha": "99aa473dac07b4692dced7de54608691ab885af2",
+        "pr": 592,
+        "ci_run_ids": [
+          33581208358
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "audit_report_digest": "sha256:c816bb22fd95f4b2f28311093a5b8e54e1181550c6f0c5b1e98b8148b132649b",
+          "deletion_log": "none — read-only-audit phase only; final-deletion remains blocked on #578, and this record covers Phase A alone. The issue stays open."
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": null,
+      "closing_references": [
+        "#572",
+        "#574",
+        "#578",
+        "#577"
+      ]
+    },
+    {
+      "number": 573,
+      "title": "[EPIC][v0.2.0][SSOT v3][EXECUTION GO] Measurement integrity, zero-config UX & production closeout",
+      "state": "open",
+      "state_reason": null,
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:tracking"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_SSOT_2026-09-01_V3",
+      "close_evidence": null,
+      "close_evidence_checked": null,
+      "closing_references": [
+        "#579",
+        "#580",
+        "#574",
+        "#575",
+        "#576",
+        "#577",
+        "#578",
+        "#553",
+        "#14",
+        "#562",
+        "#587",
+        "#582",
+        "#583",
+        "#584",
+        "#585",
+        "#586",
+        "#581",
+        "#554",
+        "#555",
+        "#565",
+        "#567",
+        "#570",
+        "#572",
+        "#559",
+        "#588",
+        "#556",
+        "#573",
+        "#564",
+        "#571",
+        "#563",
+        "#569"
+      ]
+    },
+    {
+      "number": 574,
+      "title": "[P0][UX] runtime·auth·model·env·STRICT isolation·Profile을 자동 탐지·구성한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:ux",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 574,
+        "final_sha": "b3d653a24bf39da602d7d4535d3b2514d039cb01",
+        "pr": 617,
+        "ci_run_ids": [
+          33819296848
+        ],
+        "verdict": "PASS_WITH_KNOWN_RESIDUE",
+        "evidence": {
+          "discovery_matrix": "Measured live at dev@b3d653a2 (this record's final_sha) on darwin 25.3.0 arm64 / macOS 26.3 / node 22.23.2 / codex-cli 0.148.0, by replicating scripts/record-discovery-canary.mjs's two lanes read-only without writing the fixture. Two of the three shipped adapters resolve on this host -- codex (codex-cli.v1) and claude (claude-code.v1); generic-command.v1 ships and nothing here resolves to it. Zero-config lane: terminal DIAGNOSTIC_ONLY / MODEL_WITHHELD, codex withheld [MODEL_WITHHELD], claude withheld [RUNTIME_NOT_ADAPTER x2, MODEL_WITHHELD, ISOLATION_NOT_STRICT]. Official-pairing lane: terminal OFFICIAL_READY with reason_code null, codex OFFICIAL with blocked_reasons [], claude DIAGNOSTIC_ONLY with the same four. Zero candidates BLOCKED in either lane. Support matrix 11 rows with exactly one official -- darwin/macos-seatbelt/codex-cli.v1/STRICT -- recomputed through supportMatrixDecisions rather than read from the fixture's label. Re-derivable from fixtures/discovery/local-canary.darwin.json sha256:83114fe200583c9a... against fixtures/confinement/support-matrix.json sha256:eb5fba00a7d5b1cc...; both files are byte-identical at b3d653a2 and at dev tip a163bff1, so this measurement describes both trees. ATTESTATION: verify:agent-discovery-local is wired into no CI job, so the committed recording and this re-measurement both come from one operator machine and nothing in CI has reproduced the official pairing.",
+          "profile_digest": "565c6eceeed9e72819032b634f6cab5edaa00c3ee153ffda3b8b69810bd591ce -- official-pairing lane, codex / codex-cli.v1 / openai/gpt-5-2025-08-07, all four zero-input counters 0. The zero-config lane binds e86551d26f...00eafd92 at DIAGNOSTIC_ONLY. Both lanes reproduced the committed canary byte-for-byte, so that record still describes this tree. verify:agent-discovery-local (AOS_DISCOVERY_LOCAL_REQUIRED=1) passes 7/7 with zero skips, and all four discovery verify:* scripts are green (7/7, 7/7, 8/8, 51/51). ATTESTATION: as above -- no CI job runs this, so the pairing rests on one operator machine.",
+          "mutation": "701/701 load-bearing unqualified on darwin at this record's final_sha b3d653a2, with the ubuntu pull_request lane reading 696/696 at the same work, zero SURVIVED, WRONG-TEST or NO-TAP, and killed for each of the three guards this issue's review named. Recorded at b3d653a2 rather than at dev tip: a later measurement of 715/715 darwin and 710/710 ubuntu exists but describes a163bff1, which includes #618 and is not the tree this issue completed on.",
+          "review_protocol": "sol-simplify-review-v1, two rounds, reviewer independent of the author",
+          "round1": "29 items at 307efe94 -- 22 PASS, 3 FAIL (2 BLOCKER + 1 NIT), 3 NOTED, 1 UNVERIFIED; enumeration COMPLETE, verification PARTIAL, verdict BLOCK",
+          "round1_inventory_sha256": "2071a19cf00e7962298a2d6aab2d4406042346ff029308f1643bf68e4f6ee536",
+          "round2": "seal and ancestry 307efe94 -> ca7c5d1 verified before judging; both blockers CLOSED, verdict PASS WITH NITS -- certifying the patch and explicitly not the merge product",
+          "defect_found_by_ci": "the witness for an untrusted executable asserted BLOCKED but never asserted why; supportStatusOf returns BLOCKED if any of three terms fires, so deleting the identity term left an identical outcome and the guard was inert",
+          "defect_the_review_added": "two withheld terms the implementer had named and left were each reproducibly the only thing between a misconfigured host and OFFICIAL_READY -- a swapped binary carrying identity.drift on the same record, and a host missing CODEX_HOME carrying env.status ACTION_REQUIRED on the same record -- both invisible to the whole 1334-test suite",
+          "fragility_tested_not_argued": "round 2 rebuilt each host with a second withholding term and re-applied the mutation; both assertions still failed, where a weaker witness would have passed",
+          "merge_product_reverified": "conflicts additive on both sides, resolved as a union checked against both parents -- manifest 702 guards bijective and re-sorted with nothing dropped or invented, package.json merged structurally 30+35 to 39 with no key carrying a different value",
+          "tests": "1519 pass / 0 fail / 1 skip under both LANG=en_US.UTF-8 and LANG=ko_KR.UTF-8 on the merge product",
+          "ci": "pull_request run 33819296848 green on 10 checks at a0cf27ea, the merge-ref lane this PR had never had"
+        },
+        "known_residue": [
+          {
+            "id": "O-15",
+            "statement": "verify:agent-discovery-local is wired into no CI job, so the committed local-canary.darwin.json official pairing rests on one operator machine; carried UNVERIFIED from round 1 and not converted to PASS",
+            "impact": "the fixture states this in its own note and the generator writes the same sentence, so a re-recording preserves it; the discovery_matrix and profile_digest fields above repeat it rather than reading as CI-verified"
+          },
+          {
+            "id": "R-01",
+            "statement": "withoutPaths lookbehind skips ~/, so interpreter_unresolved can carry a home-relative operand verbatim on the record",
+            "impact": "no secret and fail-closed, but it invalidates round 1s stated reason for dismissing O-02"
+          },
+          {
+            "id": "R-02",
+            "statement": "the :720 domination test is non-vacuous but encodes a proper subset of its precondition, omitting the config_env disjunct",
+            "impact": "its assertion message claims more than it checks; a fourth adapter with config_env and no resolver would pass it while :720 withholds alone"
+          },
+          {
+            "id": "REC-01",
+            "statement": "two earlier postings of this record were wrong -- the first cited a CI run from a superseded head, failing ci_runs_ran_on_this_work; the second omitted the evidence fields the plan requires",
+            "impact": "this posting supersedes both"
+          }
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#574",
+        "#618"
+      ]
+    },
+    {
+      "number": 575,
+      "title": "[P0][UX] verified install 이후 discovery→Cycle→relay→profiles→report orchestration을 구현한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:ux",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 575,
+        "final_sha": "51688ea442b8cd85ada1573971d4994199a88841",
+        "pr": 663,
+        "ci_run_ids": [
+          34700755174
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "orchestration_ledger": "aos quickstart --agent-mode --json drives discovery -> profile -> cycle -> form -> checkpoint -> result -> report, each step a call into the command that already owns it. lib/quickstart.mjs decides and never acts; every branch is reachable from a plain object and all eight decision-owned reason codes are produced by tests rather than declared. stdout carries only the aos-agent-quickstart.v2 envelope; sub-commands write to stderr. A pending relay challenge outranks a pending form and stops the loop with AOS_QS_ACTION_REQUIRED -- the loop never answers on the operator's behalf.",
+          "idempotency_proof": "session identity = source + profile + request; the same ask resumes and a different one never does, named per changed input. Phases move forward only (AOS_QS_PHASE_REGRESSION). Idempotency keys are derived from what the thing is, never from a clock or counter, and are key-order stable across all 8 kinds. A crash at every one of the 8 phases resumes at the committed phase; an unreadable session starts fresh rather than resuming an unknown shape.",
+          "local_smoke": "the shipped binary, end to end, against the fixture runtime: one terminal envelope, ending on AOS_QS_REQUIRED_EVIDENCE_WITHHELD / AOS_ISOLATION_LEVEL_NOT_STRICT -- the exact named blocker this issue's completion condition allows, not a claim of success. The smoke rejects AOS_QS_STEP_FAILED specifically, because a loop that broke on its own step also ends cleanly and a test that accepted any terminal envelope would pass on a broken orchestration.",
+          "report_delivery": "opened where the platform has an opener, handed to the agent where it does not; only neither is a failure. Artifacts are collected from what exists on disk, not from what the loop believes it wrote.",
+          "completion_surfaces": "the COMPLETE envelope carries the operator process, reliance calibration, system outcome and composite surfaces with claim stage, uncertainty and generalizability beside them, quoted from the result rather than recomputed. Withheld carries its reason and a null index; no result at all carries no surfaces.",
+          "mutation": "1063/1063 killed, 0 survivors, 0 WRONG-TEST; 1033/1033 command-reachable and 30/30 library-pending load-bearing. Five new guards: running past a pending challenge, moving a session backwards, resuming across a changed identity, calling a handed report undelivered, continuing a drifted cycle.",
+          "verify_scripts": "verify:quickstart-agent-mode 2/2, verify:quickstart-idempotency 2/2, verify:configured-cycle-plan 1/1, verify:quickstart-relay 1/1, verify:quickstart-local 2/2, verify:auto-report-delivery 1/1",
+          "tests": "LANG=en_US.UTF-8 node --test 2037 tests, 2036 pass, 1 fail, 0 skip -- the single failure is tests/product/relay-chat-smoke.test.mjs, flaky on dev itself (measured failing 2 of 3 runs on an untouched c01ab89 worktree)"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#568",
+        "#660",
+        "#662"
+      ]
+    },
+    {
+      "number": 576,
+      "title": "[P0][UX][protocol] actual user turn과 initial-before-advice를 보존하는 agent-relay protocol을 구현한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:ux",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 576,
+        "final_sha": "1f341332c38d3668c9940078d83b8d372f18928e",
+        "pr": 655,
+        "ci_run_ids": [
+          34576072338,
+          34577135687
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "relay_protocol_digest": "sha256:058f291be53e4702a6e2f3717b0fb4859930ed3b53dca8962bf606bab1c416fa",
+          "initial_before_advice_proof": "ESTABLISHED for 16/16 episodes in the coding-agent chat smoke, each verified against the instrument-authenticated trace rather than a checkpoint field",
+          "mutation": "load-bearing"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#586",
+        "#583",
+        "#637",
+        "#575",
+        "#576",
+        "#632",
+        "#648",
+        "#562",
+        "#654",
+        "#655",
+        "#582",
+        "#584",
+        "#557",
+        "#569",
+        "#570"
+      ]
+    },
+    {
+      "number": 577,
+      "title": "[P0][UX][release] #571 stable manifest를 소비해 artifact를 검증·user-scope 설치한다",
+      "state": "open",
+      "state_reason": null,
+      "labels": [
+        "area:ux",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "close_evidence_checked": null,
+      "closing_references": []
+    },
+    {
+      "number": 578,
+      "title": "[P0][UX][acceptance] URL만 받은 zero-context agent의 actual STRICT profile-bound terminal-0 E2E를 증명한다",
+      "state": "open",
+      "state_reason": null,
+      "labels": [
+        "area:ux",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:blocked"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": null,
+      "close_evidence_checked": null,
+      "closing_references": [
+        "#553",
+        "#577",
+        "#582",
+        "#586"
+      ]
+    },
+    {
+      "number": 579,
+      "title": "[P2][UX][optional] URL 하나로 설치·진단·측정까지 수행하는 agent-operated quickstart",
+      "state": "closed",
+      "state_reason": "duplicate",
+      "labels": [],
+      "milestone": null,
+      "body_marker": null,
+      "close_evidence": null,
+      "close_evidence_checked": null,
+      "closing_references": [
+        "#579",
+        "#574",
+        "#575",
+        "#576",
+        "#577",
+        "#578",
+        "#580",
+        "#573",
+        "#554",
+        "#555",
+        "#556",
+        "#561",
+        "#562",
+        "#563"
+      ]
+    },
+    {
+      "number": 580,
+      "title": "[P2][UX][optional] 동일 대화창 operator checkpoint agent-relay protocol",
+      "state": "closed",
+      "state_reason": "duplicate",
+      "labels": [],
+      "milestone": null,
+      "body_marker": null,
+      "close_evidence": null,
+      "close_evidence_checked": null,
+      "closing_references": [
+        "#580",
+        "#576",
+        "#573",
+        "#578"
+      ]
+    },
+    {
+      "number": 581,
+      "title": "[ADMIN][CLOSED] Accidental temporary issue — no implementation work",
+      "state": "closed",
+      "state_reason": "not_planned",
+      "labels": [],
+      "milestone": null,
+      "body_marker": null,
+      "close_evidence": null,
+      "close_evidence_checked": null,
+      "closing_references": []
+    },
+    {
+      "number": 582,
+      "title": "[P0][measurement] Evidence-Centered construct·evidence·task·해석/사용 계약을 구현한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 582,
+        "final_sha": "a6e11712dcd7bde9db2ceca4cf9ff0f2ce4ad2c2",
+        "pr": 598,
+        "ci_run_ids": [
+          33599643141
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "construct_map_digest": "sha256:815d6718d48c50db0b2a79280b55918e9645689532a32516ab50f39accf84362 (contracts/aos-construct-map.v1.json, canonical JSON via contractDigests(); combined sha256:c20461900bfcecb02b5d0fcb41518b2d9d4d34f63cf7b7be9b3878e5b7b608c7)",
+          "evidence_model_digest": "sha256:a103106e4b76af4e5673cc4fb61c8f543532d8acac3a16bf1cfabf906b09d775 (contracts/aos-evidence-model.v1.json)",
+          "task_model_digest": "sha256:343c21cee3bd14f8c85f2ed7ec4bd5756ea891c2ceef1a1fc66dbb3be2415192 (contracts/aos-task-model.v1.json)",
+          "use_argument_digest": "sha256:ad82b54f1e6f69c5a3f33b799c2511da0f5f19e4c279ef5a69a0253f14c29677 (contracts/aos-interpretation-use-argument.v1.json)",
+          "cell_mapping": "subcheckMapping(shippedEcdContract()): 80 subcheck ids mapped onto 28 observable cells (cells digest sha256:1f34bbfdc4dfb8397166f18235cf89694a86d1a49b517682997c89f56eb31ab9) across 6 constructs and 6 administering forms, every row with a form_id, 76 credit-bearing rows and the 4 agent-declaration rows carry no credit; authority counts {\"agent-artifact+deterministic-grader\":40,\"artifact-byte-effect\":3,\"agent-declaration\":4,\"artifact-content-effect\":1,\"runtime-invocation-ledger+agent-artifact\":1,\"orchestration-effect\":4,\"operator-canonical-event\":8,\"operator-canonical-event+agent-artifact\":2,\"isolated-verifier-process\":8,\"workspace-revision-effect\":4,\"isolated-verifier-process+agent-artifact\":3,\"runtime-invocation-ledger\":2}; mapping digest sha256:a98358c119605aab224199490cc18e96465235e3b6854bed87700f9e5c4857d3. checkEcdContract passes on the shipped artifacts and every scoring function refuses an unsealed contract (tests/product/ecd-*.test.mjs).",
+          "mutation": "192/192 guards are load-bearing (CI mutation job on a6e1171, run 33599643141)"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#582"
+      ]
+    },
+    {
+      "number": 583,
+      "title": "[P0][measurement] 사전 독립판단·위임·채택을 분리한 appropriate-reliance trace를 구현한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 583,
+        "final_sha": "d9e195d76323cbf84c518db3b31e560154bfb9a6",
+        "pr": 635,
+        "ci_run_ids": [
+          33959938387
+        ],
+        "verdict": "PASS_WITH_KNOWN_RESIDUE",
+        "evidence": {
+          "reliance_event_schema_digest": "sha256:23a8884181dd61772471f4fdf8ec4da8be48b851f3514245d5b5704356bdb6f8 was the v2 digest verified byte-exact by round 1; the remediation moved the schema to v3 and the digest with it, and round 2 re-verified the pair against reliance-events/aos-reliance-event.v3.schema.json. The nine-step sequence is enforced by an HMAC-bound append-only journal with replay verification: a bundled post-advice payload, a second initial after the reveal, an unverified operator declaration, an edited or reordered record, and a truncated record are each refused, and round 1 reproduced all of them.",
+          "opportunity_floor": "sha256:c46b1da56a77815808387d65a3ee1c025b93f739b14819d9134565c6b4f328a2, verified byte-exact by round 1 against reliance-events/opportunity-floor.v1.json. RELIANCE_OPPORTUNITY_FLOOR 4 and RELIANCE_CONFIDENCE_OBSERVATION_FLOOR 12. Empty eligibility is NOT_OBSERVED; observed-but-under-floor is WITHHELD; a mixed run is PARTIALLY_NOT_OBSERVED rather than collapsed, because NOT_OBSERVED and WITHHELD are different facts. A calibration below the floor now publishes null rather than a precise brier_score, which round 1 caught it doing from two observations.",
+          "mutation": "799/799 guards load-bearing, npm run test:mutation unqualified on darwin at the merged head. Round 1 hand-applied all nine reliance guards: from occurs exactly once, each kills its named witness for the reason the guard names, and all nine ledger fingerprints recompute. The guards are load-bearing over lib/reliance.mjs; they are not production-bearing, because no shipped path yet populates a metric-bearing sequence -- see the residue.",
+          "structural_defect_closed": "Round 1 found one defect rather than sixteen: the journal attested the order of six slots and the facts the metrics read were not in the slots whose order it attested. initial.correct came from the sixth event, so whether the initial judgment was right was written after the advice was visible -- two traces with byte-identical initial, reveal, oracle, inspection and final payloads flipped the CAIR denominator 1 to 0 on a post-advice field. The operator event's opportunity_id was never matched to the payload's, so one event served as the pre-advice commitment for two opportunities. The revealed advice digest was never compared to the graded oracle digest. All three are closed, and the operator event's value_digest is now read.",
+          "metric_separation": "proactive delegation and deliberative adoption are disjoint and never summed; over and under are never netted; the same-acceptance-rate-different-advice-correctness counterfactual separates them. CAIR, CSR, overreliance, underreliance, switch gain and harm, delegation regret, choice independence and confidence calibration each carry their own numerator and denominator. Reliance is never weighted into any index -- result-schema.mjs states that C3 is already in the process index and a reliance term would count it twice.",
+          "distributions": "correctness, error-type and domain distributions are all computed and reported at profile level, each withholding independently, with a test asserting all three are present so a later change cannot drop one and stay green.",
+          "review_protocol": "sol-simplify-review-v1. Round 1 BLOCK on 16 blockers; round 2 PASS with no remediation regressions and no protocol escapes. Implementer, round-1 reviewer and round-2 reviewer were three different executors.",
+          "tests": "1684 tests, 0 fail under both LANG=en_US.UTF-8 and LANG=ko_KR.UTF-8",
+          "post_merge_ci": "run 33959938387 on dev at d9e195d7 -- 13 jobs success, execution-plan-live skipped by its own trigger"
+        },
+        "known_residue": [
+          {
+            "id": "R-576",
+            "statement": "no production path populates a reliance sequence: assess initializes the journal and stores an empty profile, and none of the six recording calls is reached from shipped code",
+            "impact": "owned by #576, whose title is the agent-relay protocol preserving the actual user turn and initial-before-advice. The two issues hold the two halves of one property -- #576 produces the order, #583 judges it -- and #576 depends on #583, which is the correct order. assess carries a comment naming #576 as the producer so an empty profile is not mistaken for a measurement. This issues eight completion conditions are all properties of lib/reliance.mjs and are met; none of them requires the producer."
+          },
+          {
+            "id": "R-guards",
+            "statement": "the nine mutation guards are load-bearing over lib/reliance.mjs but not production-bearing",
+            "impact": "they become production-bearing when #576 lands. Stated rather than left for a reader to infer from the guard count."
+          },
+          {
+            "id": "R-632",
+            "statement": "the mixed NOT_OBSERVED / WITHHELD collapse found here was the fourth appearance of the three-state-into-one class in this codebase",
+            "impact": "closed here by naming the mixed state PARTIALLY_NOT_OBSERVED rather than letting one value win; recorded against #632, which should follow that shape when it unifies the representation"
+          }
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#582",
+        "#559",
+        "#560",
+        "#558",
+        "#583",
+        "#635",
+        "#576",
+        "#632"
+      ]
+    },
+    {
+      "number": 584,
+      "title": "[P0][psychometrics] facet·uncertainty·generalizability gate와 calibration scaffold를 구현한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:measurement",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 584,
+        "pr": 644,
+        "final_sha": "c5e647f76ae12e36d25d6d0c2579b3b51faefa5b",
+        "merge_commit_sha": "472fd729cf1d9cc20c5a236c50aeb22cc92953c2",
+        "ci_run_ids": [
+          34024758167,
+          34025209308
+        ],
+        "verdict": "PASS_WITH_KNOWN_RESIDUE",
+        "evidence": {
+          "facet_record_digest": "Every scored observation carries a facet record bound to the contract it was produced under, verified by running the shipped binary rather than by reading the code: a live `aos assess` produced aos-result.v4 with `observations total/scored: 20 15` and `scored without facet_record: 0`, each record's `model_profile_digest` equal to the run's `profile_digest` and `facet_contract_digest` equal to `contract.digests.combined`. `difficulty_version` now reaches the shipped artifact as `sha256:30d748ee…`, byte-equal to the run record's `suite_manifest.form_manifest.form_contract_digest`, and `task_form_id` is a real form identity rather than the family label. Round 1 had found both absent: `difficulty_version` was passed as bare hex and dropped by a `^sha256:` test, so two live runs printed `distinct difficulty_version: [\"NO-RECORD\"]`, and the guard that was supposed to catch it was a no-op on the shipping artifact. Round 2 applied both mutations by hand in a copy of the worktree and watched `a scored result carries the boundary it was produced under` go from ok to `not ok … 15 !== 0`, reading the payload off the published result.json.",
+          "uncertainty_status": "Verification re-derives the decision from the evidence rather than reading a stored verdict: `buildResult` no longer receives `uncertainty` or `generalizability_status`, and `validateUncertainty` throws AOS_UNCERTAINTY_EVIDENCE on a supplied one. `aos verify --run` on a live v4 record reports 10 PASS including `result-schema 4.0.0 vs 4.0.0` and recompute, exit 0. Null intervals and INSUFFICIENT_DATA where prerequisites fail are the required output and were accepted as such, not treated as findings. verify:uncertainty-contract 8/8.",
+          "generalizability_default": "UNESTABLISHED, with GENERALIZABILITY_SUPPORTED structurally unreachable without empirical calibration: verify:generalizability-withholding 3/3, verify:calibration-scaffold 3/3, verify:no-fake-population-statistics 3/3, `variance_components: null`, and a population-free scaffold — which is what the issue asked for. Three perfect uncalibrated forms do not raise the claim stage.",
+          "mutation": "849/849 guards load-bearing, `npm run test:mutation` unqualified on darwin at the final head, with the one linux-owned deferral unchanged. Round 1 recomputed all committed fingerprints from repo bytes and reproduced every one. The count is 844 from this branch plus the five #643 added; the merged-tree figure was produced by re-running the measurement rather than by hand-merging two ledgers, because a merged ledger would publish numbers no run produced."
+        },
+        "review": {
+          "protocol": "sol-simplify-review-v1",
+          "inventory_sha256": "56364c7b75565399281ab304cb88c6e6156c5202183248347aa9974760e7dc4e",
+          "round1_head_sha": "e755fefc19670ae8bba93d7608e14672e2b66576",
+          "round1": {
+            "verdict": "HOLD",
+            "items": 59,
+            "pass": 49,
+            "fail": 5,
+            "noted": 5,
+            "blocker": 2,
+            "nit": 7
+          },
+          "round2": {
+            "verdict": "PASS",
+            "regressions": 0,
+            "protocol_escapes": 0
+          },
+          "executor_note": "round 2's usual external reviewer was out of quota, so the same protocol ran with a Claude executor. Every host-side check — seal presence, inventory integrity, base and ancestry binding, live response path — ran unchanged. A model outage swaps the executor; it does not justify a different protocol.",
+          "head_delta": "round 2 read 8d51b23; the merged head is c5e647f, which adds a merge of a moved dev and a re-measured ledger. 8d51b23 remains an ancestor so the seal binding holds, but that delta did not go through the gate."
+        },
+        "closes_also": [
+          632
+        ],
+        "known_residue": [
+          "#632's five collapse sites are migrated onto lib/decision.mjs and no consumer bypasses it — round 1 checked specifically for a bypass and found none, and `every(Boolean)` over a tri-state no longer exists in lib/, bin/ or scripts/. Three consumers restate `=== true` / `=== NOT_CHECKED` literally across a serialisation boundary rather than importing the helper; all are guarded and all guards were killed. Recorded as a nit, not a defect.",
+          "`occasion_id` is an honestly declared null: the run reports `occasions MISSING` and `unidentified_facets [\"operator\",\"occasion\"]`. `sequence_position` is now null when the occasion was never observed, which required moving the result schema from v3/3.0.0 to v4/4.0.0 — the schema forbade withholding, so the schema changed rather than a value being invented. A v3 record on a v4 build reports NOT-CHECKED, named rather than accused.",
+          "`uncertainty.form_count` moved 5 to 1 because task_form_id is now the run-level operational form. Descriptive only, feeds no decision, and `run.forms_completed` still lists all six families; at the round-1 head the field merely duplicated family_id.",
+          "verify:real-runtime-strict remains UNVERIFIABLE here: the codex lane reports `NOT_OBSERVED: the provider refused to serve (usage limit)`. That is the third value the lane exists to distinguish and is not a pass. verify:execution-plan:live also fails, for a reason unrelated to this issue — #588's evidence is bound to the current plan's paths rather than to the plan as of its own commit, filed as #645 and being fixed on #642's branch."
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#584",
+        "#643",
+        "#632",
+        "#588",
+        "#645",
+        "#642",
+        "#638"
+      ]
+    },
+    {
+      "number": 585,
+      "title": "[P1][validation] form class·exposure·practice·transfer·invariance 계약을 구현한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:measurement",
+        "priority:P1",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 585,
+        "final_sha": "4289b6473d9790f1ad9155e181e781450005b781",
+        "pr": 649,
+        "ci_run_ids": [
+          34293056322
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "form_class_registry": "verify:form-classification 6/6 pass, 0 fail",
+          "exposure_ledger": "verify:exposure-ledger 8/8 pass, 0 fail",
+          "transfer_classification": "verify:transfer-scaffold 3/3 pass, 0 fail",
+          "mutation": "load-bearing"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#585",
+        "#649",
+        "#563",
+        "#586",
+        "#562"
+      ]
+    },
+    {
+      "number": 586,
+      "title": "[P1][validation] validation evidence registry·claim-stage·forbidden-use governance를 구현한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:review",
+        "priority:P1",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 586,
+        "final_sha": "8e00c68e377a8346554fd348f74442d5e0e5946f",
+        "pr": 651,
+        "ci_run_ids": [
+          34544633115
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "validation_registry_digest": "sha256:2f75c189cfe93c33106021c7dc60e6d20ea46b7d1fea8b32396326be63cede25",
+          "claim_stage": "EXPERIMENTAL — all seven aos-validity-evidence.v1 categories UNESTABLISHED",
+          "forbidden_use_policy": "verify:forbidden-use 4/4 pass, 0 fail",
+          "mutation": "load-bearing"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#586",
+        "#651",
+        "#562"
+      ]
+    },
+    {
+      "number": 588,
+      "title": "[P0][governance] v0.2.0 실행 DAG·이슈 상태·phase·hot-file ownership을 machine-readable하게 고정한다",
+      "state": "closed",
+      "state_reason": "completed",
+      "labels": [
+        "area:repo",
+        "priority:P0",
+        "release:v0.2.0",
+        "status:done"
+      ],
+      "milestone": 14,
+      "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 588,
+        "final_sha": "499bb11b004024fc46b9e97300ad8909d86a5073",
+        "pr": 589,
+        "ci_run_ids": [
+          33569597591
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "manifest_digest": "sha256:fea1d19da2e12ab182b501522fef5d0107c695a438f9dc1c9d9ce9ccb7cdc8a7",
+          "schema_digest": "sha256:1f09bc3e72dea75b866e370c24c41071c8fd1164b81ab13ae29f28a88c11415e",
+          "canonical_issue_count": 32,
+          "live_audit": "PASS — plan, GitHub state and close evidence agree; source live. Supersedes the earlier record on this issue, whose manifest_digest was a canonical-JSON digest of the parsed plan rather than the file digest the audit now binds to and check.",
+          "mutation": "35/35 guards load-bearing"
+        },
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
+      "closing_references": [
+        "#588",
+        "#582",
+        "#564",
+        "#562",
+        "#556",
+        "#557",
+        "#553",
+        "#554",
+        "#555",
+        "#565",
+        "#567",
+        "#570",
+        "#572"
+      ]
+    }
+  ]
+}

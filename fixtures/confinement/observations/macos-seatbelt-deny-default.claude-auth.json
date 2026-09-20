@@ -1,0 +1,11 @@
+{
+  "backend_run": "macos-seatbelt-deny-default.claude-auth",
+  "command": "cd @WORKSPACE@ && sandbox-exec -f deny-default.sb claude auth status   # stdout reduced to loggedIn and authMethod before recording",
+  "exit_status": 71,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "<not JSON>\n",
+  "stderr_excerpt": "sandbox-exec: execvp() of '@RUNTIME_CLI_TREE@/bin/claude' failed: Operation not permitted\n",
+  "parse_error": null,
+  "captured": null
+}

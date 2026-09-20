@@ -1,0 +1,11 @@
+{
+  "backend_run": "availability.darwin.sandbox-exec-failure-codes",
+  "command": "sandbox-exec -f /nonexistent.sb /bin/echo hi >/dev/null 2>&1; echo \"missing-profile: $?\"; sandbox-exec -p '(version 1)(this is not valid' /bin/echo hi >/dev/null 2>&1; echo \"bad-profile: $?\"; sandbox-exec -f /private/tmp/aos-cp2/run-deny-default.sb /bin/nonexistent >/dev/null 2>&1; echo \"exec-denied: $?\"; sandbox-exec -f /private/tmp/aos-cp2/run-deny-default.sb @NODE_TREE@/bin/node -e 'process.exit(71)' >/dev/null 2>&1; echo \"runtime-exit-71: $?\"; sandbox-exec -f /private/tmp/aos-cp2/run-deny-default.sb @NODE_TREE@/bin/node -e 'process.exit(42)' >/dev/null 2>&1; echo \"runtime-exit-42: $?\"",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "missing-profile: 65\nbad-profile: 65\nexec-denied: 71\nruntime-exit-71: 71\nruntime-exit-42: 42\n",
+  "stderr_excerpt": "",
+  "parse_error": null,
+  "captured": null
+}

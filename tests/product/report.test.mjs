@@ -22,10 +22,16 @@ const observations = (over = {}) =>
     });
   });
 
+// #556: a run whose confinement nobody established is not issued, and these fixtures are about
+// what the report renders rather than about a boundary. The verdict is stated here so the pages
+// under test are the ones an official run produces.
+const UNDER_AN_OFFICIAL_BOUNDARY = { isolationLevel: "STRICT", officialIssuance: { official: true, reasons: [] } };
+
 const resultOf = (over = {}, context = {}) => {
   const metrics = observations(over);
   return {
-    ...scoreRun(metrics, context),
+    schema_id: "aos-mvp-result.v1",
+    ...scoreRun(metrics, { ...UNDER_AN_OFFICIAL_BOUNDARY, ...context }),
     run_id: "run-fixture",
     metrics,
     limitations: ["PROFILE-BOUND: this number describes the declared environment."]
@@ -140,7 +146,12 @@ test("the palette is tokens, and the dark and light values are both declared", (
 });
 
 test("it is readable on a phone, on paper, and by a screen reader", () => {
-  const html = renderHtml(resultOf());
+  // The locale is pinned rather than inherited. This test asserts `<html lang="en">`, and
+  // `renderHtml` defaults to the locale the shell reports -- so on a machine with
+  // `LANG=ko_KR.UTF-8` it failed, while the product was behaving exactly as designed. A test that
+  // reads ambient environment measures the machine it ran on; `report-language.test.mjs` owns the
+  // question of which locale produces which language, and passes both in explicitly.
+  const html = renderHtml(resultOf(), { locale: "en_US.UTF-8" });
   assert.match(html, /@media print/);
   assert.match(html, /@media\(max-width:640px\)/);
   assert.match(html, /prefers-reduced-motion/);
@@ -154,11 +165,23 @@ test("it is readable on a phone, on paper, and by a screen reader", () => {
   assert.equal(/<script/i.test(html), false);
 });
 
-test("the boundary travels with the number", () => {
+test("the boundary travels with the number, and it is the boundary the result reached", () => {
+  // The stronger of the two sentences was printed unconditionally, so a report over a model
+  // nobody could name claimed PROFILE-BOUND in its header while saying four lines below that the
+  // profile-bound aggregate was withheld (#561). Which one appears is the record's claim stage.
+  const bound = { schema_id: "aos-model-identity.v1", claim_stage: "PROFILE_BOUND", lines: ["Model (main): declared openai/gpt-4o-2024-08-06 (exact-snapshot)"] };
+  const diagnostic = { schema_id: "aos-model-identity.v1", claim_stage: "RUN_DIAGNOSTIC", lines: ["Model (main): unknown"] };
   for (const render of [renderHtml, renderMarkdown]) {
-    const output = render(resultOf());
-    assert.match(output, /PROFILE-BOUND/);
+    const output = render({ ...resultOf(), model_identity: bound });
+    assert.match(output, /PROFILE-BOUND —/);
     assert.match(output, /different measurements/);
+    const withheld = render({ ...resultOf(), model_identity: diagnostic });
+    assert.match(withheld, /RUN-DIAGNOSTIC/);
+    // The fixture's own limitation line mentions the phrase, so what must be absent is the claim
+    // sentence this header prints, not every occurrence of the words.
+    assert.equal(/PROFILE-BOUND —/.test(withheld), false);
+    // A result older than the record claims the weaker sentence too.
+    assert.match(render(resultOf()), /RUN-DIAGNOSTIC/);
   }
 });
 
@@ -176,7 +199,7 @@ test("markdown carries the same content as the page", () => {
 
 test("a result carrying no metrics still renders", () => {
   // Recovery re-renders whatever is on disk, and a half-written result must not take the page down.
-  const bare = { run_id: "r", status: "INCOMPLETE", score: null, provisional_raw: 0, dimensions: {}, coverage: { observed: 0, total: 20 }, caps: [], blockers: [] };
+  const bare = { schema_id: "aos-mvp-result.v1", run_id: "r", status: "INCOMPLETE", score: null, provisional_raw: 0, dimensions: {}, coverage: { observed: 0, total: 20 }, caps: [], blockers: [] };
   assert.doesNotThrow(() => renderHtml(bare));
   assert.doesNotThrow(() => renderMarkdown(bare));
 });
@@ -187,6 +210,10 @@ test("markup in a result never becomes markup in the page", () => {
   // numbers were interpolated raw, so a string where a number belongs was markup.
   const payload = '"><script>alert(1)</script>';
   const hostile = {
+    // It says which instrument it is; a record that says nothing is refused by name now, and that
+    // refusal has its own test. What this one is about is markup in the fields of a record that
+    // does say.
+    schema_id: "aos-mvp-result.v1",
     run_id: payload,
     status: payload,
     score: { final: payload, raw: payload, band: payload },

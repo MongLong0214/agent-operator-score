@@ -1,0 +1,91 @@
+{
+  "backend_run": "macos-seatbelt-provider-lane.filesystem",
+  "command": "cd @WORKSPACE@ && PROBE_BASE=@BASE@ PROBE_OPERATOR_HOME=@OPERATOR_HOME@ sandbox-exec -f provider-lane.sb node fixtures/confinement/probes/probe.mjs",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "{\n  \"read_inside_workspace\": {\n    \"outcome\": \"allowed\",\n    \"errno\": null,\n    \"detail\": 6\n  },\n  \"write_inside_workspace\": {\n    \"outcome\": \"allowed\",\n    \"errno\": null,\n    \"detail\": true\n  },\n  \"read_workspace_parent\": {\n    \"outcome\": \"denied\",\n    \"errno\": \"EPERM\",\n    \"detail\": null\n  },\n  \"write_outside_workspace\": {\n    \"outcome\": \"denied\",\n    \"errno\": \"EPERM\",\n    \"detail\": null\n  },\n  \"delete_outside_workspace\": {\n    \"outcome\": \"denied\",\n    \"errno\": \"EPERM\",\n    \"detail\": null\n  },\n  \"read_operator_home_absolute\": {\n    \"outcome\": \"denied\",\n    \"errno\": \"EPERM\",\n    \"detail\": null\n  },\n  \"read_operator_ssh_listing_absolute\": {\n    \"outcome\": \"denied\",\n    \"errno\": \"EPERM\",\n    \"detail\": null\n  },\n  \"read_operator_ssh_private_key_absolute\": {\n    \"outcome\": \"denied\",\n    \"errno\": \"EPERM\",\n    \"detail\": null\n  },\n  \"read_operator_agent_config_absolute\": {\n    \"outcome\": \"allowed\",\n    \"errno\": null,\n    \"detail\": {\n      \"bytes_readable\": true\n    }\n  },\n  \"read_aos_home_absolute\": {\n    \"outcome\": \"denied\",\n    \"errno\": \"EPERM\",\n    \"detail\": null\n  },\n  \"escape_via_symlink\": {\n    \"outcome\": \"denied\",\n    \"errno\": \"EPERM\",\n    \"detail\": null\n  },\n  \"spawn_child_process\": {\n    \"outcome\": \"allowed\",\n    \"errno\": null,\n    \"detail\": {\n      \"status\": 0\n    }\n  },\n  \"read_special_device\": {\n    \"outcome\": \"allowed\",\n    \"errno\": null,\n    \"detail\": true\n  },\n  \"tilde_relative_home_listing\": {\n    \"outcome\": \"denied\",\n    \"errno\": \"EPERM\",\n    \"detail\": null\n  },\n  \"open_outbound_network_socket\": {\n    \"outcome\": \"allowed\",\n    \"errno\": null,\n    \"detail\": null\n  }\n}",
+  "stderr_excerpt": "",
+  "parse_error": null,
+  "captured": {
+    "read_inside_workspace": {
+      "outcome": "allowed",
+      "errno": null,
+      "detail": 6
+    },
+    "write_inside_workspace": {
+      "outcome": "allowed",
+      "errno": null,
+      "detail": true
+    },
+    "read_workspace_parent": {
+      "outcome": "denied",
+      "errno": "EPERM",
+      "detail": null
+    },
+    "write_outside_workspace": {
+      "outcome": "denied",
+      "errno": "EPERM",
+      "detail": null
+    },
+    "delete_outside_workspace": {
+      "outcome": "denied",
+      "errno": "EPERM",
+      "detail": null
+    },
+    "read_operator_home_absolute": {
+      "outcome": "denied",
+      "errno": "EPERM",
+      "detail": null
+    },
+    "read_operator_ssh_listing_absolute": {
+      "outcome": "denied",
+      "errno": "EPERM",
+      "detail": null
+    },
+    "read_operator_ssh_private_key_absolute": {
+      "outcome": "denied",
+      "errno": "EPERM",
+      "detail": null
+    },
+    "read_operator_agent_config_absolute": {
+      "outcome": "allowed",
+      "errno": null,
+      "detail": {
+        "bytes_readable": true
+      }
+    },
+    "read_aos_home_absolute": {
+      "outcome": "denied",
+      "errno": "EPERM",
+      "detail": null
+    },
+    "escape_via_symlink": {
+      "outcome": "denied",
+      "errno": "EPERM",
+      "detail": null
+    },
+    "spawn_child_process": {
+      "outcome": "allowed",
+      "errno": null,
+      "detail": {
+        "status": 0
+      }
+    },
+    "read_special_device": {
+      "outcome": "allowed",
+      "errno": null,
+      "detail": true
+    },
+    "tilde_relative_home_listing": {
+      "outcome": "denied",
+      "errno": "EPERM",
+      "detail": null
+    },
+    "open_outbound_network_socket": {
+      "outcome": "allowed",
+      "errno": null,
+      "detail": null
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "backend_run": "process-group.aos-enumeration",
+  "command": "node fixtures/confinement/probes/pg-check.mjs   # imports processGroupMembers from lib/core.mjs",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "{\n  \"before_cleanup\": {\n    \"aos_pgid\": 63085,\n    \"members_processGroupMembers_reports\": [\n      63090\n    ],\n    \"in_group_child\": {\n      \"pid\": 63090,\n      \"ps\": \"63090 63085     1\",\n      \"reported\": true\n    },\n    \"detached_descendant\": {\n      \"pid\": 63091,\n      \"ps\": \"63091 63091     1\",\n      \"reported\": false\n    }\n  },\n  \"group_kill\": \"sent\",\n  \"after_cleanup\": {\n    \"in_group_child_alive\": false,\n    \"detached_descendant_alive\": true\n  }\n}",
+  "stderr_excerpt": "",
+  "parse_error": null,
+  "captured": {
+    "before_cleanup": {
+      "aos_pgid": 63085,
+      "members_processGroupMembers_reports": [
+        63090
+      ],
+      "in_group_child": {
+        "pid": 63090,
+        "ps": "63090 63085     1",
+        "reported": true
+      },
+      "detached_descendant": {
+        "pid": 63091,
+        "ps": "63091 63091     1",
+        "reported": false
+      }
+    },
+    "group_kill": "sent",
+    "after_cleanup": {
+      "in_group_child_alive": false,
+      "detached_descendant_alive": true
+    }
+  }
+}

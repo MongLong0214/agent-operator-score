@@ -1,0 +1,22 @@
+{
+  "backend_run": "linux-container-vm.cleanup",
+  "command": "CID=$(docker run -d --rm --platform linux/arm64 --network none node:22-bookworm node -e '<spawn a detached sh -c \"sleep 300\", print its pid, then idle>') && docker logs $CID && docker exec $CID ps -eo pid,ppid,pgid,comm && docker stop -t 1 $CID && docker ps -a --filter id=$CID",
+  "exit_status": 0,
+  "signal": null,
+  "spawn_error": null,
+  "stdout_excerpt": "descendant_pid=14\n--- ps inside ---\nPID    PPID    PGID COMMAND\n      1       0       1 node\n     14       1      14 sh\n     15      14      14 sleep\n     16       0      16 ps\n--- after stop ---\n<no container listed>",
+  "stderr_excerpt": "",
+  "parse_error": null,
+  "captured": {
+    "descendant_ps_inside_container": "PID    PPID    PGID COMMAND\n      1       0       1 node\n     14       1      14 sh\n     15      14      14 sleep\n     16       0      16 ps",
+    "descendant_left_init_process_group": true,
+    "survive_cleanup_as_detached_descendant": {
+      "outcome": "denied",
+      "errno": null,
+      "detail": {
+        "container_listed_after_stop": null,
+        "note": "the container and every process in its pid namespace"
+      }
+    }
+  }
+}

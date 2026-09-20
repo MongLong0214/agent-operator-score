@@ -32,6 +32,69 @@ test("an assignment keeps the name and drops the value", () => {
   assert.match(text, /AWS_SECRET_ACCESS_KEY=\[redacted: assigned secret\]/);
 });
 
+test("redacting an assignment again preserves its complete placeholder", () => {
+  for (const quote of ["", "'", '"']) {
+    const raw = `APP_SECRET=${quote}synthetic-value${quote}`;
+    const once = redactText(raw);
+    assert.equal(once.text, "APP_SECRET=[redacted: assigned secret]");
+    assert.deepEqual(once.kinds, ["assigned secret"]);
+    assert.deepEqual(redactText(once.text), { text: once.text, kinds: [] });
+    assert.equal(containsSecretMaterial(once.text), false);
+  }
+});
+
+test("own placeholders are safe in bare and quoted assignments and credential fields", () => {
+  for (const placeholder of ["[redacted: assigned secret]", "[redacted: GitHub token]", "[redacted: credential field]"]) {
+    for (const quote of ["", "'", '"']) {
+      const safe = `APP_SECRET=${quote}${placeholder}${quote}`;
+      assert.deepEqual(redactText(safe), { text: safe, kinds: [] });
+      assert.equal(containsSecretMaterial(safe), false);
+    }
+    const safe = `{"password":"${placeholder}"}`;
+    assert.deepEqual(redactText(safe), { text: safe, kinds: [] });
+    assert.equal(containsSecretMaterial(safe), false);
+  }
+});
+
+test("placeholders do not hide adjacent secret material", () => {
+  const placeholder = "[redacted: assigned secret]";
+  for (const raw of [
+    `APP_SECRET=${placeholder} OTHER_SECRET=synthetic-value`,
+    `OTHER_SECRET=synthetic-value APP_SECRET=${placeholder}`,
+    `APP_SECRET=${placeholder}synthetic-value`,
+    `APP_SECRET="${placeholder}synthetic-value"`,
+    `{"password":"${placeholder}synthetic-value"}`,
+    `APP_SECRET=${placeholder} ${GITHUB}`,
+    "APP_SECRET=[redacted: unknown kind]",
+    "APP_SECRET=[redacted: assigned secret"
+  ]) {
+    assert.equal(containsSecretMaterial(raw), true, raw);
+    const once = redactText(raw);
+    assert.equal(once.text.includes("synthetic-value"), false);
+    assert.equal(once.text.includes(GITHUB), false);
+    assert.deepEqual(redactText(once.text), { text: once.text, kinds: [] });
+  }
+});
+
+test("redaction of each secret shape is stable on repeated passes", () => {
+  for (const raw of [
+    `APP_TOKEN=${GITHUB}`,
+    `APP_TOKEN='${GITHUB}'`,
+    `APP_TOKEN="${GITHUB}"`,
+    '{"password":"synthetic-value"}',
+    'authorization: Bearer synthetic-value',
+    'postgres://app:synthetic-value@db.invalid/test',
+    GITHUB, AWS, OPENAI
+  ]) {
+    const once = redactText(raw);
+    assert.notEqual(once.text, raw);
+    for (let pass = 0; pass < 3; pass += 1) {
+      assert.deepEqual(redactText(once.text), { text: once.text, kinds: [] });
+      assert.equal(containsSecretMaterial(once.text), false);
+    }
+  }
+});
+
 test("a connection string keeps its host and loses its password", () => {
   const { text } = redactText("psql postgres://appuser:hunter2hunter2@db.internal:5432/prod");
   assert.equal(text.includes("hunter2hunter2"), false);

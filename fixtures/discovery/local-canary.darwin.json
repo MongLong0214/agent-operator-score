@@ -1,0 +1,1052 @@
+{
+  "schema": "aos-discovery-canary.v1",
+  "recorded_on": "darwin 25.3.0 arm64, macOS 26.3",
+  "runtime_observed": "codex-cli 0.148.0",
+  "node_version": "22.23.2",
+  "note": "Produced by scripts/record-discovery-canary.mjs against the runtimes actually installed on that machine. Both lanes ran the real `aos discover` path: the real PATH, the real executable identity reading, the real seatbelt probe and the committed support matrix. Neither lane made a provider call, and neither read a credential value -- the record carries names and digests only, which is why it is committable. What attests it is one operator machine and not a lane: `npm run verify:agent-discovery-local` is the script that refuses a skipped canary, and no job in .github/workflows/ci.yml runs it, so CI holds this file against the shipped support table and never re-records it. The official pairing below is a host observation; nothing in CI has reproduced it.",
+  "lanes": [
+    {
+      "lane": "zero-config",
+      "note": "A machine where nothing has been configured. Every term of the official conjunction is true except the model: nothing on the command line names one and nothing was declared, so the model is unknown and the honest ceiling is diagnostic. This is what a bare host reaches, and it is the reason the release cannot promise OFFICIAL_READY with no registration at all.",
+      "record": {
+        "schema_id": "aos-discovery.v2",
+        "status": "DIAGNOSTIC_ONLY",
+        "states_visited": [
+          "DISCOVERING",
+          "IDENTITY_CHECKING",
+          "AUTH_CHECKING",
+          "MODEL_CHECKING",
+          "ENV_CHECKING",
+          "ISOLATION_CHECKING",
+          "PROFILE_BUILDING",
+          "DIAGNOSTIC_ONLY"
+        ],
+        "candidates": [
+          {
+            "id": "codex",
+            "runtime_command": "codex",
+            "runtime_name": "codex",
+            "adapter_id": "codex-cli.v1",
+            "source": "path",
+            "orchestrating": false,
+            "reliably_identified": true,
+            "existing_profile": false,
+            "evidence_completeness": 3,
+            "support_status": "DIAGNOSTIC_ONLY",
+            "blocked_reasons": [
+              "AOS_DISCOVERY_MODEL_WITHHELD"
+            ],
+            "identity": {
+              "status": "VERIFIED",
+              "identity_digest": "sha256:79b48d28df1a98d987c5ee522b0655cf4b437806b8e138fe97d2730d9d30ab15",
+              "realpath_digest": "sha256:434e21c8ce3e872dfd1b4e0fdc73a901269dadd4df6433932c4595215ddd528d",
+              "file_fingerprint": "sha256:134063e133f0b4244fa3b251acf973d4fe4b4aeeacbdc135211bf480f59f1477",
+              "adapter_runtime_match": true,
+              "adapter_runtime_detail": null,
+              "drift": [],
+              "untrusted_reasons": [],
+              "detail": "this command resolves to an executable only this account can replace"
+            },
+            "auth": {
+              "status": "PRESENT",
+              "reason": null,
+              "detail": "codex-cli.v1 keeps its login in its own configuration directory and every file it stages is there",
+              "credential": {
+                "name": "CODEX_HOME",
+                "source": "runtime-config-directory"
+              },
+              "credential_withheld": false,
+              "local_config": {
+                "source": "operator-home",
+                "declared": [
+                  "auth.json",
+                  "config.toml"
+                ],
+                "present": [
+                  "auth.json",
+                  "config.toml"
+                ],
+                "missing": []
+              }
+            },
+            "model": {
+              "status": "WITHHELD",
+              "id": null,
+              "source": "unknown",
+              "alias_class": "unknown",
+              "mutable_alias": null,
+              "claim_stage": "RUN_DIAGNOSTIC",
+              "withheld_reason": "MODEL_UNKNOWN",
+              "inputs": {
+                "runtimeConfig": null,
+                "declared": null
+              }
+            },
+            "env": {
+              "status": "READY",
+              "policy_digest": "sha256:198097a3ac762018dc3130fef6b832a2cf0862cabe08961ff4d31b42fbe49579",
+              "schema_id": "aos-adapter-env-policy.v1",
+              "allowed_env_names": [
+                "CODEX_HOME"
+              ],
+              "missing_required": [],
+              "detail": "every name this runtime needs is either set or staged by the boundary"
+            },
+            "isolation": {
+              "backend": "macos-seatbelt",
+              "backend_available": true,
+              "level": "STRICT",
+              "level_ceiling": "STRICT",
+              "deprecated_backend": true,
+              "platform_lane": "darwin/macos-seatbelt/codex-cli.v1",
+              "support_status": "SUPPORTED_WITH_CONSTRAINTS",
+              "lane_official": true,
+              "claim_stage_ceiling": "PROFILE_BOUND",
+              "boundary_canary": "NOT_RUN",
+              "reasons": [],
+              "probe_reason": null
+            },
+            "profile_digest": "e86551d26f6d5318984b260887dc0f5356eb617686021ab2e4cb107300eafd92"
+          },
+          {
+            "id": "claude",
+            "runtime_command": "claude",
+            "runtime_name": "claude-code",
+            "adapter_id": "claude-code.v1",
+            "source": "path",
+            "orchestrating": true,
+            "reliably_identified": false,
+            "existing_profile": false,
+            "evidence_completeness": 1,
+            "support_status": "DIAGNOSTIC_ONLY",
+            "blocked_reasons": [
+              "AOS_DISCOVERY_RUNTIME_NOT_ADAPTER",
+              "AOS_DISCOVERY_RUNTIME_NOT_ADAPTER",
+              "AOS_DISCOVERY_MODEL_WITHHELD",
+              "AOS_DISCOVERY_ISOLATION_NOT_STRICT"
+            ],
+            "identity": {
+              "status": "VERIFIED",
+              "identity_digest": "sha256:2611e22db40f3fedbfdac53e1ab613143a60e40fb49aa1942a7884962436be61",
+              "realpath_digest": "sha256:398ab4ee9ca1a2d42c9291ce3e2df8a227a3b69a78dd48f69d2810c682d9d7ee",
+              "file_fingerprint": "sha256:884baa38fe1a624be25c4a91568bf5a08b5cf4e7d7acf29b7760e3525d964898",
+              "adapter_runtime_match": false,
+              "adapter_runtime_detail": "the verified executable is not claude-code.v1",
+              "drift": [],
+              "untrusted_reasons": [],
+              "detail": "this command resolves to an executable only this account can replace"
+            },
+            "auth": {
+              "status": "ACTION_REQUIRED",
+              "reason": "AOS_DISCOVERY_RUNTIME_NOT_ADAPTER",
+              "detail": "the verified executable is not claude-code.v1, so AOS resolves no credential for it",
+              "credential": null,
+              "credential_withheld": true,
+              "local_config": null
+            },
+            "model": {
+              "status": "WITHHELD",
+              "id": null,
+              "source": "unknown",
+              "alias_class": "unknown",
+              "mutable_alias": null,
+              "claim_stage": "RUN_DIAGNOSTIC",
+              "withheld_reason": "MODEL_UNKNOWN",
+              "inputs": {
+                "runtimeConfig": null,
+                "declared": null
+              }
+            },
+            "env": {
+              "status": "READY",
+              "policy_digest": "sha256:351b8c07e0f74b873417df419e039a40301ab1b96e761728b660c973906fb4a0",
+              "schema_id": "aos-adapter-env-policy.v1",
+              "allowed_env_names": [
+                "CLAUDE_CONFIG_DIR"
+              ],
+              "missing_required": [],
+              "detail": "every name this runtime needs is either set or staged by the boundary"
+            },
+            "isolation": {
+              "backend": "macos-seatbelt",
+              "backend_available": true,
+              "level": "STRICT",
+              "level_ceiling": "STRICT",
+              "deprecated_backend": true,
+              "platform_lane": "darwin/macos-seatbelt/claude-code.v1",
+              "support_status": "NOT_OBSERVED",
+              "lane_official": false,
+              "claim_stage_ceiling": "RUN_DIAGNOSTIC",
+              "boundary_canary": "NOT_RUN",
+              "reasons": [
+                "AOS_ISOLATION_EVIDENCE_MISSING",
+                "AOS_ISOLATION_RECORD_INVALID",
+                "AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED",
+                "AOS_ISOLATION_PROCESS_NOT_ENFORCED",
+                "AOS_ISOLATION_SETUP_UNVERIFIED",
+                "AOS_ISOLATION_CANARY_NOT_PASS",
+                "AOS_ISOLATION_CLEANUP_UNVERIFIED",
+                "AOS_ISOLATION_POLICY_DIGEST_MISSING",
+                "AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE",
+                "AOS_ISOLATION_RUNTIME_IDENTITY_UNVERIFIED",
+                "AOS_ISOLATION_LANE_NOT_PROVEN"
+              ],
+              "probe_reason": null
+            },
+            "profile_digest": "545b05137447a3f0b0b25604a7855335eb39c0f86f1a97348b13d68ec2098a78"
+          }
+        ],
+        "selected_runtime": "codex",
+        "support_matrix": [
+          {
+            "platform": "darwin",
+            "backend": "macos-seatbelt",
+            "adapter": "codex-cli.v1",
+            "level": "STRICT",
+            "support_status": "SUPPORTED_WITH_CONSTRAINTS",
+            "official": true,
+            "claim_stage_ceiling": "PROFILE_BOUND",
+            "reasons": [],
+            "constraints": [
+              "sandbox-exec is deprecated by Apple and still enforcing on darwin 25.3 (macOS 26.3); the probe re-checks it on every run",
+              "CODEX_HOME is a staged copy, not a hole: auth.json and config.toml are copied into the agent's private HOME before the spawn, the operator's ~/.codex is never named in the profile, and what Codex writes to the copy -- session logs, its state database, a refreshed token -- is discarded with the run",
+              "task-initiated external network is NOT_OBSERVED: the profile allows outbound network wholesale because the provider transport needs it",
+              "a descendant that double-forks between two 200 ms polls is not tracked; it stays confined by the kernel"
+            ]
+          },
+          {
+            "platform": "darwin",
+            "backend": "macos-seatbelt",
+            "adapter": "claude-code.v1",
+            "level": "STRICT",
+            "support_status": "NOT_OBSERVED",
+            "official": false,
+            "claim_stage_ceiling": "RUN_DIAGNOSTIC",
+            "reasons": [
+              "AOS_ISOLATION_EVIDENCE_MISSING",
+              "AOS_ISOLATION_RECORD_INVALID",
+              "AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED",
+              "AOS_ISOLATION_PROCESS_NOT_ENFORCED",
+              "AOS_ISOLATION_SETUP_UNVERIFIED",
+              "AOS_ISOLATION_CANARY_NOT_PASS",
+              "AOS_ISOLATION_CLEANUP_UNVERIFIED",
+              "AOS_ISOLATION_POLICY_DIGEST_MISSING",
+              "AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE",
+              "AOS_ISOLATION_RUNTIME_IDENTITY_UNVERIFIED",
+              "AOS_ISOLATION_LANE_NOT_PROVEN"
+            ],
+            "constraints": []
+          },
+          {
+            "platform": "darwin",
+            "backend": "macos-seatbelt",
+            "adapter": "generic-command.v1",
+            "level": "STRICT",
+            "support_status": "NOT_OBSERVED",
+            "official": false,
+            "claim_stage_ceiling": "RUN_DIAGNOSTIC",
+            "reasons": [
+              "AOS_ISOLATION_EVIDENCE_MISSING",
+              "AOS_ISOLATION_RECORD_INVALID",
+              "AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED",
+              "AOS_ISOLATION_PROCESS_NOT_ENFORCED",
+              "AOS_ISOLATION_SETUP_UNVERIFIED",
+              "AOS_ISOLATION_CANARY_NOT_PASS",
+              "AOS_ISOLATION_CLEANUP_UNVERIFIED",
+              "AOS_ISOLATION_POLICY_DIGEST_MISSING",
+              "AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE",
+              "AOS_ISOLATION_LANE_NOT_PROVEN"
+            ],
+            "constraints": []
+          },
+          {
+            "platform": "darwin",
+            "backend": "none",
+            "adapter": "*",
+            "level": "BEST_EFFORT_CLI",
+            "support_status": "BLOCKED",
+            "official": false,
+            "claim_stage_ceiling": "RUN_DIAGNOSTIC",
+            "reasons": [
+              "AOS_ISOLATION_LEVEL_NOT_STRICT",
+              "AOS_ISOLATION_BACKEND_ABSENT",
+              "AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED",
+              "AOS_ISOLATION_PROCESS_NOT_ENFORCED",
+              "AOS_ISOLATION_SETUP_UNVERIFIED",
+              "AOS_ISOLATION_CANARY_NOT_PASS",
+              "AOS_ISOLATION_CLEANUP_UNVERIFIED",
+              "AOS_ISOLATION_POLICY_DIGEST_MISSING",
+              "AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE",
+              "AOS_ISOLATION_LANE_NOT_PROVEN"
+            ],
+            "constraints": []
+          },
+          {
+            "platform": "darwin",
+            "backend": "none",
+            "adapter": "*",
+            "level": "NONE",
+            "support_status": "BLOCKED",
+            "official": false,
+            "claim_stage_ceiling": "RUN_DIAGNOSTIC",
+            "reasons": [
+              "AOS_ISOLATION_LEVEL_NOT_STRICT",
+              "AOS_ISOLATION_BACKEND_ABSENT",
+              "AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED",
+              "AOS_ISOLATION_PROCESS_NOT_ENFORCED",
+              "AOS_ISOLATION_SETUP_UNVERIFIED",
+              "AOS_ISOLATION_CANARY_NOT_PASS",
+              "AOS_ISOLATION_CLEANUP_UNVERIFIED",
+              "AOS_ISOLATION_POLICY_DIGEST_MISSING",
+              "AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE",
+              "AOS_ISOLATION_LANE_NOT_PROVEN"
+            ],
+            "constraints": []
+          },
+          {
+            "platform": "linux",
+            "backend": "linux-bubblewrap",
+            "adapter": "codex-cli.v1",
+            "level": "STRICT",
+            "support_status": "NOT_OBSERVED",
+            "official": false,
+            "claim_stage_ceiling": "RUN_DIAGNOSTIC",
+            "reasons": [
+              "AOS_ISOLATION_EVIDENCE_MISSING",
+              "AOS_ISOLATION_RECORD_INVALID",
+              "AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED",
+              "AOS_ISOLATION_PROCESS_NOT_ENFORCED",
+              "AOS_ISOLATION_SETUP_UNVERIFIED",
+              "AOS_ISOLATION_CANARY_NOT_PASS",
+              "AOS_ISOLATION_CLEANUP_UNVERIFIED",
+              "AOS_ISOLATION_POLICY_DIGEST_MISSING",
+              "AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE",
+              "AOS_ISOLATION_RUNTIME_IDENTITY_UNVERIFIED",
+              "AOS_ISOLATION_LANE_NOT_PROVEN"
+            ],
+            "constraints": []
+          },
+          {
+            "platform": "linux",
+            "backend": "linux-bubblewrap",
+            "adapter": "claude-code.v1",
+            "level": "STRICT",
+            "support_status": "NOT_OBSERVED",
+            "official": false,
+            "claim_stage_ceiling": "RUN_DIAGNOSTIC",
+            "reasons": [
+              "AOS_ISOLATION_EVIDENCE_MISSING",
+              "AOS_ISOLATION_RECORD_INVALID",
+              "AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED",
+              "AOS_ISOLATION_PROCESS_NOT_ENFORCED",
+              "AOS_ISOLATION_SETUP_UNVERIFIED",
+              "AOS_ISOLATION_CANARY_NOT_PASS",
+              "AOS_ISOLATION_CLEANUP_UNVERIFIED",
+              "AOS_ISOLATION_POLICY_DIGEST_MISSING",
+              "AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE",
+              "AOS_ISOLATION_RUNTIME_IDENTITY_UNVERIFIED",
+              "AOS_ISOLATION_LANE_NOT_PROVEN"
+            ],
+            "constraints": []
+          },
+          {
+            "platform": "linux",
+            "backend": "linux-bubblewrap",
+            "adapter": "generic-command.v1",
+            "level": "STRICT",
+            "support_status": "NOT_OBSERVED",
+            "official": false,
+            "claim_stage_ceiling": "RUN_DIAGNOSTIC",
+            "reasons": [
+              "AOS_ISOLATION_EVIDENCE_MISSING",
+              "AOS_ISOLATION_RECORD_INVALID",
+              "AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED",
+              "AOS_ISOLATION_PROCESS_NOT_ENFORCED",
+              "AOS_ISOLATION_SETUP_UNVERIFIED",
+              "AOS_ISOLATION_CANARY_NOT_PASS",
+              "AOS_ISOLATION_CLEANUP_UNVERIFIED",
+              "AOS_ISOLATION_POLICY_DIGEST_MISSING",
+              "AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE",
+              "AOS_ISOLATION_LANE_NOT_PROVEN"
+            ],
+            "constraints": []
+          },
+          {
+            "platform": "linux",
+            "backend": "linux-container",
+            "adapter": "*",
+            "level": "STRICT",
+            "support_status": "NOT_OBSERVED",
+            "official": false,
+            "claim_stage_ceiling": "RUN_DIAGNOSTIC",
+            "reasons": [
+              "AOS_ISOLATION_EVIDENCE_MISSING",
+              "AOS_ISOLATION_RECORD_INVALID",
+              "AOS_ISOLATION_BACKEND_ABSENT",
+              "AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED",
+              "AOS_ISOLATION_PROCESS_NOT_ENFORCED",
+              "AOS_ISOLATION_SETUP_UNVERIFIED",
+              "AOS_ISOLATION_CANARY_NOT_PASS",
+              "AOS_ISOLATION_CLEANUP_UNVERIFIED",
+              "AOS_ISOLATION_POLICY_DIGEST_MISSING",
+              "AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE",
+              "AOS_ISOLATION_LANE_NOT_PROVEN"
+            ],
+            "constraints": []
+          },
+          {
+            "platform": "linux",
+            "backend": "none",
+            "adapter": "*",
+            "level": "BEST_EFFORT_CLI",
+            "support_status": "BLOCKED",
+            "official": false,
+            "claim_stage_ceiling": "RUN_DIAGNOSTIC",
+            "reasons": [
+              "AOS_ISOLATION_LEVEL_NOT_STRICT",
+              "AOS_ISOLATION_BACKEND_ABSENT",
+              "AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED",
+              "AOS_ISOLATION_PROCESS_NOT_ENFORCED",
+              "AOS_ISOLATION_SETUP_UNVERIFIED",
+              "AOS_ISOLATION_CANARY_NOT_PASS",
+              "AOS_ISOLATION_CLEANUP_UNVERIFIED",
+              "AOS_ISOLATION_POLICY_DIGEST_MISSING",
+              "AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE",
+              "AOS_ISOLATION_LANE_NOT_PROVEN"
+            ],
+            "constraints": []
+          },
+          {
+            "platform": "linux",
+            "backend": "none",
+            "adapter": "*",
+            "level": "NONE",
+            "support_status": "BLOCKED",
+            "official": false,
+            "claim_stage_ceiling": "RUN_DIAGNOSTIC",
+            "reasons": [
+              "AOS_ISOLATION_LEVEL_NOT_STRICT",
+              "AOS_ISOLATION_BACKEND_ABSENT",
+              "AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED",
+              "AOS_ISOLATION_PROCESS_NOT_ENFORCED",
+              "AOS_ISOLATION_SETUP_UNVERIFIED",
+              "AOS_ISOLATION_CANARY_NOT_PASS",
+              "AOS_ISOLATION_CLEANUP_UNVERIFIED",
+              "AOS_ISOLATION_POLICY_DIGEST_MISSING",
+              "AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE",
+              "AOS_ISOLATION_LANE_NOT_PROVEN"
+            ],
+            "constraints": []
+          }
+        ],
+        "profile": {
+          "schema_id": "aos-environment-profile.v1",
+          "profile_id": "codex",
+          "os": "darwin",
+          "arch": "arm64",
+          "node_version": "22.x",
+          "agent_id": "codex",
+          "runtime_name": "codex",
+          "runtime_version": "0.148.0",
+          "runtime_version_source": "detected",
+          "model_provider": null,
+          "model_family": null,
+          "model_id": null,
+          "model_source": "unknown",
+          "model_confidence": "NONE",
+          "model_evidence_digest": null,
+          "model_mutable_alias": null,
+          "model_alias_class": "unknown",
+          "model_provenance": {
+            "schema_id": "aos-model-provenance.v1",
+            "provider": null,
+            "family": null,
+            "id": null,
+            "source": "unknown",
+            "confidence": "NONE",
+            "evidence_digest": null,
+            "mutable_alias": null,
+            "alias_class": "unknown",
+            "status": "UNKNOWN",
+            "mismatch": null,
+            "corroborated_by": [],
+            "evidence": null
+          },
+          "adapter_id": "codex-cli.v1",
+          "adapter_version": 1,
+          "runtime_transcript": "codex",
+          "model_inputs": {
+            "runtimeConfig": null,
+            "declared": null
+          },
+          "runtime_identity_digest": "sha256:79b48d28df1a98d987c5ee522b0655cf4b437806b8e138fe97d2730d9d30ab15",
+          "runtime_identity_status": "VERIFIED",
+          "agent_config_digest": null,
+          "tool_policy": "workspace-read-write",
+          "provider_network": "required",
+          "isolation_level": "STRICT",
+          "isolation_policy_digest": "sha256:640abcfb0c5bcce628b70a814bc258bfa87c15730a6781eb9f12162e5880dff5",
+          "runtime_config_digest": "sha256:5f6ced76131d5c19448da9ce6c392738160ee08ce825a609969f098f1e259e46",
+          "scoring_permitted": true,
+          "language": "en",
+          "interface": "cli",
+          "allowed_env_names": [],
+          "transport_env_names": [],
+          "auto_runtime_auth": true,
+          "env_policy_schema": "aos-adapter-env-policy.v1",
+          "env_policy_digest": "sha256:198097a3ac762018dc3130fef6b832a2cf0862cabe08961ff4d31b42fbe49579",
+          "suite_major": 1,
+          "profile_digest": "e86551d26f6d5318984b260887dc0f5356eb617686021ab2e4cb107300eafd92"
+        },
+        "profile_reuse": {
+          "reused": false,
+          "created": true,
+          "written": true,
+          "ledger_unreadable": false,
+          "profile_digest": "e86551d26f6d5318984b260887dc0f5356eb617686021ab2e4cb107300eafd92",
+          "active_cycle_profile_digest": null,
+          "active_cycle_unreadable": false,
+          "active_cycle_matches": null
+        },
+        "reason_code": "AOS_DISCOVERY_MODEL_WITHHELD",
+        "store_unreadable": false,
+        "tie_break": null,
+        "next_action": null,
+        "zero_input": {
+          "terminal_commands": 0,
+          "config_edits": 0,
+          "manual_registration": 0,
+          "setup_questions": 0
+        }
+      }
+    },
+    {
+      "lane": "official-pairing",
+      "note": "The same machine after one registration carrying the exact model the operator runs codex on. Identity verified by #554, confirmed to be @openai/codex by #556, the runtime's own login present in its configuration directory, an exact-snapshot model, the allowlist environment granted, and the darwin/macos-seatbelt/codex-cli.v1 STRICT lane the release proved. That is the official pairing this issue requires evidence of.",
+      "record": {
+        "schema_id": "aos-discovery.v2",
+        "status": "OFFICIAL_READY",
+        "states_visited": [
+          "DISCOVERING",
+          "IDENTITY_CHECKING",
+          "AUTH_CHECKING",
+          "MODEL_CHECKING",
+          "ENV_CHECKING",
+          "ISOLATION_CHECKING",
+          "PROFILE_BUILDING",
+          "OFFICIAL_READY"
+        ],
+        "candidates": [
+          {
+            "id": "codex",
+            "runtime_command": "codex",
+            "runtime_name": "codex",
+            "adapter_id": "codex-cli.v1",
+            "source": "registered",
+            "orchestrating": false,
+            "reliably_identified": true,
+            "existing_profile": false,
+            "evidence_completeness": 4,
+            "support_status": "OFFICIAL",
+            "blocked_reasons": [],
+            "identity": {
+              "status": "VERIFIED",
+              "identity_digest": "sha256:79b48d28df1a98d987c5ee522b0655cf4b437806b8e138fe97d2730d9d30ab15",
+              "realpath_digest": "sha256:434e21c8ce3e872dfd1b4e0fdc73a901269dadd4df6433932c4595215ddd528d",
+              "file_fingerprint": "sha256:134063e133f0b4244fa3b251acf973d4fe4b4aeeacbdc135211bf480f59f1477",
+              "adapter_runtime_match": true,
+              "adapter_runtime_detail": null,
+              "drift": [],
+              "untrusted_reasons": [],
+              "detail": "this command resolves to an executable only this account can replace"
+            },
+            "auth": {
+              "status": "PRESENT",
+              "reason": null,
+              "detail": "codex-cli.v1 keeps its login in its own configuration directory and every file it stages is there",
+              "credential": {
+                "name": "CODEX_HOME",
+                "source": "runtime-config-directory"
+              },
+              "credential_withheld": false,
+              "local_config": {
+                "source": "operator-home",
+                "declared": [
+                  "auth.json",
+                  "config.toml"
+                ],
+                "present": [
+                  "auth.json",
+                  "config.toml"
+                ],
+                "missing": []
+              }
+            },
+            "model": {
+              "status": "EXACT",
+              "id": "openai/gpt-5-2025-08-07",
+              "source": "declared",
+              "alias_class": "exact-snapshot",
+              "mutable_alias": false,
+              "claim_stage": "PROFILE_BOUND",
+              "withheld_reason": null,
+              "inputs": {
+                "runtimeConfig": null,
+                "declared": {
+                  "model": "openai/gpt-5-2025-08-07",
+                  "provider": "openai"
+                }
+              }
+            },
+            "env": {
+              "status": "READY",
+              "policy_digest": "sha256:198097a3ac762018dc3130fef6b832a2cf0862cabe08961ff4d31b42fbe49579",
+              "schema_id": "aos-adapter-env-policy.v1",
+              "allowed_env_names": [
+                "CODEX_HOME"
+              ],
+              "missing_required": [],
+              "detail": "every name this runtime needs is either set or staged by the boundary"
+            },
+            "isolation": {
+              "backend": "macos-seatbelt",
+              "backend_available": true,
+              "level": "STRICT",
+              "level_ceiling": "STRICT",
+              "deprecated_backend": true,
+              "platform_lane": "darwin/macos-seatbelt/codex-cli.v1",
+              "support_status": "SUPPORTED_WITH_CONSTRAINTS",
+              "lane_official": true,
+              "claim_stage_ceiling": "PROFILE_BOUND",
+              "boundary_canary": "NOT_RUN",
+              "reasons": [],
+              "probe_reason": null
+            },
+            "profile_digest": "565c6eceeed9e72819032b634f6cab5edaa00c3ee153ffda3b8b69810bd591ce"
+          },
+          {
+            "id": "claude",
+            "runtime_command": "claude",
+            "runtime_name": "claude-code",
+            "adapter_id": "claude-code.v1",
+            "source": "path",
+            "orchestrating": true,
+            "reliably_identified": false,
+            "existing_profile": false,
+            "evidence_completeness": 1,
+            "support_status": "DIAGNOSTIC_ONLY",
+            "blocked_reasons": [
+              "AOS_DISCOVERY_RUNTIME_NOT_ADAPTER",
+              "AOS_DISCOVERY_RUNTIME_NOT_ADAPTER",
+              "AOS_DISCOVERY_MODEL_WITHHELD",
+              "AOS_DISCOVERY_ISOLATION_NOT_STRICT"
+            ],
+            "identity": {
+              "status": "VERIFIED",
+              "identity_digest": "sha256:2611e22db40f3fedbfdac53e1ab613143a60e40fb49aa1942a7884962436be61",
+              "realpath_digest": "sha256:398ab4ee9ca1a2d42c9291ce3e2df8a227a3b69a78dd48f69d2810c682d9d7ee",
+              "file_fingerprint": "sha256:884baa38fe1a624be25c4a91568bf5a08b5cf4e7d7acf29b7760e3525d964898",
+              "adapter_runtime_match": false,
+              "adapter_runtime_detail": "the verified executable is not claude-code.v1",
+              "drift": [],
+              "untrusted_reasons": [],
+              "detail": "this command resolves to an executable only this account can replace"
+            },
+            "auth": {
+              "status": "ACTION_REQUIRED",
+              "reason": "AOS_DISCOVERY_RUNTIME_NOT_ADAPTER",
+              "detail": "the verified executable is not claude-code.v1, so AOS resolves no credential for it",
+              "credential": null,
+              "credential_withheld": true,
+              "local_config": null
+            },
+            "model": {
+              "status": "WITHHELD",
+              "id": null,
+              "source": "unknown",
+              "alias_class": "unknown",
+              "mutable_alias": null,
+              "claim_stage": "RUN_DIAGNOSTIC",
+              "withheld_reason": "MODEL_UNKNOWN",
+              "inputs": {
+                "runtimeConfig": null,
+                "declared": null
+              }
+            },
+            "env": {
+              "status": "READY",
+              "policy_digest": "sha256:351b8c07e0f74b873417df419e039a40301ab1b96e761728b660c973906fb4a0",
+              "schema_id": "aos-adapter-env-policy.v1",
+              "allowed_env_names": [
+                "CLAUDE_CONFIG_DIR"
+              ],
+              "missing_required": [],
+              "detail": "every name this runtime needs is either set or staged by the boundary"
+            },
+            "isolation": {
+              "backend": "macos-seatbelt",
+              "backend_available": true,
+              "level": "STRICT",
+              "level_ceiling": "STRICT",
+              "deprecated_backend": true,
+              "platform_lane": "darwin/macos-seatbelt/claude-code.v1",
+              "support_status": "NOT_OBSERVED",
+              "lane_official": false,
+              "claim_stage_ceiling": "RUN_DIAGNOSTIC",
+              "boundary_canary": "NOT_RUN",
+              "reasons": [
+                "AOS_ISOLATION_EVIDENCE_MISSING",
+                "AOS_ISOLATION_RECORD_INVALID",
+                "AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED",
+                "AOS_ISOLATION_PROCESS_NOT_ENFORCED",
+                "AOS_ISOLATION_SETUP_UNVERIFIED",
+                "AOS_ISOLATION_CANARY_NOT_PASS",
+                "AOS_ISOLATION_CLEANUP_UNVERIFIED",
+                "AOS_ISOLATION_POLICY_DIGEST_MISSING",
+                "AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE",
+                "AOS_ISOLATION_RUNTIME_IDENTITY_UNVERIFIED",
+                "AOS_ISOLATION_LANE_NOT_PROVEN"
+              ],
+              "probe_reason": null
+            },
+            "profile_digest": "545b05137447a3f0b0b25604a7855335eb39c0f86f1a97348b13d68ec2098a78"
+          }
+        ],
+        "selected_runtime": "codex",
+        "support_matrix": [
+          {
+            "platform": "darwin",
+            "backend": "macos-seatbelt",
+            "adapter": "codex-cli.v1",
+            "level": "STRICT",
+            "support_status": "SUPPORTED_WITH_CONSTRAINTS",
+            "official": true,
+            "claim_stage_ceiling": "PROFILE_BOUND",
+            "reasons": [],
+            "constraints": [
+              "sandbox-exec is deprecated by Apple and still enforcing on darwin 25.3 (macOS 26.3); the probe re-checks it on every run",
+              "CODEX_HOME is a staged copy, not a hole: auth.json and config.toml are copied into the agent's private HOME before the spawn, the operator's ~/.codex is never named in the profile, and what Codex writes to the copy -- session logs, its state database, a refreshed token -- is discarded with the run",
+              "task-initiated external network is NOT_OBSERVED: the profile allows outbound network wholesale because the provider transport needs it",
+              "a descendant that double-forks between two 200 ms polls is not tracked; it stays confined by the kernel"
+            ]
+          },
+          {
+            "platform": "darwin",
+            "backend": "macos-seatbelt",
+            "adapter": "claude-code.v1",
+            "level": "STRICT",
+            "support_status": "NOT_OBSERVED",
+            "official": false,
+            "claim_stage_ceiling": "RUN_DIAGNOSTIC",
+            "reasons": [
+              "AOS_ISOLATION_EVIDENCE_MISSING",
+              "AOS_ISOLATION_RECORD_INVALID",
+              "AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED",
+              "AOS_ISOLATION_PROCESS_NOT_ENFORCED",
+              "AOS_ISOLATION_SETUP_UNVERIFIED",
+              "AOS_ISOLATION_CANARY_NOT_PASS",
+              "AOS_ISOLATION_CLEANUP_UNVERIFIED",
+              "AOS_ISOLATION_POLICY_DIGEST_MISSING",
+              "AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE",
+              "AOS_ISOLATION_RUNTIME_IDENTITY_UNVERIFIED",
+              "AOS_ISOLATION_LANE_NOT_PROVEN"
+            ],
+            "constraints": []
+          },
+          {
+            "platform": "darwin",
+            "backend": "macos-seatbelt",
+            "adapter": "generic-command.v1",
+            "level": "STRICT",
+            "support_status": "NOT_OBSERVED",
+            "official": false,
+            "claim_stage_ceiling": "RUN_DIAGNOSTIC",
+            "reasons": [
+              "AOS_ISOLATION_EVIDENCE_MISSING",
+              "AOS_ISOLATION_RECORD_INVALID",
+              "AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED",
+              "AOS_ISOLATION_PROCESS_NOT_ENFORCED",
+              "AOS_ISOLATION_SETUP_UNVERIFIED",
+              "AOS_ISOLATION_CANARY_NOT_PASS",
+              "AOS_ISOLATION_CLEANUP_UNVERIFIED",
+              "AOS_ISOLATION_POLICY_DIGEST_MISSING",
+              "AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE",
+              "AOS_ISOLATION_LANE_NOT_PROVEN"
+            ],
+            "constraints": []
+          },
+          {
+            "platform": "darwin",
+            "backend": "none",
+            "adapter": "*",
+            "level": "BEST_EFFORT_CLI",
+            "support_status": "BLOCKED",
+            "official": false,
+            "claim_stage_ceiling": "RUN_DIAGNOSTIC",
+            "reasons": [
+              "AOS_ISOLATION_LEVEL_NOT_STRICT",
+              "AOS_ISOLATION_BACKEND_ABSENT",
+              "AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED",
+              "AOS_ISOLATION_PROCESS_NOT_ENFORCED",
+              "AOS_ISOLATION_SETUP_UNVERIFIED",
+              "AOS_ISOLATION_CANARY_NOT_PASS",
+              "AOS_ISOLATION_CLEANUP_UNVERIFIED",
+              "AOS_ISOLATION_POLICY_DIGEST_MISSING",
+              "AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE",
+              "AOS_ISOLATION_LANE_NOT_PROVEN"
+            ],
+            "constraints": []
+          },
+          {
+            "platform": "darwin",
+            "backend": "none",
+            "adapter": "*",
+            "level": "NONE",
+            "support_status": "BLOCKED",
+            "official": false,
+            "claim_stage_ceiling": "RUN_DIAGNOSTIC",
+            "reasons": [
+              "AOS_ISOLATION_LEVEL_NOT_STRICT",
+              "AOS_ISOLATION_BACKEND_ABSENT",
+              "AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED",
+              "AOS_ISOLATION_PROCESS_NOT_ENFORCED",
+              "AOS_ISOLATION_SETUP_UNVERIFIED",
+              "AOS_ISOLATION_CANARY_NOT_PASS",
+              "AOS_ISOLATION_CLEANUP_UNVERIFIED",
+              "AOS_ISOLATION_POLICY_DIGEST_MISSING",
+              "AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE",
+              "AOS_ISOLATION_LANE_NOT_PROVEN"
+            ],
+            "constraints": []
+          },
+          {
+            "platform": "linux",
+            "backend": "linux-bubblewrap",
+            "adapter": "codex-cli.v1",
+            "level": "STRICT",
+            "support_status": "NOT_OBSERVED",
+            "official": false,
+            "claim_stage_ceiling": "RUN_DIAGNOSTIC",
+            "reasons": [
+              "AOS_ISOLATION_EVIDENCE_MISSING",
+              "AOS_ISOLATION_RECORD_INVALID",
+              "AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED",
+              "AOS_ISOLATION_PROCESS_NOT_ENFORCED",
+              "AOS_ISOLATION_SETUP_UNVERIFIED",
+              "AOS_ISOLATION_CANARY_NOT_PASS",
+              "AOS_ISOLATION_CLEANUP_UNVERIFIED",
+              "AOS_ISOLATION_POLICY_DIGEST_MISSING",
+              "AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE",
+              "AOS_ISOLATION_RUNTIME_IDENTITY_UNVERIFIED",
+              "AOS_ISOLATION_LANE_NOT_PROVEN"
+            ],
+            "constraints": []
+          },
+          {
+            "platform": "linux",
+            "backend": "linux-bubblewrap",
+            "adapter": "claude-code.v1",
+            "level": "STRICT",
+            "support_status": "NOT_OBSERVED",
+            "official": false,
+            "claim_stage_ceiling": "RUN_DIAGNOSTIC",
+            "reasons": [
+              "AOS_ISOLATION_EVIDENCE_MISSING",
+              "AOS_ISOLATION_RECORD_INVALID",
+              "AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED",
+              "AOS_ISOLATION_PROCESS_NOT_ENFORCED",
+              "AOS_ISOLATION_SETUP_UNVERIFIED",
+              "AOS_ISOLATION_CANARY_NOT_PASS",
+              "AOS_ISOLATION_CLEANUP_UNVERIFIED",
+              "AOS_ISOLATION_POLICY_DIGEST_MISSING",
+              "AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE",
+              "AOS_ISOLATION_RUNTIME_IDENTITY_UNVERIFIED",
+              "AOS_ISOLATION_LANE_NOT_PROVEN"
+            ],
+            "constraints": []
+          },
+          {
+            "platform": "linux",
+            "backend": "linux-bubblewrap",
+            "adapter": "generic-command.v1",
+            "level": "STRICT",
+            "support_status": "NOT_OBSERVED",
+            "official": false,
+            "claim_stage_ceiling": "RUN_DIAGNOSTIC",
+            "reasons": [
+              "AOS_ISOLATION_EVIDENCE_MISSING",
+              "AOS_ISOLATION_RECORD_INVALID",
+              "AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED",
+              "AOS_ISOLATION_PROCESS_NOT_ENFORCED",
+              "AOS_ISOLATION_SETUP_UNVERIFIED",
+              "AOS_ISOLATION_CANARY_NOT_PASS",
+              "AOS_ISOLATION_CLEANUP_UNVERIFIED",
+              "AOS_ISOLATION_POLICY_DIGEST_MISSING",
+              "AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE",
+              "AOS_ISOLATION_LANE_NOT_PROVEN"
+            ],
+            "constraints": []
+          },
+          {
+            "platform": "linux",
+            "backend": "linux-container",
+            "adapter": "*",
+            "level": "STRICT",
+            "support_status": "NOT_OBSERVED",
+            "official": false,
+            "claim_stage_ceiling": "RUN_DIAGNOSTIC",
+            "reasons": [
+              "AOS_ISOLATION_EVIDENCE_MISSING",
+              "AOS_ISOLATION_RECORD_INVALID",
+              "AOS_ISOLATION_BACKEND_ABSENT",
+              "AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED",
+              "AOS_ISOLATION_PROCESS_NOT_ENFORCED",
+              "AOS_ISOLATION_SETUP_UNVERIFIED",
+              "AOS_ISOLATION_CANARY_NOT_PASS",
+              "AOS_ISOLATION_CLEANUP_UNVERIFIED",
+              "AOS_ISOLATION_POLICY_DIGEST_MISSING",
+              "AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE",
+              "AOS_ISOLATION_LANE_NOT_PROVEN"
+            ],
+            "constraints": []
+          },
+          {
+            "platform": "linux",
+            "backend": "none",
+            "adapter": "*",
+            "level": "BEST_EFFORT_CLI",
+            "support_status": "BLOCKED",
+            "official": false,
+            "claim_stage_ceiling": "RUN_DIAGNOSTIC",
+            "reasons": [
+              "AOS_ISOLATION_LEVEL_NOT_STRICT",
+              "AOS_ISOLATION_BACKEND_ABSENT",
+              "AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED",
+              "AOS_ISOLATION_PROCESS_NOT_ENFORCED",
+              "AOS_ISOLATION_SETUP_UNVERIFIED",
+              "AOS_ISOLATION_CANARY_NOT_PASS",
+              "AOS_ISOLATION_CLEANUP_UNVERIFIED",
+              "AOS_ISOLATION_POLICY_DIGEST_MISSING",
+              "AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE",
+              "AOS_ISOLATION_LANE_NOT_PROVEN"
+            ],
+            "constraints": []
+          },
+          {
+            "platform": "linux",
+            "backend": "none",
+            "adapter": "*",
+            "level": "NONE",
+            "support_status": "BLOCKED",
+            "official": false,
+            "claim_stage_ceiling": "RUN_DIAGNOSTIC",
+            "reasons": [
+              "AOS_ISOLATION_LEVEL_NOT_STRICT",
+              "AOS_ISOLATION_BACKEND_ABSENT",
+              "AOS_ISOLATION_FILESYSTEM_NOT_ENFORCED",
+              "AOS_ISOLATION_PROCESS_NOT_ENFORCED",
+              "AOS_ISOLATION_SETUP_UNVERIFIED",
+              "AOS_ISOLATION_CANARY_NOT_PASS",
+              "AOS_ISOLATION_CLEANUP_UNVERIFIED",
+              "AOS_ISOLATION_POLICY_DIGEST_MISSING",
+              "AOS_ISOLATION_SUPPORT_STATUS_NOT_RELEASABLE",
+              "AOS_ISOLATION_LANE_NOT_PROVEN"
+            ],
+            "constraints": []
+          }
+        ],
+        "profile": {
+          "schema_id": "aos-environment-profile.v1",
+          "profile_id": "codex",
+          "os": "darwin",
+          "arch": "arm64",
+          "node_version": "22.x",
+          "agent_id": "codex",
+          "runtime_name": "codex",
+          "runtime_version": "0.148.0",
+          "runtime_version_source": "detected",
+          "model_provider": "openai",
+          "model_family": "gpt",
+          "model_id": "openai/gpt-5-2025-08-07",
+          "model_source": "declared",
+          "model_confidence": "LOW",
+          "model_evidence_digest": "sha256:d1338fa431f3b171a683bae058612dd6f63025819b786ad2285f98d9fd1190b2",
+          "model_mutable_alias": false,
+          "model_alias_class": "exact-snapshot",
+          "model_provenance": {
+            "schema_id": "aos-model-provenance.v1",
+            "provider": "openai",
+            "family": "gpt",
+            "id": "openai/gpt-5-2025-08-07",
+            "source": "declared",
+            "confidence": "LOW",
+            "evidence_digest": "sha256:d1338fa431f3b171a683bae058612dd6f63025819b786ad2285f98d9fd1190b2",
+            "mutable_alias": false,
+            "alias_class": "exact-snapshot",
+            "status": "EXACT",
+            "mismatch": null,
+            "corroborated_by": [],
+            "evidence": {
+              "claim": {
+                "schema_id": "aos-model-provenance.v1",
+                "source": "declared",
+                "provider": "openai",
+                "id": "openai/gpt-5-2025-08-07",
+                "runtime": null
+              },
+              "row_digest": null
+            }
+          },
+          "adapter_id": "codex-cli.v1",
+          "adapter_version": 1,
+          "runtime_transcript": "codex",
+          "model_inputs": {
+            "runtimeConfig": null,
+            "declared": {
+              "model": "openai/gpt-5-2025-08-07",
+              "provider": "openai"
+            }
+          },
+          "runtime_identity_digest": "sha256:79b48d28df1a98d987c5ee522b0655cf4b437806b8e138fe97d2730d9d30ab15",
+          "runtime_identity_status": "VERIFIED",
+          "agent_config_digest": "8b6c9722d6987c1b4ef22d0c4fae616f352d47b410d12da4e3bf67de69f5a982",
+          "tool_policy": "workspace-read-write",
+          "provider_network": "required",
+          "isolation_level": "STRICT",
+          "isolation_policy_digest": "sha256:640abcfb0c5bcce628b70a814bc258bfa87c15730a6781eb9f12162e5880dff5",
+          "runtime_config_digest": "sha256:5f6ced76131d5c19448da9ce6c392738160ee08ce825a609969f098f1e259e46",
+          "scoring_permitted": true,
+          "language": "en",
+          "interface": "cli",
+          "allowed_env_names": [],
+          "transport_env_names": [],
+          "auto_runtime_auth": true,
+          "env_policy_schema": "aos-adapter-env-policy.v1",
+          "env_policy_digest": "sha256:198097a3ac762018dc3130fef6b832a2cf0862cabe08961ff4d31b42fbe49579",
+          "suite_major": 1,
+          "profile_digest": "565c6eceeed9e72819032b634f6cab5edaa00c3ee153ffda3b8b69810bd591ce"
+        },
+        "profile_reuse": {
+          "reused": false,
+          "created": true,
+          "written": true,
+          "ledger_unreadable": false,
+          "profile_digest": "565c6eceeed9e72819032b634f6cab5edaa00c3ee153ffda3b8b69810bd591ce",
+          "active_cycle_profile_digest": null,
+          "active_cycle_unreadable": false,
+          "active_cycle_matches": null
+        },
+        "reason_code": null,
+        "store_unreadable": false,
+        "tie_break": null,
+        "next_action": null,
+        "zero_input": {
+          "terminal_commands": 0,
+          "config_edits": 0,
+          "manual_registration": 0,
+          "setup_questions": 0
+        }
+      }
+    }
+  ]
+}

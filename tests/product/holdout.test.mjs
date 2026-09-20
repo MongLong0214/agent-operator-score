@@ -18,8 +18,11 @@ import {
   sessionDigestOf
 } from "../../lib/holdout.mjs";
 
-const DIGEST = sessionDigestOf("a session");
-const OTHER = sessionDigestOf("another session");
+// Bytes, not text: `sessionDigestOf` refuses a string outright rather than encoding one, so a
+// caller still handing over decoded text fails at the call site instead of writing a digest of
+// something else.
+const DIGEST = sessionDigestOf(Buffer.from("a session", "utf8"));
+const OTHER = sessionDigestOf(Buffer.from("another session", "utf8"));
 
 const withSession = (over = {}) =>
   recordSession(emptyLedger(), { digest: DIGEST, use: "holdout", reported_status: "COMPLETE", actual_evidence: "COMPLETE", ...over });
@@ -140,7 +143,9 @@ test("a transcript AOS could not read is never a clean bill of health", () => {
   const gate = acceptanceOf(passedOff).gates[1];
   assert.equal(gate.pass, false);
   assert.equal(gate.value, 1);
-  assert.match(gate.detail, new RegExp(DIGEST.slice(0, 12)));
+  // The algorithm label is taken off before the digest is shortened, so the twelve characters
+  // shown still identify the session rather than repeating "sha256:".
+  assert.match(gate.detail, new RegExp(DIGEST.replace(/^sha256:/, "").slice(0, 12)));
 });
 
 test("a tuning session cannot fail or pass the gates", () => {
@@ -166,6 +171,35 @@ test("a secret typed into a reason never reaches the file", () => {
   assert.equal(stored.includes("sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"), false);
   assert.match(stored, /the key .* was in the log/);
   assert.equal(acceptanceOf(ledger).gates[2].pass, true);
+});
+
+test("redacted assignment notes and reasons survive recording and reprinting", () => {
+  for (const quote of ["", "'", '"']) {
+    const raw = `APP_SECRET=${quote}synthetic-value${quote}`;
+    const safe = "APP_SECRET=[redacted: assigned secret]";
+    const ledger = judge(withSession({ note: raw }), {
+      session_digest: DIGEST, finding_id: "f1", rule: "secret-material-in-session",
+      severity: "high", judgement: "true-positive", reason: raw
+    });
+    assert.equal(ledger.sessions[0].note, safe);
+    assert.equal(ledger.judgements[0].reason, safe);
+    assert.equal(acceptanceOf(ledger).gates[2].value, 0);
+    const again = judge(ledger, {
+      session_digest: DIGEST, finding_id: "f1", rule: "secret-material-in-session",
+      severity: "high", judgement: "true-positive", reason: safe
+    });
+    assert.equal(again.judgements[0].reason, safe);
+    assert.equal(acceptanceOf(again).gates[2].value, 0);
+  }
+});
+
+test("acceptance counts adjacent credentials but not existing placeholders", () => {
+  const ledger = withSession();
+  ledger.sessions[0].note = "APP_SECRET=[redacted: assigned secret]";
+  assert.equal(acceptanceOf(ledger).gates[2].value, 0);
+  ledger.sessions[0].note += " OTHER_SECRET=synthetic-value";
+  assert.equal(acceptanceOf(ledger).gates[2].value, 1);
+  assert.equal(acceptanceOf(ledger).gates[2].pass, false);
 });
 
 test("the ledger has nowhere to put a transcript", () => {
