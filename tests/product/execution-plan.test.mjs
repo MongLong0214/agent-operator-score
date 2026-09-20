@@ -170,6 +170,12 @@ test("an unsatisfied acceptance block cannot issue close evidence", () => {
   const issue = entry(doc, 571);
   issue.implementation_blocked_by = [570];
   issue.acceptance_blocked_by = [569, 588];
+  // The scenario is "acceptance waits on something that is not done yet", and it used to borrow
+  // that fact from whatever status the real plan gave #569 and #588 rather than state it. Once
+  // both reached done the block was satisfied, the check under test correctly stayed silent, and
+  // this test failed while the guard it witnesses was untouched -- a plan edit reading as a code
+  // regression. The precondition belongs to the test, so it is written here.
+  entry(doc, 569).status = "ready";
 
   const snapshot = asLive(state());
   const live = snapshot.issues.find((one) => one.number === 571);

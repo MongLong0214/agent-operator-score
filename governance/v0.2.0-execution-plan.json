@@ -792,7 +792,7 @@
     {
       "issue": 569,
       "kind": "release",
-      "status": "ready",
+      "status": "done",
       "batch": 4,
       "implementation_blocked_by": [],
       "acceptance_blocked_by": [
@@ -894,7 +894,7 @@
     {
       "issue": 571,
       "kind": "release",
-      "status": "blocked",
+      "status": "ready",
       "batch": 4,
       "implementation_blocked_by": [
         570
