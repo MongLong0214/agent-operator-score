@@ -1,7 +1,7 @@
 {
   "schema": "aos-github-issue-state.v1",
   "repository": "MongLong0214/agent-operator-score",
-  "captured_at": "2026-09-15T21:41:13.912Z",
+  "captured_at": "2026-09-20T06:15:50.578Z",
   "source": "snapshot",
   "integration_branch": "dev",
   "issues": [
@@ -1219,22 +1219,68 @@
     {
       "number": 569,
       "title": "[P1][release] 모든 implementation gate PASS 후 `main`을 stable/default 채널로 promotion한다",
-      "state": "open",
-      "state_reason": null,
+      "state": "closed",
+      "state_reason": "completed",
       "labels": [
         "area:release",
         "priority:P1",
         "release:v0.2.0",
-        "status:ready"
+        "status:done"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
-      "close_evidence": null,
-      "close_evidence_checked": null,
+      "close_evidence": {
+        "schema": "aos-issue-completion.v1",
+        "issue": 569,
+        "pr": 677,
+        "final_sha": "fd47e2657648ac3c908804554436556bf3560965",
+        "merge_commit_sha": "fd47e2657648ac3c908804554436556bf3560965",
+        "implementation_head_sha": "ac6fed1ebab090400f35ec19e84b9b1729d33996",
+        "ci_run_ids": [
+          35481308144
+        ],
+        "verdict": "PASS",
+        "evidence": {
+          "stable_main_sha": "f9bf5a4aa5cc5e68596d9cc468a9af295a460a2f",
+          "gate_matrix": "X PASS, S PASS, C PASS, G PASS, E/Q/U PASS; every waiting list empty at digest sha256:6c0df33e218bac1b23d7700348d5696969fb3e77c110b336252e7eb04309bd1f",
+          "branch_protection": "main: 7 required checks, strict=true, force push disabled, deletion disabled. dev: 14 required checks, strict=true, force push disabled, deletion disabled. Read from the API, not assumed."
+        },
+        "established": [
+          "main is the repository default branch and the stable channel; verify:release-channel:live reports promote: true, channel.ok: true and an empty reason list",
+          "main carries the release: v0.1.18 was cut from dev 8257733 as release/0.1.18, merged to main through required checks as f9bf5a4, and the default branch was changed only after that merge",
+          "the tag v0.1.18 and its five assets were built from the exact main SHA f9bf5a4, and the published tarball was downloaded, checked against the published SHA256SUMS (4/4 OK), installed into a clean prefix and run: aos --version reports 0.1.18",
+          "dev contains main after the back-merge (PR #676), so the next integration work starts from a tree the release is in"
+        ],
+        "known_residue": [
+          "verify:release-channel cannot see step 6's ordering. channelState checks the back-merge direction (dev contains main) and never the release direction, and every tag condition sits behind `if (tag !== null)` so the strongest half of the check is skipped before a release is tagged. On 2026-09-19 the default branch was changed while main was still at v0.1.17 and 717 commits behind dev, and the verifier reported promote: true with an empty reason list. The change was reverted and redone in order; PR #677 writes the gap into docs/RELEASE.md rather than adding a check that would only restate the procedure in code.",
+          "The release provenance is unsigned. An earlier Ed25519 attestation was rejected for having no SSOT basis and a discarded private key, and core_digest excludes built_at, which makes it a reproducibility claim rather than an authenticity one.",
+          "Closing keywords no longer fire automatically for integration work: GitHub only auto-closes from a merge into the default branch, and the default is now main while task branches target dev. pr_closes_issue reads the pull request body rather than GitHub's auto-close, so the confirmation still holds, but issues now have to be closed by hand after a dev merge.",
+          "The three required evidence fields live under a nested `evidence` object, not at the top level: lib/execution-plan.mjs:1017 reads record.evidence[field]. A first version of this record put them at the top level and the live audit reported them missing while every other confirmation passed."
+        ],
+        "author": "MongLong0214",
+        "author_trusted": true
+      },
+      "close_evidence_checked": {
+        "evidence_digests_match": true,
+        "pr_changed_owned_files": true,
+        "commit_exists": true,
+        "commit_on_integration_branch": true,
+        "pr_merged": true,
+        "pr_targets_integration_branch": true,
+        "pr_closes_issue": true,
+        "pr_produced_the_commit": true,
+        "ci_runs_succeeded": true,
+        "ci_runs_ran_on_this_work": true,
+        "verified": true,
+        "resolution": "verified",
+        "unresolved": []
+      },
       "closing_references": [
         "#569",
         "#577",
-        "#578"
+        "#578",
+        "#676",
+        "#677"
       ]
     },
     {
@@ -1300,7 +1346,7 @@
         "area:release",
         "priority:P1",
         "release:v0.2.0",
-        "status:blocked"
+        "status:ready"
       ],
       "milestone": 14,
       "body_marker": "FINAL_EXECUTION_CONTRACT_2026-09-01_V3",
@@ -1310,7 +1356,8 @@
         "#571",
         "#577",
         "#578",
-        "#575"
+        "#575",
+        "#671"
       ]
     },
     {
